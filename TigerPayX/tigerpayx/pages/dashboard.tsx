@@ -124,7 +124,7 @@ export default function DashboardPage() {
         
         // Store wallet address in database
         await updateWalletAddressInDB(address);
-        } else {
+      } else {
         address = getStoredWalletAddress();
         
         // Check if address is in database, if not, update it
