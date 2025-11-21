@@ -1050,7 +1050,7 @@ export default function DashboardPage() {
   );
 }
 
-// Export with getServerSideProps to disable static generation
+// Disable static generation - use server-side rendering
 export async function getServerSideProps() {
   return {
     props: {},
