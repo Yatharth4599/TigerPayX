@@ -3,21 +3,6 @@
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["iad1"],
-  "env": {
-    "DATABASE_URL": "@database_url",
-    "JWT_SECRET": "@jwt_secret",
-    "JWT_EXPIRES_IN": "@jwt_expires_in",
-    "SOLANA_RPC_URL": "@solana_rpc_url",
-    "SOLANA_DEVNET_RPC_URL": "@solana_devnet_rpc_url",
-    "SOLANA_NETWORK": "@solana_network",
-    "NEXT_PUBLIC_SOLANA_NETWORK": "@solana_network",
-    "PAYRAM_API_URL": "@payram_api_url",
-    "PAYRAM_API_KEY": "@payram_api_key",
-    "NEXT_PUBLIC_PAYRAM_API_URL": "@payram_api_url",
-    "TT_TOKEN_MINT": "@tt_token_mint",
-    "TT_TOKEN_MINT_DEVNET": "@tt_token_mint_devnet",
-    "NODE_ENV": "production"
-  }
+  "regions": ["iad1"]
 }
 
