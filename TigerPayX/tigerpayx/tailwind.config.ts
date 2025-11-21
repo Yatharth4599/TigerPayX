@@ -16,6 +16,9 @@ const config: Config = {
         "tiger-soft": "var(--tiger-soft)",
         "tiger-muted": "var(--tiger-muted)",
       },
+      fontFamily: {
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+      },
     },
   },
   plugins: [],

@@ -1,4 +1,6 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --background: #0f0f0f;
@@ -7,16 +9,6 @@
   --tiger-deep: #0f0f0f;
   --tiger-soft: #1a1a1a;
   --tiger-muted: #a3a3a3;
-}
-
-@theme {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-tiger-orange: var(--tiger-orange);
-  --color-tiger-deep: var(--tiger-deep);
-  --color-tiger-soft: var(--tiger-soft);
-  --color-tiger-muted: var(--tiger-muted);
-  --font-sans: var(--font-sans);
 }
 
 body {
