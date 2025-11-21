@@ -4,6 +4,7 @@ export const STORAGE_KEYS = {
   WALLET_PRIVATE_KEY: "tigerpayx_wallet_private_key",
   WALLET_ADDRESS: "tigerpayx_wallet_address",
   WALLET_IMPORTED: "tigerpayx_wallet_imported",
+  WALLET_SEED_SHOWN: "tigerpayx_wallet_seed_shown",
 };
 
 export const TRANSACTION_FEES = {

@@ -20,8 +20,10 @@ import { MerchantFormModal } from "@/components/MerchantFormModal";
 import { PayLinkFormModal } from "@/components/PayLinkFormModal";
 import { WalletConnectionModal } from "@/components/WalletConnectionModal";
 import { FundWalletModal } from "@/components/FundWalletModal";
+import { SeedPhraseModal } from "@/components/SeedPhraseModal";
 import { formatAddress, formatTokenAmount, getSolanaExplorerUrl } from "@/utils/formatting";
 import { SOLANA_CONFIG } from "@/shared/config";
+import { STORAGE_KEYS } from "@/shared/constants";
 import type { Token, WalletBalance, Transaction as TxType } from "@/shared/types";
 
 type ActiveTab = "home" | "send" | "swap" | "earn" | "merchant";
@@ -60,6 +62,9 @@ export default function DashboardPage() {
   const [showPayLinkForm, setShowPayLinkForm] = useState(false);
   const [showWalletConnection, setShowWalletConnection] = useState(false);
   const [showFundWallet, setShowFundWallet] = useState(false);
+  const [showSeedPhrase, setShowSeedPhrase] = useState(false);
+  const [newWalletSeedPhrase, setNewWalletSeedPhrase] = useState<string>("");
+  const [newWalletAddress, setNewWalletAddress] = useState<string>("");
 
   // Check authentication
   useEffect(() => {
@@ -96,14 +101,41 @@ export default function DashboardPage() {
   const initializeWallet = async () => {
     try {
       let address: string | null = null;
+      
       if (!hasWallet()) {
-        // Don't auto-create wallet, show connection modal instead
-        setLoading(false);
-        setShowWalletConnection(true);
-        return;
+        // Auto-create TigerPayX wallet for new users
+        const wallet = createWallet();
+        address = wallet.publicKey;
+        setNewWalletAddress(wallet.publicKey);
+        setNewWalletSeedPhrase(wallet.seedPhrase);
+        
+        // Check if seed phrase was already shown
+        const seedShown = typeof window !== "undefined" 
+          ? localStorage.getItem(STORAGE_KEYS.WALLET_SEED_SHOWN) === "true"
+          : false;
+        
+        if (!seedShown) {
+          // Show seed phrase modal
+          setShowSeedPhrase(true);
+        }
+        
+        // Store wallet address in database
+        await updateWalletAddressInDB(address);
       } else {
         address = getStoredWalletAddress();
+        
+        // Check if address is in database, if not, update it
+        const userResponse = await fetch("/api/user", {
+          headers: getAuthHeader(),
+        });
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          if (!userData.solanaAddress && address) {
+            await updateWalletAddressInDB(address);
+          }
+        }
       }
+      
       setWalletAddress(address);
 
       if (address) {
@@ -115,6 +147,46 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Update wallet address in database
+  const updateWalletAddressInDB = async (address: string) => {
+    try {
+      const response = await fetch("/api/wallet/updateAddress", {
+        method: "POST",
+        headers: {
+          ...getAuthHeader(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ solanaAddress: address }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("Failed to update wallet address:", error);
+        // Don't show error to user, just log it
+      }
+    } catch (error) {
+      console.error("Error updating wallet address:", error);
+      // Don't show error to user, just log it
+    }
+  };
+
+  // Handle seed phrase confirmation
+  const handleSeedPhraseConfirmed = async () => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEYS.WALLET_SEED_SHOWN, "true");
+    }
+    setShowSeedPhrase(false);
+    setNewWalletSeedPhrase("");
+    
+    if (newWalletAddress) {
+      setWalletAddress(newWalletAddress);
+      await loadBalances();
+      await loadTransactions();
+    }
+    
+    showToast("TigerPayX wallet created successfully!", "success");
   };
 
   // Load balances
@@ -1060,6 +1132,18 @@ export default function DashboardPage() {
             walletAddress={walletAddress}
           />
         )}
+
+        {/* Seed Phrase Modal */}
+        <SeedPhraseModal
+          isOpen={showSeedPhrase}
+          seedPhrase={newWalletSeedPhrase}
+          walletAddress={newWalletAddress}
+          onClose={() => {
+            // Don't allow closing without confirming
+            showToast("Please save your seed phrase before continuing", "warning");
+          }}
+          onConfirm={handleSeedPhraseConfirmed}
+        />
         </div>
       </main>
     </div>
