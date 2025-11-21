@@ -1,6 +1,5 @@
 import type { AppProps } from "next/app";
 import "@/app/globals.css";
-import "@/app/styles.css";
 import { Poppins } from "next/font/google";
 import { ToastContainer } from "@/components/Toast";
 

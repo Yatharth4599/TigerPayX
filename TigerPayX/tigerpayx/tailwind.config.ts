@@ -22,6 +22,10 @@ const config: Config = {
     },
   },
   plugins: [],
+  // Ensure all utilities are included
+  corePlugins: {
+    preflight: true,
+  },
 };
 
 export default config;
