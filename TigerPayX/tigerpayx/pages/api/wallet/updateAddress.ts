@@ -4,7 +4,7 @@ import { prisma } from "@/utils/db";
 import { withAuth, AuthenticatedRequest } from "@/utils/auth-middleware";
 
 type Data = {
-  success: boolean;
+  success?: boolean;
   message?: string;
   error?: string;
 };
@@ -19,7 +19,7 @@ async function handler(
 
   try {
     if (!req.user) {
-      return res.status(401).json({ error: "Authentication required" });
+      return res.status(401).json({ success: false, error: "Authentication required" });
     }
 
     const { solanaAddress } = req.body;
