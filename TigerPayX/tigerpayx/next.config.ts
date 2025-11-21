@@ -7,8 +7,10 @@ const nextConfig: NextConfig = {
     unoptimized: false,
     remotePatterns: [],
   },
-  // Removed optimizeCss experimental feature - it requires 'critters' package
-  // Vercel handles CSS optimization automatically
+  // Explicitly disable optimizeCss to prevent critters dependency
+  experimental: {
+    optimizeCss: false,
+  },
 };
 
 export default nextConfig;

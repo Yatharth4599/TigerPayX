@@ -26,7 +26,8 @@ import type { Token, WalletBalance, Transaction as TxType } from "@/shared/types
 
 type ActiveTab = "home" | "send" | "swap" | "earn" | "merchant";
 
-export default function DashboardPage() {
+// Disable SSR for dashboard (client-side only)
+function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
@@ -1047,4 +1048,11 @@ export default function DashboardPage() {
       </main>
     </div>
   );
+}
+
+// Export with getServerSideProps to disable static generation
+export async function getServerSideProps() {
+  return {
+    props: {},
+  };
 }
