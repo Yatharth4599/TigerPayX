@@ -1,0 +1,53 @@
+# Ignore everything except tigerpayx directory
+*
+
+# But include tigerpayx
+!tigerpayx/
+
+# Ignore Networkqy and related directories
+Networkqy/
+Networkqyi/
+networkqy/
+networkqyi/
+NetworkQY/
+NetworkQYI/
+
+# Ignore other project directories
+COAL/
+Face-Recognition-Attendance-System/
+GitHub/
+Govindaya/
+Kutumb/
+Majlis-*/
+Majlis-App/
+ProKutumb/
+VOYO*/
+checkyourpartner/
+digi-website/
+editAI/
+eleven-labs-*/
+elevenlabs-*/
+face-recognition-*/
+face_recognition_*/
+insight-axis/
+kutumb_data_backup/
+marketplace/
+networ-*/
+networ/
+
+# Ignore media files
+*.mp4
+*.pdf
+*.png
+*.jpg
+*.jpeg
+
+# System files
+.DS_Store
+.localized
+
+# Temporary files
+*.bak
+*.backup
+*.tmp
+
