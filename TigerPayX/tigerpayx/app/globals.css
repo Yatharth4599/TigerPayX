@@ -29,35 +29,39 @@ a {
   box-sizing: border-box;
 }
 
-.glass-panel {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  border-radius: 1.5rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+@layer components {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border-radius: 1.5rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-panel:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+  }
 }
 
-.glass-panel:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  transform: translateY(-2px);
-}
+@layer components {
+  .tiger-glow {
+    box-shadow: 0 0 0 1px rgba(255, 107, 0, 0.3),
+      0 0 60px rgba(255, 107, 0, 0.4),
+      0 0 120px rgba(255, 107, 0, 0.25),
+      inset 0 0 20px rgba(255, 107, 0, 0.1);
+    transition: all 0.3s ease;
+  }
 
-.tiger-glow {
-  box-shadow: 0 0 0 1px rgba(255, 107, 0, 0.3),
-    0 0 60px rgba(255, 107, 0, 0.4),
-    0 0 120px rgba(255, 107, 0, 0.25),
-    inset 0 0 20px rgba(255, 107, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.tiger-glow:hover {
-  box-shadow: 0 0 0 1px rgba(255, 107, 0, 0.4),
-    0 0 80px rgba(255, 107, 0, 0.5),
-    0 0 160px rgba(255, 107, 0, 0.3),
-    inset 0 0 30px rgba(255, 107, 0, 0.15);
+  .tiger-glow:hover {
+    box-shadow: 0 0 0 1px rgba(255, 107, 0, 0.4),
+      0 0 80px rgba(255, 107, 0, 0.5),
+      0 0 160px rgba(255, 107, 0, 0.3),
+      inset 0 0 30px rgba(255, 107, 0, 0.15);
+  }
 }
 
 .tiger-pulse {
@@ -127,27 +131,29 @@ a {
   background-size: 220% 220%;
 }
 
-.section-padding {
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
-}
-
-@media (min-width: 640px) {
+@layer utilities {
   .section-padding {
-    padding-left: 2.5rem;
-    padding-right: 2.5rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
   }
-}
 
-@media (min-width: 1024px) {
-  .section-padding {
-    padding-left: 5rem;
-    padding-right: 5rem;
+  @media (min-width: 640px) {
+    .section-padding {
+      padding-left: 2.5rem;
+      padding-right: 2.5rem;
+    }
   }
-}
 
-.max-width {
-  max-width: 72rem;
-  margin-left: auto;
-  margin-right: auto;
+  @media (min-width: 1024px) {
+    .section-padding {
+      padding-left: 5rem;
+      padding-right: 5rem;
+    }
+  }
+
+  .max-width {
+    max-width: 72rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
