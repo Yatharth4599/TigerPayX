@@ -127,52 +127,53 @@ export default function DashboardPage() {
           // Perfect match - wallet in localStorage matches database
           address = localWalletAddress;
           setWalletAddress(address);
-        } else if (localWalletAddress && localWalletAddress !== dbWalletAddress) {
-          // Mismatch - local wallet doesn't match email's wallet
-          // Use the email's wallet (from database) and ask to import
-          address = dbWalletAddress;
-          setWalletAddress(address);
-          setExistingWalletAddress(dbWalletAddress);
-          setShowImportWalletPrompt(true);
-          showToast("Please import your wallet linked to this email", "warning");
         } else {
-          // No local wallet, but email has one in database
-          // Show the address and ask to import
+          // Mismatch or no local wallet
+          // Clear any wrong wallet from localStorage
+          if (localWalletAddress && localWalletAddress !== dbWalletAddress) {
+            // Clear the wrong wallet from localStorage
+            if (typeof window !== "undefined") {
+              localStorage.removeItem(STORAGE_KEYS.WALLET_PRIVATE_KEY);
+              localStorage.removeItem(STORAGE_KEYS.WALLET_ADDRESS);
+              localStorage.removeItem(STORAGE_KEYS.WALLET_IMPORTED);
+              localStorage.removeItem(STORAGE_KEYS.WALLET_SEED_SHOWN);
+            }
+            showToast("This wallet belongs to a different account. Please import your wallet for this email.", "warning");
+          }
+          
+          // Use the email's wallet (from database) and ask to import
           address = dbWalletAddress;
           setWalletAddress(address);
           setExistingWalletAddress(dbWalletAddress);
           setShowImportWalletPrompt(true);
         }
       } else {
-        // No wallet in database for this email - create new one
+        // No wallet in database for this email
+        // Clear any existing wallet from localStorage (might be from different user)
         if (localWalletAddress) {
-          // Has local wallet but not in database - link it to email
-          address = localWalletAddress;
-          setWalletAddress(address);
-          await updateWalletAddressInDB(localWalletAddress);
-        } else {
-          // No wallet anywhere - create new one and link to email
-          const wallet = createWallet();
-          address = wallet.publicKey;
-          setNewWalletAddress(wallet.publicKey);
-          setNewWalletSeedPhrase(wallet.seedPhrase);
-          
-          // Set wallet address immediately so it's visible
-          setWalletAddress(address);
-          
-          // Check if seed phrase was already shown
-          const seedShown = typeof window !== "undefined" 
-            ? localStorage.getItem(STORAGE_KEYS.WALLET_SEED_SHOWN) === "true"
-            : false;
-          
-          if (!seedShown) {
-            // Show seed phrase modal
-            setShowSeedPhrase(true);
+          // Clear localStorage - this wallet might belong to a different user
+          if (typeof window !== "undefined") {
+            localStorage.removeItem(STORAGE_KEYS.WALLET_PRIVATE_KEY);
+            localStorage.removeItem(STORAGE_KEYS.WALLET_ADDRESS);
+            localStorage.removeItem(STORAGE_KEYS.WALLET_IMPORTED);
+            localStorage.removeItem(STORAGE_KEYS.WALLET_SEED_SHOWN);
           }
-          
-          // Store wallet address in database (linked to email)
-          await updateWalletAddressInDB(address);
         }
+        
+        // Create new wallet and link to this email
+        const wallet = createWallet();
+        address = wallet.publicKey;
+        setNewWalletAddress(wallet.publicKey);
+        setNewWalletSeedPhrase(wallet.seedPhrase);
+        
+        // Set wallet address immediately so it's visible
+        setWalletAddress(address);
+        
+        // Always show seed phrase for new wallets
+        setShowSeedPhrase(true);
+        
+        // Store wallet address in database (linked to email)
+        await updateWalletAddressInDB(address);
       }
       
       if (address) {
