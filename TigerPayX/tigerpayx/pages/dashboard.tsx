@@ -65,6 +65,7 @@ export default function DashboardPage() {
   const [showSeedPhrase, setShowSeedPhrase] = useState(false);
   const [newWalletSeedPhrase, setNewWalletSeedPhrase] = useState<string>("");
   const [newWalletAddress, setNewWalletAddress] = useState<string>("");
+  const [showWalletAddress, setShowWalletAddress] = useState(true); // Toggle to show/hide address
 
   // Check authentication
   useEffect(() => {
@@ -124,7 +125,7 @@ export default function DashboardPage() {
         
         // Store wallet address in database
         await updateWalletAddressInDB(address);
-      } else {
+        } else {
         address = getStoredWalletAddress();
         
         // Check if address is in database, if not, update it
@@ -499,10 +500,30 @@ export default function DashboardPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs uppercase tracking-wider text-zinc-400 mb-2">Wallet Address</p>
-                        <p className="text-white font-mono text-sm break-all">{walletAddress}</p>
-                  </div>
-                      <CopyButton text={walletAddress} />
-                    </div>
+                        <p className="text-white font-mono text-sm break-all select-all bg-black/20 px-2 py-1 rounded border border-white/5">
+                          {showWalletAddress && walletAddress ? walletAddress : "•".repeat(44)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setShowWalletAddress(!showWalletAddress)}
+                          className="p-2 hover:bg-white/10 rounded-lg transition-colors border border-white/10"
+                          title={showWalletAddress ? "Hide address" : "Show address"}
+                        >
+                          {showWalletAddress ? (
+                            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                            </svg>
+                          )}
+                        </button>
+                        <CopyButton text={walletAddress} />
+                      </div>
+                      </div>
                     </div>
                   <button
                     onClick={() => setShowFundWallet(true)}
@@ -533,9 +554,9 @@ export default function DashboardPage() {
                         <p className="text-sm font-medium text-zinc-300 uppercase tracking-wider">{token}</p>
                   </div>
                       <p className="text-2xl lg:text-3xl font-bold text-white">{formatTokenAmount(balance, token)}</p>
-                  </div>
+                    </div>
                   ))}
-                </div>
+                    </div>
               )}
               </div>
 
@@ -652,9 +673,9 @@ export default function DashboardPage() {
 
         {/* Send Tab */}
         {activeTab === "send" && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
             className="bg-[#161A1E] border border-white/5 rounded-xl p-6 max-w-md mx-auto"
           >
             <h2 className="text-2xl font-bold text-white mb-6">Send Payment</h2>
@@ -665,9 +686,29 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-xs uppercase tracking-wider text-zinc-400 mb-2">Your Wallet Address</p>
-                    <p className="text-white font-mono text-sm break-all">{walletAddress}</p>
+                    <p className="text-white font-mono text-sm break-all select-all bg-black/20 px-2 py-1 rounded border border-white/5">
+                      {showWalletAddress && walletAddress ? walletAddress : "•".repeat(44)}
+                    </p>
                   </div>
-                  <CopyButton text={walletAddress} />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowWalletAddress(!showWalletAddress)}
+                      className="p-2 hover:bg-white/10 rounded-lg transition-colors border border-white/10"
+                      title={showWalletAddress ? "Hide address" : "Show address"}
+                    >
+                      {showWalletAddress ? (
+                        <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      )}
+                    </button>
+                    <CopyButton text={walletAddress} />
+                  </div>
                 </div>
               </div>
             )}
@@ -676,11 +717,11 @@ export default function DashboardPage() {
               <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                 <p className="text-sm text-yellow-400">
                   ⚠️ No wallet connected. Please connect or create a wallet first.
-                </p>
-              </div>
+                    </p>
+                  </div>
             )}
 
-            <div className="space-y-4">
+                <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-2">To Address</label>
                 <div className="flex gap-2">
@@ -698,9 +739,9 @@ export default function DashboardPage() {
                   >
                     <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                        </svg>
+                      </svg>
                   </button>
-                    </div>
+                  </div>
                 {sendToAddress && isValidSolanaAddress(sendToAddress) && (
                   <p className="text-xs text-green-400 mt-2 flex items-center gap-1">
                     <span>✓</span> Valid address
@@ -711,7 +752,7 @@ export default function DashboardPage() {
                     <span>✗</span> Invalid address
                   </p>
                 )}
-              </div>
+                  </div>
 
                 <div>
                   <label className="block text-sm font-medium text-zinc-300 mb-2">Token</label>
