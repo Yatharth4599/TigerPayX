@@ -325,21 +325,22 @@ export default function DashboardPage() {
   const isDevnet = network === "devnet";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-950 via-[#1a0a00] to-orange-900">
+    <div className="min-h-screen bg-gradient-to-br from-orange-950 via-[#1a0a00] to-orange-900 text-white">
       <Navbar />
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Network Indicator */}
-        {isDevnet && (
-          <div className="mb-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-4 py-2 flex items-center gap-2">
-            <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <p className="text-sm text-yellow-400">Test Mode: Using Solana Devnet</p>
-          </div>
-        )}
+      <main className="section-padding py-8 lg:py-12">
+        <div className="max-width">
+          {/* Network Indicator */}
+          {isDevnet && (
+            <div className="mb-6 bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-3 flex items-center gap-2">
+              <svg className="w-5 h-5 text-yellow-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p className="text-sm text-yellow-400">Test Mode: Using Solana Devnet</p>
+            </div>
+          )}
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-8 border-b border-white/10 overflow-x-auto">
+          {/* Tabs */}
+          <div className="flex gap-2 mb-8 border-b border-white/10 overflow-x-auto pb-2">
           {(["home", "send", "swap", "earn", "merchant"] as ActiveTab[]).map((tab) => (
             <button
               key={tab}
@@ -363,15 +364,18 @@ export default function DashboardPage() {
             className="space-y-6"
           >
             {/* Wallet Card */}
-            <div className="bg-[#161A1E] border border-white/5 rounded-xl p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h2 className="text-2xl font-bold text-white">Wallet</h2>
-                <div className="flex gap-2">
+            <div className="glass-panel tiger-stripes-soft p-6 lg:p-8">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
+                <div>
+                  <h2 className="text-2xl lg:text-3xl font-bold text-white">TigerPayX Wallet</h2>
+                  <p className="text-sm text-zinc-400 mt-1">Manage your crypto assets</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
                   {walletAddress && (
                     <button
                       onClick={loadBalances}
                       disabled={refreshing}
-                      className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-zinc-300 hover:text-white transition-colors disabled:opacity-50 flex items-center gap-2"
+                      className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-zinc-300 hover:text-white transition-colors disabled:opacity-50 flex items-center gap-2 border border-white/10"
                     >
                       {refreshing ? (
                         <>
@@ -390,7 +394,7 @@ export default function DashboardPage() {
                   )}
                   <button
                     onClick={() => setShowWalletConnection(true)}
-                    className="px-4 py-1.5 bg-[#ff6b00] hover:bg-orange-500 rounded-lg text-sm text-black font-semibold transition-colors flex items-center gap-2"
+                    className="px-4 py-2 bg-[#ff6b00] hover:bg-orange-500 rounded-lg text-sm text-black font-semibold transition-colors flex items-center gap-2 shadow-lg shadow-[#ff6b00]/20"
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -401,13 +405,13 @@ export default function DashboardPage() {
               </div>
 
               {!walletAddress && (
-                <div className="text-center py-12 mb-6">
-                  <div className="text-5xl mb-4">👛</div>
-                  <p className="text-zinc-400 mb-2">No wallet connected</p>
-                  <p className="text-sm text-zinc-500 mb-6">Connect an existing wallet or import one to get started</p>
+                <div className="text-center py-12 mb-6 glass-panel tiger-stripes-soft">
+                  <div className="text-6xl mb-4">👛</div>
+                  <p className="text-lg text-zinc-300 mb-2 font-medium">No wallet connected</p>
+                  <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">Connect an existing wallet or import one to get started with TigerPayX</p>
                   <button
                     onClick={() => setShowWalletConnection(true)}
-                    className="bg-[#ff6b00] text-black font-semibold px-6 py-3 rounded-lg hover:bg-orange-500 transition-colors"
+                    className="bg-[#ff6b00] text-black font-semibold px-8 py-3 rounded-lg hover:bg-orange-500 transition-colors shadow-lg shadow-[#ff6b00]/20"
                   >
                     Connect Wallet
                   </button>
@@ -416,10 +420,10 @@ export default function DashboardPage() {
 
               {walletAddress && (
                 <>
-                  <div className="mb-6 p-4 bg-[#0a0d0f] border border-white/10 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm text-zinc-400 mb-1">Wallet Address</p>
+                  <div className="mb-6 p-4 lg:p-6 glass-panel tiger-stripes-soft">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs uppercase tracking-wider text-zinc-400 mb-2">Wallet Address</p>
                         <p className="text-white font-mono text-sm break-all">{walletAddress}</p>
                       </div>
                       <CopyButton text={walletAddress} />
@@ -427,7 +431,7 @@ export default function DashboardPage() {
                   </div>
                   <button
                     onClick={() => setShowFundWallet(true)}
-                    className="w-full mb-6 bg-[#ff6b00] text-black font-semibold py-3 rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center gap-2"
+                    className="w-full mb-6 bg-[#ff6b00] text-black font-semibold py-3 rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-[#ff6b00]/20"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -438,22 +442,22 @@ export default function DashboardPage() {
               )}
 
               {balances && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
-                    { token: "SOL", balance: balances.sol, icon: "🟡" },
-                    { token: "USDC", balance: balances.usdc, icon: "🔵" },
-                    { token: "USDT", balance: balances.usdt, icon: "🟢" },
-                    { token: "TT", balance: balances.tt, icon: "🟠" },
-                  ].map(({ token, balance, icon }) => (
+                    { token: "SOL", balance: balances.sol, icon: "🟡", color: "from-yellow-500/20 to-orange-500/20" },
+                    { token: "USDC", balance: balances.usdc, icon: "🔵", color: "from-blue-500/20 to-cyan-500/20" },
+                    { token: "USDT", balance: balances.usdt, icon: "🟢", color: "from-green-500/20 to-emerald-500/20" },
+                    { token: "TT", balance: balances.tt, icon: "🟠", color: "from-orange-500/20 to-amber-500/20" },
+                  ].map(({ token, balance, icon, color }) => (
                     <div
                       key={token}
-                      className="bg-[#0a0d0f] border border-white/10 rounded-lg p-4 hover:border-[#ff6b00]/30 transition-colors"
+                      className={`glass-panel tiger-stripes-soft p-4 lg:p-5 rounded-xl bg-gradient-to-br ${color} border border-white/10 hover:border-white/20 transition-all`}
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xl">{icon}</span>
-                        <p className="text-sm text-zinc-400">{token}</p>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-2xl">{icon}</span>
+                        <p className="text-sm font-medium text-zinc-300 uppercase tracking-wider">{token}</p>
                       </div>
-                      <p className="text-2xl font-bold text-white">{formatTokenAmount(balance, token)}</p>
+                      <p className="text-2xl lg:text-3xl font-bold text-white">{formatTokenAmount(balance, token)}</p>
                     </div>
                   ))}
                 </div>
@@ -461,43 +465,50 @@ export default function DashboardPage() {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: "Send", icon: "📤", tab: "send" as ActiveTab },
-                { label: "Swap", icon: "🔄", tab: "swap" as ActiveTab },
-                { label: "Earn", icon: "💰", tab: "earn" as ActiveTab },
-                { label: "Merchant", icon: "🏪", tab: "merchant" as ActiveTab },
-              ].map(({ label, icon, tab }) => (
+                { label: "Send", icon: "📤", tab: "send" as ActiveTab, desc: "Send crypto" },
+                { label: "Swap", icon: "🔄", tab: "swap" as ActiveTab, desc: "Swap tokens" },
+                { label: "Earn", icon: "💰", tab: "earn" as ActiveTab, desc: "Stake & earn" },
+                { label: "Merchant", icon: "🏪", tab: "merchant" as ActiveTab, desc: "Accept payments" },
+              ].map(({ label, icon, tab, desc }) => (
                 <motion.button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
-                  className="bg-[#161A1E] border border-white/5 rounded-xl p-6 hover:border-[#ff6b00]/50 transition-all text-left group"
+                  className="glass-panel tiger-stripes-soft rounded-xl p-5 lg:p-6 hover:border-[#ff6b00]/50 transition-all text-left group"
                 >
-                  <div className="text-3xl mb-2">{icon}</div>
-                  <p className="text-white font-semibold group-hover:text-[#ff6b00] transition-colors">{label}</p>
+                  <div className="text-3xl mb-3">{icon}</div>
+                  <p className="text-white font-semibold group-hover:text-[#ff6b00] transition-colors mb-1">{label}</p>
+                  <p className="text-xs text-zinc-400">{desc}</p>
                 </motion.button>
               ))}
             </div>
 
             {/* Recent Transactions */}
-            <div className="bg-[#161A1E] border border-white/5 rounded-xl p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-white">Recent Transactions</h3>
+            <div className="glass-panel tiger-stripes-soft rounded-xl p-6 lg:p-8">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                <div>
+                  <h3 className="text-xl lg:text-2xl font-bold text-white">Recent Transactions</h3>
+                  <p className="text-sm text-zinc-400 mt-1">Your latest activity</p>
+                </div>
                 {transactions.length > 0 && (
                   <button
                     onClick={loadTransactions}
-                    className="text-sm text-zinc-400 hover:text-white transition-colors"
+                    className="text-sm text-zinc-400 hover:text-[#ff6b00] transition-colors flex items-center gap-1"
                   >
                     View All
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </button>
                 )}
               </div>
               {transactions.length === 0 ? (
                 <div className="text-center py-12">
-                  <div className="text-4xl mb-4">📭</div>
-                  <p className="text-zinc-400 mb-2">No transactions yet</p>
+                  <div className="text-5xl mb-4">📭</div>
+                  <p className="text-lg text-zinc-300 mb-2 font-medium">No transactions yet</p>
                   <p className="text-sm text-zinc-500">Start by sending a payment or swapping tokens</p>
                 </div>
               ) : (
@@ -507,7 +518,7 @@ export default function DashboardPage() {
                       key={tx.id}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="flex justify-between items-center p-4 bg-[#0a0d0f] border border-white/10 rounded-lg hover:border-white/20 transition-colors group"
+                      className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-4 glass-panel tiger-stripes-soft rounded-lg hover:border-white/20 transition-colors group"
                     >
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
@@ -574,18 +585,18 @@ export default function DashboardPage() {
             <h2 className="text-2xl font-bold text-white mb-6">Send Payment</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-zinc-400 mb-2">To Address</label>
+                <label className="block text-sm font-medium text-zinc-300 mb-2">To Address</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={sendToAddress}
                     onChange={(e) => setSendToAddress(e.target.value)}
-                    className="flex-1 bg-[#0a0d0f] border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-sm"
+                    className="flex-1 glass-panel tiger-stripes-soft border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-sm placeholder:text-zinc-500 focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00] outline-none transition-all"
                     placeholder="TigerPayX wallet address"
                   />
                   <button
                     onClick={() => setShowQRScanner(true)}
-                    className="px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors"
+                    className="px-4 py-3 glass-panel tiger-stripes-soft hover:border-[#ff6b00]/50 border border-white/10 rounded-lg transition-all"
                     title="Scan QR Code"
                   >
                     <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -594,42 +605,46 @@ export default function DashboardPage() {
                   </button>
                 </div>
                 {sendToAddress && isValidSolanaAddress(sendToAddress) && (
-                  <p className="text-xs text-green-400 mt-1">✓ Valid address</p>
+                  <p className="text-xs text-green-400 mt-2 flex items-center gap-1">
+                    <span>✓</span> Valid address
+                  </p>
                 )}
                 {sendToAddress && !isValidSolanaAddress(sendToAddress) && (
-                  <p className="text-xs text-red-400 mt-1">✗ Invalid address</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Token</label>
-                <select
-                  value={sendToken}
-                  onChange={(e) => setSendToken(e.target.value as Token)}
-                  className="w-full bg-[#0a0d0f] border border-white/10 rounded-lg px-4 py-3 text-white"
-                >
-                  <option value="SOL">SOL</option>
-                  <option value="USDC">USDC</option>
-                  <option value="USDT">USDT</option>
-                  <option value="TT">TT</option>
-                </select>
-                {balances && (
-                  <p className="text-xs text-zinc-500 mt-1">
-                    Balance: {formatTokenAmount(balances[sendToken.toLowerCase() as keyof WalletBalance] || "0", sendToken)} {sendToken}
+                  <p className="text-xs text-red-400 mt-2 flex items-center gap-1">
+                    <span>✗</span> Invalid address
                   </p>
                 )}
               </div>
 
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">Amount</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  value={sendAmount}
-                  onChange={(e) => setSendAmount(e.target.value)}
-                  className="w-full bg-[#0a0d0f] border border-white/10 rounded-lg px-4 py-3 text-white"
-                  placeholder="0.00"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-2">Token</label>
+                  <select
+                    value={sendToken}
+                    onChange={(e) => setSendToken(e.target.value as Token)}
+                    className="w-full glass-panel tiger-stripes-soft border border-white/10 rounded-lg px-4 py-3 text-white focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00] outline-none transition-all"
+                  >
+                    <option value="SOL">SOL</option>
+                    <option value="USDC">USDC</option>
+                    <option value="USDT">USDT</option>
+                    <option value="TT">TT</option>
+                  </select>
+                  {balances && (
+                    <p className="text-xs text-zinc-400 mt-2">
+                      Balance: <span className="text-white font-medium">{formatTokenAmount(balances[sendToken.toLowerCase() as keyof WalletBalance] || "0", sendToken)} {sendToken}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-2">Amount</label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={sendAmount}
+                    onChange={(e) => setSendAmount(e.target.value)}
+                    className="w-full glass-panel tiger-stripes-soft border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-zinc-500 focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00] outline-none transition-all"
+                    placeholder="0.00"
+                  />
                 {sendAmount && balances && (
                   <div className="flex gap-2 mt-2">
                     <button
@@ -672,20 +687,20 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              <button
-                onClick={handleSend}
-                disabled={sending || !sendToAddress || !sendAmount || !isValidSolanaAddress(sendToAddress)}
-                className="w-full bg-[#ff6b00] text-black font-semibold py-3 rounded-lg hover:bg-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {sending ? (
-                  <>
-                    <LoadingSpinner size="sm" />
-                    Sending...
-                  </>
-                ) : (
-                  "Send Payment"
-                )}
-              </button>
+                <button
+                  onClick={handleSend}
+                  disabled={sending || !sendToAddress || !sendAmount || !isValidSolanaAddress(sendToAddress)}
+                  className="w-full bg-[#ff6b00] text-black font-semibold py-3 rounded-lg hover:bg-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-[#ff6b00]/20 mt-4"
+                >
+                  {sending ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Send Payment"
+                  )}
+                </button>
             </div>
           </motion.div>
         )}
@@ -1045,6 +1060,7 @@ export default function DashboardPage() {
             walletAddress={walletAddress}
           />
         )}
+        </div>
       </main>
     </div>
   );
