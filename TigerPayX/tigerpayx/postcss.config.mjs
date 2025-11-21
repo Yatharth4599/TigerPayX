@@ -1,6 +1,8 @@
 const config = {
   plugins: {
-    "@tailwindcss/postcss": {},
+    "@tailwindcss/postcss": {
+      // Ensure Tailwind v4 compiles correctly
+    },
   },
 };
 
