@@ -1,4 +1,8 @@
+# TigerPayX - DeFi Payment Platform
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+**TigerPayX** is a non-custodial DeFi payment platform built on Solana, featuring P2P payments, token swaps, yield staking, and merchant payment solutions.
 
 ## Getting Started
 
