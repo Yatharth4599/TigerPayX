@@ -12,17 +12,9 @@ const nextConfig: NextConfig = {
     // Remove console logs in production
     removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
   },
-  // Ensure CSS is included in the build
-  webpack: (config, { isServer }) => {
-    // Ensure CSS is processed correctly
-    if (!isServer) {
-      config.optimization = {
-        ...config.optimization,
-        minimize: true,
-      };
-    }
-    return config;
-  },
+  // Turbopack configuration (Next.js 16 uses Turbopack by default)
+  // Empty config to silence the warning about webpack config
+  turbopack: {},
   // Completely remove experimental section to prevent optimizeCss
   // Next.js 16.0.3 enables optimizeCss by default, but it requires critters
   // We'll handle CSS optimization through Vercel's built-in optimization
