@@ -106,7 +106,7 @@ export default function DashboardPage() {
     try {
       let address: string | null = null;
       
-      // First, check if user has a wallet address in the database
+      // ALWAYS check database first - wallet is linked to email
       const userResponse = await fetch("/api/user", {
         headers: getAuthHeader(),
       });
@@ -121,47 +121,58 @@ export default function DashboardPage() {
       const localWallet = hasWallet();
       const localWalletAddress = localWallet ? getStoredWalletAddress() : null;
       
-      if (localWallet && localWalletAddress) {
-        // User has a wallet in this browser
-        address = localWalletAddress;
-        
-        // If database has a different address, warn user
-        if (dbWalletAddress && dbWalletAddress !== localWalletAddress) {
-          showToast("Warning: This browser has a different wallet than your account", "warning");
-          // Still use local wallet, but show the database address as reference
+      if (dbWalletAddress) {
+        // User has a wallet linked to their email in database
+        if (localWalletAddress && localWalletAddress === dbWalletAddress) {
+          // Perfect match - wallet in localStorage matches database
+          address = localWalletAddress;
+          setWalletAddress(address);
+        } else if (localWalletAddress && localWalletAddress !== dbWalletAddress) {
+          // Mismatch - local wallet doesn't match email's wallet
+          // Use the email's wallet (from database) and ask to import
+          address = dbWalletAddress;
+          setWalletAddress(address);
           setExistingWalletAddress(dbWalletAddress);
-        } else if (!dbWalletAddress) {
-          // Update database with local wallet address
-          await updateWalletAddressInDB(localWalletAddress);
+          setShowImportWalletPrompt(true);
+          showToast("Please import your wallet linked to this email", "warning");
+        } else {
+          // No local wallet, but email has one in database
+          // Show the address and ask to import
+          address = dbWalletAddress;
+          setWalletAddress(address);
+          setExistingWalletAddress(dbWalletAddress);
+          setShowImportWalletPrompt(true);
         }
-      } else if (dbWalletAddress) {
-        // User has a wallet in database but not in this browser
-        // Don't create a new wallet - ask them to import
-        setExistingWalletAddress(dbWalletAddress);
-        setShowImportWalletPrompt(true);
-        setWalletAddress(dbWalletAddress); // Show the address but they can't use it without private key
       } else {
-        // No wallet anywhere - create a new one
-        const wallet = createWallet();
-        address = wallet.publicKey;
-        setNewWalletAddress(wallet.publicKey);
-        setNewWalletSeedPhrase(wallet.seedPhrase);
-        
-        // Set wallet address immediately so it's visible
-        setWalletAddress(address);
-        
-        // Check if seed phrase was already shown
-        const seedShown = typeof window !== "undefined" 
-          ? localStorage.getItem(STORAGE_KEYS.WALLET_SEED_SHOWN) === "true"
-          : false;
-        
-        if (!seedShown) {
-          // Show seed phrase modal
-          setShowSeedPhrase(true);
+        // No wallet in database for this email - create new one
+        if (localWalletAddress) {
+          // Has local wallet but not in database - link it to email
+          address = localWalletAddress;
+          setWalletAddress(address);
+          await updateWalletAddressInDB(localWalletAddress);
+        } else {
+          // No wallet anywhere - create new one and link to email
+          const wallet = createWallet();
+          address = wallet.publicKey;
+          setNewWalletAddress(wallet.publicKey);
+          setNewWalletSeedPhrase(wallet.seedPhrase);
+          
+          // Set wallet address immediately so it's visible
+          setWalletAddress(address);
+          
+          // Check if seed phrase was already shown
+          const seedShown = typeof window !== "undefined" 
+            ? localStorage.getItem(STORAGE_KEYS.WALLET_SEED_SHOWN) === "true"
+            : false;
+          
+          if (!seedShown) {
+            // Show seed phrase modal
+            setShowSeedPhrase(true);
+          }
+          
+          // Store wallet address in database (linked to email)
+          await updateWalletAddressInDB(address);
         }
-        
-        // Store wallet address in database
-        await updateWalletAddressInDB(address);
       }
       
       if (address) {

@@ -33,7 +33,22 @@ async function handler(
       return res.status(400).json({ success: false, error: "Invalid Solana address format" });
     }
 
-    // Update user's Solana address
+    // Check if user already has a different wallet address
+    const existingUser = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { solanaAddress: true },
+    });
+
+    // If user already has a wallet address, don't allow changing it
+    // This ensures one wallet per email
+    if (existingUser?.solanaAddress && existingUser.solanaAddress !== solanaAddress) {
+      return res.status(400).json({ 
+        success: false,
+        error: "You already have a wallet linked to this email. Please import your existing wallet instead of creating a new one." 
+      });
+    }
+
+    // Update user's Solana address (link wallet to email)
     await prisma.user.update({
       where: { id: req.user.userId },
       data: { solanaAddress },
