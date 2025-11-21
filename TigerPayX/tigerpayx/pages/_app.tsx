@@ -7,11 +7,12 @@ const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
+  display: "swap",
 });
 
 export default function TigerPayXApp({ Component, pageProps }: AppProps) {
   return (
-    <div className={poppins.variable}>
+    <div className={`${poppins.variable} font-sans`}>
       <Component {...pageProps} />
       <ToastContainer />
     </div>

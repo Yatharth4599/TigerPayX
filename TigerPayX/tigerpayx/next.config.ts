@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
     unoptimized: false,
     remotePatterns: [],
   },
+  // Ensure CSS is properly processed
+  compiler: {
+    // Remove console logs in production
+    removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
+  },
   // Completely remove experimental section to prevent optimizeCss
   // Next.js 16.0.3 enables optimizeCss by default, but it requires critters
   // We'll handle CSS optimization through Vercel's built-in optimization
