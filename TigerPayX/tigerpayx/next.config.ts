@@ -7,10 +7,9 @@ const nextConfig: NextConfig = {
     unoptimized: false,
     remotePatterns: [],
   },
-  // Explicitly disable optimizeCss to prevent critters dependency
-  experimental: {
-    optimizeCss: false,
-  },
+  // Completely remove experimental section to prevent optimizeCss
+  // Next.js 16.0.3 enables optimizeCss by default, but it requires critters
+  // We'll handle CSS optimization through Vercel's built-in optimization
 };
 
 export default nextConfig;
