@@ -21,6 +21,7 @@ import { PayLinkFormModal } from "@/components/PayLinkFormModal";
 import { WalletConnectionModal } from "@/components/WalletConnectionModal";
 import { FundWalletModal } from "@/components/FundWalletModal";
 import { SeedPhraseModal } from "@/components/SeedPhraseModal";
+import { ImportWalletPrompt } from "@/components/ImportWalletPrompt";
 import { formatAddress, formatTokenAmount, getSolanaExplorerUrl } from "@/utils/formatting";
 import { SOLANA_CONFIG } from "@/shared/config";
 import { STORAGE_KEYS } from "@/shared/constants";
@@ -66,6 +67,8 @@ export default function DashboardPage() {
   const [newWalletSeedPhrase, setNewWalletSeedPhrase] = useState<string>("");
   const [newWalletAddress, setNewWalletAddress] = useState<string>("");
   const [showWalletAddress, setShowWalletAddress] = useState(true); // Toggle to show/hide address
+  const [showImportWalletPrompt, setShowImportWalletPrompt] = useState(false);
+  const [existingWalletAddress, setExistingWalletAddress] = useState<string | null>(null);
 
   // Check authentication
   useEffect(() => {
@@ -103,8 +106,42 @@ export default function DashboardPage() {
     try {
       let address: string | null = null;
       
-      if (!hasWallet()) {
-        // Auto-create TigerPayX wallet for new users
+      // First, check if user has a wallet address in the database
+      const userResponse = await fetch("/api/user", {
+        headers: getAuthHeader(),
+      });
+      
+      let dbWalletAddress: string | null = null;
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        dbWalletAddress = userData.solanaAddress || null;
+      }
+      
+      // Check if user has a wallet in localStorage
+      const localWallet = hasWallet();
+      const localWalletAddress = localWallet ? getStoredWalletAddress() : null;
+      
+      if (localWallet && localWalletAddress) {
+        // User has a wallet in this browser
+        address = localWalletAddress;
+        
+        // If database has a different address, warn user
+        if (dbWalletAddress && dbWalletAddress !== localWalletAddress) {
+          showToast("Warning: This browser has a different wallet than your account", "warning");
+          // Still use local wallet, but show the database address as reference
+          setExistingWalletAddress(dbWalletAddress);
+        } else if (!dbWalletAddress) {
+          // Update database with local wallet address
+          await updateWalletAddressInDB(localWalletAddress);
+        }
+      } else if (dbWalletAddress) {
+        // User has a wallet in database but not in this browser
+        // Don't create a new wallet - ask them to import
+        setExistingWalletAddress(dbWalletAddress);
+        setShowImportWalletPrompt(true);
+        setWalletAddress(dbWalletAddress); // Show the address but they can't use it without private key
+      } else {
+        // No wallet anywhere - create a new one
         const wallet = createWallet();
         address = wallet.publicKey;
         setNewWalletAddress(wallet.publicKey);
@@ -125,23 +162,8 @@ export default function DashboardPage() {
         
         // Store wallet address in database
         await updateWalletAddressInDB(address);
-        } else {
-        address = getStoredWalletAddress();
-        
-        // Check if address is in database, if not, update it
-        const userResponse = await fetch("/api/user", {
-          headers: getAuthHeader(),
-        });
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          if (!userData.solanaAddress && address) {
-            await updateWalletAddressInDB(address);
-          }
-        }
       }
       
-      setWalletAddress(address);
-
       if (address) {
         await loadBalances();
         await loadTransactions();
@@ -1209,6 +1231,23 @@ export default function DashboardPage() {
             showToast("Please save your seed phrase before continuing", "warning");
           }}
           onConfirm={handleSeedPhraseConfirmed}
+        />
+
+        <ImportWalletPrompt
+          isOpen={showImportWalletPrompt}
+          existingAddress={existingWalletAddress || ""}
+          onClose={() => {
+            setShowImportWalletPrompt(false);
+            showToast("Please import your wallet to access your funds", "warning");
+          }}
+          onImport={async (address) => {
+            setWalletAddress(address);
+            setShowImportWalletPrompt(false);
+            setExistingWalletAddress(null);
+            await loadBalances();
+            await loadTransactions();
+            showToast("Wallet imported successfully!", "success");
+          }}
         />
         </div>
       </main>
