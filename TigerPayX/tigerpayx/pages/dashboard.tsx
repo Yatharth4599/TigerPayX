@@ -27,7 +27,7 @@ import type { Token, WalletBalance, Transaction as TxType } from "@/shared/types
 type ActiveTab = "home" | "send" | "swap" | "earn" | "merchant";
 
 // Disable SSR for dashboard (client-side only)
-function DashboardPage() {
+export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
