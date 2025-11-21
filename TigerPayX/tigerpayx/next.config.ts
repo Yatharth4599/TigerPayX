@@ -15,10 +15,6 @@ const nextConfig: NextConfig = {
   // Turbopack configuration (Next.js 16 uses Turbopack by default)
   // Empty config to silence the warning about webpack config
   turbopack: {},
-  // Ensure CSS is included in the build
-  experimental: {
-    optimizeCss: false, // Disable CSS optimization to ensure all styles are included
-  },
 };
 
 export default nextConfig;
