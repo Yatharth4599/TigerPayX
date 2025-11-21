@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // PostgreSQL for production (Vercel requires this)
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String   // Hashed with bcrypt
+  name          String?
+  handle        String?  @unique
+  avatarInitials String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Solana wallet address (non-custodial - private key stored client-side only)
+  solanaAddress String?  @unique
+  
+  transactions  Transaction[]
+  merchants     Merchant[]
+}
+
+model Merchant {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  merchantId        String   @unique // TigerPayX merchant ID
+  name              String
+  logoUrl           String?
+  settlementAddress String   // Solana address for receiving payments
+  preferredToken    String   @default("USDC") // SOL, USDC, USDT, TT
+  payramMerchantId  String?  // PayRam merchant ID
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  payLinks          PayLink[]
+  
+  @@index([userId])
+  @@index([merchantId])
+}
+
+model PayLink {
+  id            String   @id @default(cuid())
+  merchantId    String
+  merchant      Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  
+  payLinkId     String   @unique
+  amount        String   // Amount as string for precision
+  token         String   // SOL, USDC, USDT, TT
+  description   String?
+  status        String   @default("pending") // "pending", "paid", "expired", "cancelled"
+  solanaTxHash  String?  // Transaction hash when paid
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  expiresAt     DateTime?
+  
+  @@index([merchantId])
+  @@index([payLinkId])
+  @@index([status])
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type        String   // "send", "swap", "pay" (merchant payment)
+  fromAddress String   // Solana address
+  toAddress   String   // Solana address
+  amount      String   // Stored as string for precision
+  token       String   // SOL, USDC, USDT, TT
+  txHash      String   // Solana transaction hash
+  status      String   @default("pending") // "pending", "confirmed", "failed"
+  description String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([txHash])
+  @@index([createdAt])
+  @@index([type])
+}

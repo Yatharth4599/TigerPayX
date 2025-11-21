@@ -1,0 +1,15 @@
+// Production Prisma schema - PostgreSQL
+// This is a reference file. Update schema.prisma before deploying.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // PostgreSQL for production
+  url      = env("DATABASE_URL")
+}
+
+// Copy all models from schema.prisma
+// Models remain the same, only datasource provider changes
+

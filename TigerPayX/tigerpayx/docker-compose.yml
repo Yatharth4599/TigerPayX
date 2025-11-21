@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://tigerpayx:tigerpayx123@db:5432/tigerpayx
+      - JWT_SECRET=${JWT_SECRET:-tigerpayx-dev-secret-change-in-production}
+      - JWT_EXPIRES_IN=7d
+      - SOLANA_RPC_URL=${SOLANA_RPC_URL:-https://api.mainnet-beta.solana.com}
+      - SOLANA_DEVNET_RPC_URL=${SOLANA_DEVNET_RPC_URL:-https://api.devnet.solana.com}
+      - SOLANA_NETWORK=${SOLANA_NETWORK:-mainnet-beta}
+      - PAYRAM_API_URL=${PAYRAM_API_URL:-}
+      - PAYRAM_API_KEY=${PAYRAM_API_KEY:-}
+      - TT_TOKEN_MINT=${TT_TOKEN_MINT:-}
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=tigerpayx
+      - POSTGRES_PASSWORD=tigerpayx123
+      - POSTGRES_DB=tigerpayx
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
