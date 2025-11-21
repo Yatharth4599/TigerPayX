@@ -86,23 +86,15 @@ body {
 
 .uppercase { text-transform: uppercase !important; }
 .tracking-tight { letter-spacing: -0.025em !important; }
-.tracking-\\[0\\.2em\\] { letter-spacing: 0.2em !important; }
+/* tracking-[0.2em] - handled by Tailwind v3 */
 
 .text-balance { text-wrap: balance !important; }
 .text-transparent { color: transparent !important; }
 
 /* ===== COLORS & BACKGROUNDS ===== */
-.bg-\\[\\#ff6b00\\] { background-color: #ff6b00 !important; }
-.bg-\\[\\#1a0a00\\] { background-color: #1a0a00 !important; }
+/* Custom color classes with brackets handled by Tailwind v3 */
 .bg-orange-950 { background-color: #431407 !important; }
 .bg-orange-900 { background-color: #7c2d12 !important; }
-.bg-white\\/5 { background-color: rgba(255, 255, 255, 0.05) !important; }
-.bg-white\\/10 { background-color: rgba(255, 255, 255, 0.1) !important; }
-.bg-orange-950\\/50 { background-color: rgba(67, 20, 7, 0.5) !important; }
-.bg-orange-950\\/60 { background-color: rgba(67, 20, 7, 0.6) !important; }
-.bg-orange-900\\/40 { background-color: rgba(124, 45, 18, 0.4) !important; }
-.bg-\\[\\#ff6b00\\]\\/30 { background-color: rgba(255, 107, 0, 0.3) !important; }
-.bg-\\[\\#ff6b00\\]\\/35 { background-color: rgba(255, 107, 0, 0.35) !important; }
 
 .bg-gradient-to-br { background-image: linear-gradient(to bottom right, var(--tw-gradient-stops)) !important; }
 .bg-gradient-to-b { background-image: linear-gradient(to bottom, var(--tw-gradient-stops)) !important; }
@@ -110,9 +102,7 @@ body {
 .bg-gradient-to-tr { background-image: linear-gradient(to top right, var(--tw-gradient-stops)) !important; }
 
 .from-orange-950 { --tw-gradient-from: #431407; --tw-gradient-to: rgba(67, 20, 7, 0); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
-.from-\\[\\#ff6b00\\] { --tw-gradient-from: #ff6b00; --tw-gradient-to: rgba(255, 107, 0, 0); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
-.via-\\[\\#1a0a00\\] { --tw-gradient-to: rgba(26, 10, 0, 0); --tw-gradient-stops: var(--tw-gradient-from), rgba(26, 10, 0, 0.5), var(--tw-gradient-to); }
-.via-orange-900\\/40 { --tw-gradient-to: rgba(124, 45, 18, 0); --tw-gradient-stops: var(--tw-gradient-from), rgba(124, 45, 18, 0.4), var(--tw-gradient-to); }
+/* Custom gradient classes with brackets handled by Tailwind v3 */
 .via-amber-300 { --tw-gradient-to: rgba(252, 211, 77, 0); --tw-gradient-stops: var(--tw-gradient-from), rgba(252, 211, 77, 0.5), var(--tw-gradient-to); }
 .to-orange-900 { --tw-gradient-to: #7c2d12 !important; }
 .to-orange-500 { --tw-gradient-to: #f97316 !important; }
@@ -123,15 +113,12 @@ body {
 /* ===== BORDERS ===== */
 .border { border-width: 1px !important; }
 .border-t { border-top-width: 1px !important; }
-.border-white\\/10 { border-color: rgba(255, 255, 255, 0.1) !important; }
-.border-white\\/18 { border-color: rgba(255, 255, 255, 0.18) !important; }
-.border-white\\/20 { border-color: rgba(255, 255, 255, 0.2) !important; }
-.border-orange-800\\/30 { border-color: rgba(154, 52, 18, 0.3) !important; }
+/* Border opacity classes handled by Tailwind v3 */
 
 .rounded-full { border-radius: 9999px !important; }
 .rounded-xl { border-radius: 0.75rem !important; }
 .rounded-lg { border-radius: 0.5rem !important; }
-.rounded-\\[999px\\] { border-radius: 999px !important; }
+/* Custom rounded classes handled by Tailwind v3 */
 .rounded-3xl { border-radius: 1.5rem !important; }
 
 /* ===== SIZING ===== */
@@ -146,7 +133,7 @@ body {
 .max-w-xl { max-width: 36rem !important; }
 
 /* ===== EFFECTS ===== */
-.shadow-\\[0_0_12px_rgba\\(255\\,107\\,0\\,0\\.9\\)\\] { box-shadow: 0 0 12px rgba(255, 107, 0, 0.9) !important; }
+/* Custom shadow classes handled by Tailwind v3 */
 .blur-3xl { filter: blur(64px) !important; }
 
 /* ===== GLASS PANEL ===== */
@@ -228,12 +215,11 @@ body {
   .lg\:pt-16 { padding-top: 4rem !important; }
   .lg\:pb-28 { padding-bottom: 7rem !important; }
   .lg\:text-6xl { font-size: 3.75rem; line-height: 1; }
-  .lg\\:grid-cols-\\[minmax\\(0\\,1\\.3fr\\)_minmax\\(0\\,1fr\\)\\] { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) !important; }
-  .lg\\:grid-cols-\\[0\\.9fr\\,1\\.1fr\\] { grid-template-columns: 0.9fr 1.1fr !important; }
+  /* Custom grid column classes handled by Tailwind v3 */
   .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
 
 /* ===== HOVER STATES ===== */
-.hover\\:bg-white\\/10:hover { background-color: rgba(255, 255, 255, 0.1) !important; }
+/* Hover opacity classes handled by Tailwind v3 */
 .hover\:bg-orange-500:hover { background-color: #f97316 !important; }
 .hover\:text-white:hover { color: #ffffff !important; }
