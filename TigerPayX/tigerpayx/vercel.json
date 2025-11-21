@@ -1,5 +1,5 @@
 {
-  "buildCommand": "prisma generate && (prisma migrate deploy || echo 'Migration skipped - DATABASE_URL not set') && next build",
+  "buildCommand": "prisma generate && (node scripts/resolve-migration.js || echo 'Migration resolution skipped') && (prisma migrate deploy || echo 'Migration skipped - DATABASE_URL not set') && next build",
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs",
