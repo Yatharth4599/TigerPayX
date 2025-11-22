@@ -109,12 +109,16 @@ export async function sendToken(
       console.log(`[sendToken] Balance check passed: ${balanceNum} >= ${amount}`);
     } catch (balanceError: any) {
       // If balance check fails, throw a clear error
-      if (balanceError.message.includes("don't have any") || balanceError.message.includes("Insufficient")) {
+      const errorMsg = balanceError?.message || "";
+      if (errorMsg.includes("don't have any") || 
+          errorMsg.includes("Insufficient") ||
+          errorMsg.includes("don't have a token account") ||
+          errorMsg.includes("TokenAccountNotFound")) {
         throw balanceError; // Re-throw our custom errors
       }
-      // If it's an RPC error during balance check, still try to proceed but warn
-      console.warn(`[sendToken] Balance check failed, but continuing: ${balanceError.message}`);
-      // Don't throw - let the transaction simulation catch the error
+      // If it's an RPC error during balance check, throw a clear error
+      console.error(`[sendToken] Balance check failed: ${errorMsg}`);
+      throw new Error(`Unable to check your ${token} balance. Please check your RPC connection and try again. Error: ${errorMsg}`);
     }
 
     // Build transaction

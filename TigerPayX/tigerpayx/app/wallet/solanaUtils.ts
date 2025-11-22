@@ -135,15 +135,22 @@ async function tryWithFallback<T>(
       }
       
       // Check for TokenAccountNotFoundError - this is a valid error, not an RPC issue
+      // BUT: We should still try fallbacks because different RPCs might have different data
+      // Only skip fallbacks if we've tried all RPCs and all returned TokenAccountNotFoundError
       const isTokenAccountNotFound = errorName === "TokenAccountNotFoundError" || 
                                      errorMsg?.includes("TokenAccountNotFound") ||
                                      errorMsg?.includes("could not find account");
       
-      if (isTokenAccountNotFound) {
-        // This is a valid error - token account doesn't exist
-        // Don't try fallbacks, throw the error so it can be handled properly
-        console.log(`[tryWithFallback] Token account not found - this is expected if account doesn't exist`);
+      if (isTokenAccountNotFound && i === rpcUrls.length - 1) {
+        // Last RPC also returned TokenAccountNotFoundError - account truly doesn't exist
+        console.log(`[tryWithFallback] Token account not found on all RPCs - account doesn't exist`);
         throw error; // Re-throw so caller can handle it
+      }
+      
+      if (isTokenAccountNotFound) {
+        // Token account not found on this RPC, but try next one
+        console.log(`[tryWithFallback] Token account not found on this RPC, trying next...`);
+        continue;
       }
       
       if (is403 || isRateLimit || isNetworkError) {
@@ -280,11 +287,11 @@ export async function getTokenBalance(
       const tokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
       ataAddress = tokenAccount.toString();
       console.log(`[getTokenBalance] ATA address: ${ataAddress}`);
-      
-      const accountInfo = await tryWithFallback(async (connection) => {
-        return await getAccount(connection, tokenAccount);
-      });
-      
+    
+    const accountInfo = await tryWithFallback(async (connection) => {
+      return await getAccount(connection, tokenAccount);
+    });
+    
       const balance = Number(accountInfo.amount) / Math.pow(10, decimals);
       console.log(`[getTokenBalance] ATA balance: ${balance}`);
       
@@ -398,16 +405,16 @@ export async function buildSolTransferTransaction(
 ): Promise<Transaction> {
   try {
     console.log(`[buildSolTransferTransaction] Building SOL transfer: ${amount} SOL to ${toAddress}`);
-    const connection = getSolanaConnection();
-    const toPublicKey = new PublicKey(toAddress);
-    
-    const transaction = new Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: fromKeypair.publicKey,
-        toPubkey: toPublicKey,
-        lamports: amount * LAMPORTS_PER_SOL,
-      })
-    );
+  const connection = getSolanaConnection();
+  const toPublicKey = new PublicKey(toAddress);
+  
+  const transaction = new Transaction().add(
+    SystemProgram.transfer({
+      fromPubkey: fromKeypair.publicKey,
+      toPubkey: toPublicKey,
+      lamports: amount * LAMPORTS_PER_SOL,
+    })
+  );
 
     // Get recent blockhash with fallback
     console.log(`[buildSolTransferTransaction] Getting recent blockhash...`);
@@ -415,12 +422,12 @@ export async function buildSolTransferTransaction(
       return await conn.getLatestBlockhash("confirmed");
     });
     
-    transaction.recentBlockhash = blockhash;
+  transaction.recentBlockhash = blockhash;
     transaction.lastValidBlockHeight = lastValidBlockHeight;
-    transaction.feePayer = fromKeypair.publicKey;
+  transaction.feePayer = fromKeypair.publicKey;
 
     console.log(`[buildSolTransferTransaction] Transaction built successfully`);
-    return transaction;
+  return transaction;
   } catch (error: any) {
     console.error(`[buildSolTransferTransaction] Error:`, error);
     throw new Error(`Failed to build transaction: ${error.message || "Unknown error"}`);
@@ -441,20 +448,20 @@ export async function buildTokenTransferTransaction(
 ): Promise<Transaction> {
   try {
     console.log(`[buildTokenTransferTransaction] Building token transfer: ${amount} tokens`);
-    const connection = getSolanaConnection();
-    const toPublicKey = new PublicKey(toAddress);
-    const mintPublicKey = new PublicKey(tokenMint);
-    
+  const connection = getSolanaConnection();
+  const toPublicKey = new PublicKey(toAddress);
+  const mintPublicKey = new PublicKey(tokenMint);
+  
     // Get associated token addresses
     const fromTokenAccount = getAssociatedTokenAddressSync(
-      mintPublicKey,
-      fromKeypair.publicKey
-    );
-    
+    mintPublicKey,
+    fromKeypair.publicKey
+  );
+  
     const toTokenAccount = getAssociatedTokenAddressSync(
-      mintPublicKey,
-      toPublicKey
-    );
+    mintPublicKey,
+    toPublicKey
+  );
 
     console.log(`[buildTokenTransferTransaction] From token account: ${fromTokenAccount.toString()}`);
     console.log(`[buildTokenTransferTransaction] To token account: ${toTokenAccount.toString()}`);
@@ -509,17 +516,17 @@ export async function buildTokenTransferTransaction(
       );
     }
 
-    const amountInSmallestUnit = BigInt(Math.floor(amount * Math.pow(10, decimals)));
+  const amountInSmallestUnit = BigInt(Math.floor(amount * Math.pow(10, decimals)));
 
     // Add transfer instruction
     transaction.add(
-      createTransferInstruction(
-        fromTokenAccount,
-        toTokenAccount,
-        fromKeypair.publicKey,
-        amountInSmallestUnit
-      )
-    );
+    createTransferInstruction(
+      fromTokenAccount,
+      toTokenAccount,
+      fromKeypair.publicKey,
+      amountInSmallestUnit
+    )
+  );
 
     // Get recent blockhash with fallback
     console.log(`[buildTokenTransferTransaction] Getting recent blockhash...`);
@@ -527,12 +534,12 @@ export async function buildTokenTransferTransaction(
       return await conn.getLatestBlockhash("confirmed");
     });
     
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = fromKeypair.publicKey;
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = fromKeypair.publicKey;
     transaction.lastValidBlockHeight = lastValidBlockHeight;
 
     console.log(`[buildTokenTransferTransaction] Transaction built successfully`);
-    return transaction;
+  return transaction;
   } catch (error: any) {
     console.error(`[buildTokenTransferTransaction] Error:`, error);
     throw error; // Re-throw to preserve the error message
@@ -548,9 +555,9 @@ export async function signAndSendTransaction(
 ): Promise<string> {
   try {
     console.log(`[signAndSendTransaction] Signing transaction...`);
-    // Sign transaction
-    transaction.sign(keypair);
-    
+  // Sign transaction
+  transaction.sign(keypair);
+  
     console.log(`[signAndSendTransaction] Sending transaction to network...`);
     
     // Try to send with fallback RPC endpoints
@@ -558,12 +565,12 @@ export async function signAndSendTransaction(
     try {
       signature = await tryWithFallback(async (connection) => {
         return await connection.sendRawTransaction(
-          transaction.serialize(),
-          {
-            skipPreflight: false,
-            maxRetries: 3,
-          }
-        );
+    transaction.serialize(),
+    {
+      skipPreflight: false,
+      maxRetries: 3,
+    }
+  );
       });
     } catch (rpcError: any) {
       // If all RPC endpoints fail, provide a helpful error message
@@ -615,7 +622,7 @@ export async function signAndSendTransaction(
       console.warn(`[signAndSendTransaction] Confirmation check failed, but transaction was sent: ${signature}`);
       console.warn(`[signAndSendTransaction] Error:`, confirmError);
       // Return signature anyway - user can check on explorer
-      return signature;
+  return signature;
     }
   } catch (error: any) {
     console.error(`[signAndSendTransaction] Error:`, error);
