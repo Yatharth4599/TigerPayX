@@ -134,6 +134,18 @@ async function tryWithFallback<T>(
         }
       }
       
+      // Check for TokenAccountNotFoundError - this is a valid error, not an RPC issue
+      const isTokenAccountNotFound = errorName === "TokenAccountNotFoundError" || 
+                                     errorMsg?.includes("TokenAccountNotFound") ||
+                                     errorMsg?.includes("could not find account");
+      
+      if (isTokenAccountNotFound) {
+        // This is a valid error - token account doesn't exist
+        // Don't try fallbacks, throw the error so it can be handled properly
+        console.log(`[tryWithFallback] Token account not found - this is expected if account doesn't exist`);
+        throw error; // Re-throw so caller can handle it
+      }
+      
       if (is403 || isRateLimit || isNetworkError) {
         console.warn(`RPC ${maskedUrl} failed (${is403 ? '403' : isRateLimit ? 'rate limit' : 'network error'}), trying fallback...`);
         continue;
@@ -283,7 +295,15 @@ export async function getTokenBalance(
       }
     } catch (ataError: any) {
       // ATA doesn't exist or has no balance, continue to search all token accounts
-      console.log(`[getTokenBalance] ATA not found or error: ${ataError?.message || ataError}`);
+      const errorName = ataError?.name || "";
+      const errorMsg = ataError?.message || "";
+      
+      // TokenAccountNotFoundError is expected if account doesn't exist - not a real error
+      if (errorName === "TokenAccountNotFoundError" || errorMsg?.includes("could not find account")) {
+        console.log(`[getTokenBalance] ATA doesn't exist (TokenAccountNotFoundError) - this is normal if you haven't received tokens yet`);
+      } else {
+        console.log(`[getTokenBalance] ATA not found or error: ${errorMsg || errorName}`);
+      }
     }
     
     // Search for ALL token accounts owned by this wallet, then filter by mint
