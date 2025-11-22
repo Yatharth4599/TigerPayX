@@ -1,12 +1,32 @@
 // Configuration for TigerPayX DeFi platform
 
 export const SOLANA_CONFIG = {
-  // Use public RPC endpoints with fallbacks
-  // For production, use a reliable RPC provider (Helius, QuickNode, Alchemy)
-  // IMPORTANT: Set SOLANA_RPC_URL environment variable with your RPC provider URL for better reliability
-  rpcUrl: process.env.SOLANA_RPC_URL || process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://solana-api.projectserum.com",
+  // RPC Configuration
+  // 
+  // IMPORTANT: Public RPC endpoints are rate-limited and unreliable.
+  // You MUST set up a dedicated RPC provider for production use.
+  // 
+  // Free RPC Providers:
+  // - Helius: https://www.helius.dev/ (100K requests/day free)
+  // - QuickNode: https://www.quicknode.com/ (10M requests/month free)
+  // - Alchemy: https://www.alchemy.com/ (free tier available)
+  // 
+  // Setup Instructions: See SETUP_RPC_PROVIDER.md
+  //
+  // Set environment variables:
+  // SOLANA_RPC_URL="https://your-rpc-provider-url"
+  // NEXT_PUBLIC_SOLANA_RPC_URL="https://your-rpc-provider-url"
+  
+  // Primary RPC URL - Set this via environment variable!
+  rpcUrl: process.env.SOLANA_RPC_URL || 
+          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 
+          "https://solana-api.projectserum.com", // Fallback (may be rate-limited)
+  
   // For development, use devnet with multiple fallback options
-  devnetRpcUrl: process.env.SOLANA_DEVNET_RPC_URL || process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL || "https://api.devnet.solana.com",
+  devnetRpcUrl: process.env.SOLANA_DEVNET_RPC_URL || 
+                process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL || 
+                "https://api.devnet.solana.com",
+  
   // Fallback RPC URLs if primary fails (tried in order)
   fallbackRpcUrls: {
     devnet: [
@@ -15,11 +35,10 @@ export const SOLANA_CONFIG = {
       "https://solana-devnet.g.alchemy.com/v2/demo",
     ],
     mainnet: [
-      // Try public endpoints that are more reliable
+      // Try public endpoints
       "https://solana-api.projectserum.com",
       "https://solana.public-rpc.com",
       "https://api.mainnet-beta.solana.com",
-      // Try with different paths
       "https://rpc.ankr.com/solana",
       "https://solana-rpc.publicnode.com",
       "https://api.mainnet.solana.com",
