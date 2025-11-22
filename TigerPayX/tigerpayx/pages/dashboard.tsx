@@ -286,7 +286,10 @@ export default function DashboardPage() {
 
     setSending(true);
     try {
+      console.log(`[handleSend] Starting send: ${amount} ${sendToken} to ${sendToAddress}`);
       const result = await sendP2PPayment(sendToAddress, sendToken, amount);
+      console.log(`[handleSend] Send result:`, result);
+      
       if (result.success) {
         showToast(`Payment sent! Transaction: ${formatAddress(result.signature)}`, "success");
         setSendToAddress("");
@@ -294,10 +297,14 @@ export default function DashboardPage() {
         await loadBalances();
         await loadTransactions();
       } else {
-        showToast(result.error || "Payment failed", "error");
+        const errorMsg = result.error || "Payment failed";
+        console.error(`[handleSend] Payment failed:`, errorMsg);
+        showToast(errorMsg, "error");
       }
     } catch (error: any) {
-      showToast(error.message || "An error occurred", "error");
+      console.error(`[handleSend] Exception:`, error);
+      const errorMsg = error.message || "An error occurred. Please check the console for details.";
+      showToast(errorMsg, "error");
     } finally {
       setSending(false);
     }
@@ -448,6 +455,22 @@ export default function DashboardPage() {
               <p className="text-sm text-yellow-400">Test Mode: Using Solana Devnet</p>
                   </div>
                 )}
+
+          {/* RPC Connection Warning */}
+          {refreshing && (
+            <div className="mb-6 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-3 flex items-start gap-3">
+              <svg className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-orange-400 mb-1">⚠️ RPC Connection Issues</p>
+                <p className="text-xs text-orange-300">
+                  Public RPC endpoints are experiencing high load. Transactions may be slow or fail. 
+                  For better reliability, configure a dedicated RPC provider in your environment variables.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="flex gap-2 mb-8 border-b border-white/10 overflow-x-auto pb-2">

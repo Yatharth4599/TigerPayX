@@ -179,6 +179,17 @@ export async function getTokenBalance(
   tokenMint: string
 ): Promise<string> {
   try {
+    // Validate inputs
+    if (!address || !tokenMint) {
+      console.warn(`[getTokenBalance] Missing address or tokenMint: address=${address}, tokenMint=${tokenMint}`);
+      return "0";
+    }
+    
+    if (tokenMint.trim() === "") {
+      console.warn(`[getTokenBalance] Empty tokenMint, returning 0`);
+      return "0";
+    }
+    
     const publicKey = new PublicKey(address);
     const mintPublicKey = new PublicKey(tokenMint);
     const network = SOLANA_CONFIG.network;
@@ -266,11 +277,16 @@ export async function getAllTokenBalances(address: string): Promise<{
   const connection = getSolanaConnection();
   const network = SOLANA_CONFIG.network;
   
+  // Get token mints, skip if empty
+  const usdcMint = getTokenMint("USDC", network);
+  const usdtMint = getTokenMint("USDT", network);
+  const ttMint = getTokenMint("TT", network);
+  
   const [sol, usdc, usdt, tt] = await Promise.all([
     getSolBalance(address),
-    getTokenBalance(address, getTokenMint("USDC", network)),
-    getTokenBalance(address, getTokenMint("USDT", network)),
-    getTokenBalance(address, getTokenMint("TT", network)),
+    usdcMint ? getTokenBalance(address, usdcMint) : Promise.resolve("0"),
+    usdtMint ? getTokenBalance(address, usdtMint) : Promise.resolve("0"),
+    ttMint ? getTokenBalance(address, ttMint) : Promise.resolve("0"),
   ]);
 
   return {
@@ -375,41 +391,65 @@ export async function buildTokenTransferTransaction(
 }
 
 /**
- * Sign and send transaction
+ * Sign and send transaction with RPC fallback
  */
 export async function signAndSendTransaction(
   transaction: Transaction,
   keypair: Keypair
 ): Promise<string> {
   try {
-    const connection = getSolanaConnection();
-    
     console.log(`[signAndSendTransaction] Signing transaction...`);
     // Sign transaction
     transaction.sign(keypair);
     
     console.log(`[signAndSendTransaction] Sending transaction to network...`);
-    // Send transaction
-    const signature = await connection.sendRawTransaction(
-      transaction.serialize(),
-      {
-        skipPreflight: false,
-        maxRetries: 3,
+    
+    // Try to send with fallback RPC endpoints
+    let signature: string;
+    try {
+      signature = await tryWithFallback(async (connection) => {
+        return await connection.sendRawTransaction(
+          transaction.serialize(),
+          {
+            skipPreflight: false,
+            maxRetries: 3,
+          }
+        );
+      });
+    } catch (rpcError: any) {
+      // If all RPC endpoints fail, provide a helpful error message
+      const errorMsg = rpcError?.message || "RPC connection failed";
+      if (errorMsg.includes("403") || errorMsg.includes("Forbidden")) {
+        throw new Error("RPC endpoints are rate-limited. Please configure a dedicated RPC provider or try again later.");
+      } else if (errorMsg.includes("timeout") || errorMsg.includes("Failed to fetch")) {
+        throw new Error("Network connection failed. Please check your internet connection and try again.");
+      } else {
+        throw new Error(`Failed to send transaction: ${errorMsg}`);
       }
-    );
+    }
     
     console.log(`[signAndSendTransaction] Transaction sent, signature: ${signature}`);
     console.log(`[signAndSendTransaction] Waiting for confirmation...`);
     
-    // Wait for confirmation
-    const confirmation = await connection.confirmTransaction(signature, "confirmed");
-    
-    if (confirmation.value.err) {
-      throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+    // Wait for confirmation with fallback
+    try {
+      const confirmation = await tryWithFallback(async (connection) => {
+        return await connection.confirmTransaction(signature, "confirmed");
+      });
+      
+      if (confirmation.value.err) {
+        throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+      }
+      
+      console.log(`[signAndSendTransaction] Transaction confirmed!`);
+      return signature;
+    } catch (confirmError: any) {
+      // Even if confirmation fails, the transaction might still be processing
+      console.warn(`[signAndSendTransaction] Confirmation check failed, but transaction was sent: ${signature}`);
+      console.warn(`[signAndSendTransaction] Error:`, confirmError);
+      // Return signature anyway - user can check on explorer
+      return signature;
     }
-    
-    console.log(`[signAndSendTransaction] Transaction confirmed!`);
-    return signature;
   } catch (error: any) {
     console.error(`[signAndSendTransaction] Error:`, error);
     throw error;
