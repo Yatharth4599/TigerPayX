@@ -34,7 +34,7 @@ export function ImportWalletPrompt({
       if (result.success && result.address) {
         // Verify the imported address matches the database address
         if (result.address !== existingAddress) {
-          showToast("The imported wallet doesn't match your account wallet", "error");
+          showToast(`The imported wallet address (${result.address.slice(0, 8)}...) doesn't match your account wallet (${existingAddress.slice(0, 8)}...). Please check your seed phrase.`, "error");
           setImporting(false);
           return;
         }
