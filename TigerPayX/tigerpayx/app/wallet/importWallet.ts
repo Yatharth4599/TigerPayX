@@ -101,34 +101,12 @@ export function importWalletFromSeed(seedPhrase: string): {
     // Use seed phrase to generate a deterministic 32-byte seed
     // Hash the seed phrase to get a consistent seed
     const seedPhraseHash = crypto.createHash("sha256").update(seedPhrase).digest();
-    
-    // Use the hash as seed to generate keypair deterministically
-    // We need to create a 64-byte secret key from the 32-byte seed
-    // Solana's secret key format: first 32 bytes are the seed, last 32 bytes are derived
     const seed = seedPhraseHash.slice(0, 32); // First 32 bytes as seed
     
-    // Generate keypair from seed using a deterministic method
-    // We'll use the seed to create a keypair
-    // Note: Solana's Keypair.fromSeed expects a 32-byte seed
+    // Create keypair from seed using Solana's fromSeed method
+    // This properly derives both private and public keys
     const { Keypair } = require("@solana/web3.js");
-    
-    // Create a deterministic keypair from the seed
-    // We'll manually construct the secret key
-    const secretKey = new Uint8Array(64);
-    
-    // First 32 bytes: use the seed directly
-    for (let i = 0; i < 32; i++) {
-      secretKey[i] = seed[i];
-    }
-    
-    // Last 32 bytes: derive from seed using another hash
-    const derivedBytes = crypto.createHash("sha256").update(seed).update("tigerpayx").digest();
-    for (let i = 0; i < 32; i++) {
-      secretKey[32 + i] = derivedBytes[i];
-    }
-    
-    // Create keypair from the secret key
-    const keypair = Keypair.fromSecretKey(secretKey);
+    const keypair = Keypair.fromSeed(seed);
     const publicKey = keypair.publicKey.toBase58();
     
     // Convert private key to base64 for storage
