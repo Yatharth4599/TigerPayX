@@ -1,6 +1,7 @@
 // Send Solana transactions (SOL or SPL tokens)
 
-import { Keypair } from "@solana/web3.js";
+import { Keypair, PublicKey } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   buildSolTransferTransaction,
   buildTokenTransferTransaction,
@@ -8,6 +9,7 @@ import {
   getKeypairFromPrivateKey,
   getTokenBalance,
   getSolBalance,
+  getSolanaConnection,
 } from "./solanaUtils";
 import { getTokenMint, TOKEN_DECIMALS, SOLANA_CONFIG } from "@/shared/config";
 import { getStoredPrivateKey } from "./createWallet";
@@ -96,17 +98,57 @@ export async function sendToken(
       const currentBalance = await getTokenBalance(senderAddress, tokenMint);
       const balanceNum = parseFloat(currentBalance);
       
-      console.log(`[sendToken] Current balance: ${balanceNum} ${token}`);
+      console.log(`[sendToken] Current balance from getTokenBalance: ${currentBalance} (parsed: ${balanceNum})`);
       
+      // If balance is 0 or NaN, check if it's because the account doesn't exist or RPC issue
       if (isNaN(balanceNum) || balanceNum === 0) {
-        throw new Error(`You don't have any ${token} in your wallet. You need to receive ${token} first before you can send it. Current balance: ${currentBalance}`);
+        console.warn(`[sendToken] Balance is 0 or NaN. Checking if this is a real zero balance or RPC issue...`);
+        
+        // Try to directly check if any token accounts exist for this mint
+        // This helps distinguish between "no account" vs "RPC error"
+        try {
+          const connection = getSolanaConnection();
+          const publicKey = new PublicKey(senderAddress);
+          const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
+            programId: TOKEN_PROGRAM_ID,
+          });
+          
+          console.log(`[sendToken] Found ${tokenAccounts.value.length} total token accounts`);
+          
+          // Check if any account matches our mint
+          const matchingAccount = tokenAccounts.value.find(
+            (acc) => acc.account.data.parsed.info.mint === tokenMint
+          );
+          
+          if (matchingAccount) {
+            const accountBalance = Number(matchingAccount.account.data.parsed.info.tokenAmount.amount) / Math.pow(10, decimals);
+            console.log(`[sendToken] Found matching token account with balance: ${accountBalance}`);
+            
+            if (accountBalance === 0) {
+              throw new Error(`You have a ${token} token account but it has zero balance. You need to receive ${token} first before you can send it.`);
+            }
+            
+            if (accountBalance < amount) {
+              throw new Error(`Insufficient ${token} balance. You have ${accountBalance.toFixed(decimals)} ${token} but trying to send ${amount} ${token}.`);
+            }
+            
+            // Balance is sufficient, continue
+            console.log(`[sendToken] Direct check passed: ${accountBalance} >= ${amount}`);
+          } else {
+            throw new Error(`You don't have a ${token} token account. You need to receive ${token} first before you can send it. Found ${tokenAccounts.value.length} other token accounts but none match ${tokenMint.substring(0, 8)}...`);
+          }
+        } catch (directCheckError: any) {
+          // If direct check fails, use the original error
+          throw new Error(`You don't have any ${token} in your wallet. You need to receive ${token} first before you can send it. Current balance: ${currentBalance}`);
+        }
+      } else {
+        // Balance is non-zero, check if sufficient
+        if (balanceNum < amount) {
+          throw new Error(`Insufficient ${token} balance. You have ${currentBalance} ${token} but trying to send ${amount} ${token}.`);
+        }
+        
+        console.log(`[sendToken] Balance check passed: ${balanceNum} >= ${amount}`);
       }
-      
-      if (balanceNum < amount) {
-        throw new Error(`Insufficient ${token} balance. You have ${currentBalance} ${token} but trying to send ${amount} ${token}.`);
-      }
-      
-      console.log(`[sendToken] Balance check passed: ${balanceNum} >= ${amount}`);
     } catch (balanceError: any) {
       // If balance check fails, throw a clear error
       const errorMsg = balanceError?.message || "";
