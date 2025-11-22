@@ -165,59 +165,75 @@ export async function getTokenBalance(
   try {
     const publicKey = new PublicKey(address);
     const mintPublicKey = new PublicKey(tokenMint);
+    const network = SOLANA_CONFIG.network;
+    
+    console.log(`[getTokenBalance] Checking balance for ${address.substring(0, 8)}... for mint ${tokenMint} on ${network}`);
     
     // Get token decimals
     const decimals = await getTokenDecimals(tokenMint);
+    console.log(`[getTokenBalance] Using ${decimals} decimals for mint ${tokenMint}`);
+    
+    let totalBalance = 0;
+    let usedDecimals = decimals;
     
     // First, try to get the Associated Token Account (ATA)
     try {
       const tokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
+      console.log(`[getTokenBalance] ATA address: ${tokenAccount.toString()}`);
       
       const accountInfo = await tryWithFallback(async (connection) => {
         return await getAccount(connection, tokenAccount);
       });
       
       const balance = Number(accountInfo.amount) / Math.pow(10, decimals);
+      console.log(`[getTokenBalance] ATA balance: ${balance}`);
       
-      // If ATA exists and has balance, return it
+      // If ATA exists and has balance, add it to total
       if (balance > 0) {
-        return balance.toFixed(decimals);
+        totalBalance += balance;
       }
-    } catch (ataError) {
+    } catch (ataError: any) {
       // ATA doesn't exist or has no balance, continue to search all token accounts
-      console.log(`ATA not found for ${tokenMint}, searching all token accounts...`);
+      console.log(`[getTokenBalance] ATA not found or error: ${ataError?.message || ataError}`);
     }
     
-    // If ATA doesn't exist or has no balance, search for all token accounts
-    // This handles cases where tokens were sent before ATA was created
-    const allTokenAccounts = await tryWithFallback(async (connection) => {
-      return await connection.getParsedTokenAccountsByOwner(publicKey, {
-        mint: mintPublicKey,
+    // Search for ALL token accounts owned by this wallet, then filter by mint
+    // This is more reliable than filtering by mint in the query
+    try {
+      const allTokenAccounts = await tryWithFallback(async (connection) => {
+        // Get all token accounts owned by this wallet
+        return await connection.getParsedTokenAccountsByOwner(publicKey, {
+          programId: TOKEN_PROGRAM_ID,
+        });
       });
-    });
-    
-    if (allTokenAccounts.value.length === 0) {
-      return "0";
+      
+      console.log(`[getTokenBalance] Found ${allTokenAccounts.value.length} total token accounts`);
+      
+      // Filter by mint and sum balances
+      for (const accountInfo of allTokenAccounts.value) {
+        const parsedInfo = accountInfo.account.data.parsed.info;
+        
+        // Check if this account is for the mint we're looking for
+        if (parsedInfo.mint === tokenMint) {
+          const accountDecimals = parsedInfo.tokenAmount.decimals || decimals;
+          usedDecimals = accountDecimals; // Use the actual decimals from the account
+          const balance = Number(parsedInfo.tokenAmount.amount) / Math.pow(10, accountDecimals);
+          console.log(`[getTokenBalance] Found token account ${accountInfo.pubkey.toString()} with balance: ${balance}`);
+          totalBalance += balance;
+        }
+      }
+    } catch (searchError: any) {
+      console.error(`[getTokenBalance] Error searching token accounts: ${searchError?.message || searchError}`);
+      // If search fails, we still have the ATA balance if it exists
     }
     
-    // Sum up all token account balances
-    // Use decimals from parsed account info (most reliable)
-    let totalBalance = 0;
-    let usedDecimals = decimals;
+    const finalBalance = totalBalance.toFixed(usedDecimals);
+    console.log(`[getTokenBalance] Final balance for ${tokenMint}: ${finalBalance}`);
     
-    for (const accountInfo of allTokenAccounts.value) {
-      const parsedInfo = accountInfo.account.data.parsed.info;
-      // Use decimals from parsed account info (most reliable)
-      const accountDecimals = parsedInfo.tokenAmount.decimals || decimals;
-      usedDecimals = accountDecimals; // Use the actual decimals from the account
-      const balance = Number(parsedInfo.tokenAmount.amount) / Math.pow(10, accountDecimals);
-      totalBalance += balance;
-    }
-    
-    return totalBalance.toFixed(usedDecimals);
+    return finalBalance;
   } catch (error: any) {
     // Token account doesn't exist or other error
-    console.error(`Error getting token balance for ${tokenMint}:`, error);
+    console.error(`[getTokenBalance] Error getting token balance for ${tokenMint}:`, error);
     return "0";
   }
 }
