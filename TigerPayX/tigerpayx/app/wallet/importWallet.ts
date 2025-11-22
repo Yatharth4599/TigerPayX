@@ -3,6 +3,7 @@
 import { Keypair } from "@solana/web3.js";
 import { STORAGE_KEYS } from "@/shared/constants";
 import { getKeypairFromPrivateKey } from "./solanaUtils";
+import crypto from "crypto";
 
 /**
  * Import wallet from private key (base64 or array format)
@@ -63,8 +64,8 @@ export async function importWallet(input: string): Promise<{
 
 /**
  * Import wallet from seed phrase
- * Reverses the seed phrase generation to recover the private key
- * Note: This matches the generation logic in createWallet.ts
+ * Uses the seed phrase to generate a deterministic keypair
+ * Note: This is a simplified approach. For production, use BIP39
  */
 export function importWalletFromSeed(seedPhrase: string): {
   address: string;
@@ -86,36 +87,47 @@ export function importWalletFromSeed(seedPhrase: string): {
       };
     }
     
-    // Convert words back to bytes (reverse of generateSeedPhrase)
-    // Generation: wordIndex = bytes[byteIndex] % wordList.length
-    // Reversal: For byte values < wordList.length, byte = wordIndex
-    // For byte values >= wordList.length, we use wordIndex (lossy but works for most cases)
-    const bytes = new Uint8Array(16);
-    for (let i = 0; i < 12; i++) {
-      const wordIndex = wordList.indexOf(words[i]);
-      if (wordIndex === -1) {
+    // Validate all words are in the word list
+    for (let i = 0; i < words.length; i++) {
+      if (wordList.indexOf(words[i]) === -1) {
         return {
           address: "",
           success: false,
           error: `Invalid word at position ${i + 1}: ${words[i]}`,
         };
       }
-      // Map word index back to byte
-      // Since wordIndex = byte % wordList.length, we use wordIndex as byte value
-      // This works correctly for byte values < wordList.length (most cases)
-      const byteIndex = i % 16;
-      bytes[byteIndex] = wordIndex;
     }
     
-    // Expand 16 bytes to 64 bytes for Solana secret key
-    // Use the same pattern as generation would create
+    // Use seed phrase to generate a deterministic 32-byte seed
+    // Hash the seed phrase to get a consistent seed
+    const seedPhraseHash = crypto.createHash("sha256").update(seedPhrase).digest();
+    
+    // Use the hash as seed to generate keypair deterministically
+    // We need to create a 64-byte secret key from the 32-byte seed
+    // Solana's secret key format: first 32 bytes are the seed, last 32 bytes are derived
+    const seed = seedPhraseHash.slice(0, 32); // First 32 bytes as seed
+    
+    // Generate keypair from seed using a deterministic method
+    // We'll use the seed to create a keypair
+    // Note: Solana's Keypair.fromSeed expects a 32-byte seed
+    const { Keypair } = require("@solana/web3.js");
+    
+    // Create a deterministic keypair from the seed
+    // We'll manually construct the secret key
     const secretKey = new Uint8Array(64);
-    for (let i = 0; i < 64; i++) {
-      secretKey[i] = bytes[i % 16];
+    
+    // First 32 bytes: use the seed directly
+    for (let i = 0; i < 32; i++) {
+      secretKey[i] = seed[i];
+    }
+    
+    // Last 32 bytes: derive from seed using another hash
+    const derivedBytes = crypto.createHash("sha256").update(seed).update("tigerpayx").digest();
+    for (let i = 0; i < 32; i++) {
+      secretKey[32 + i] = derivedBytes[i];
     }
     
     // Create keypair from the secret key
-    const { Keypair } = require("@solana/web3.js");
     const keypair = Keypair.fromSecretKey(secretKey);
     const publicKey = keypair.publicKey.toBase58();
     
@@ -128,6 +140,7 @@ export function importWalletFromSeed(seedPhrase: string): {
       localStorage.setItem(STORAGE_KEYS.WALLET_PRIVATE_KEY, privateKey);
       localStorage.setItem(STORAGE_KEYS.WALLET_ADDRESS, publicKey);
       localStorage.setItem(STORAGE_KEYS.WALLET_IMPORTED, "true");
+      localStorage.setItem(STORAGE_KEYS.WALLET_SEED_HASH, seedPhraseHash.toString("base64"));
     }
     
     return {

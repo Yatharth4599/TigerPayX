@@ -3,6 +3,7 @@
 import { Keypair } from "@solana/web3.js";
 import { STORAGE_KEYS } from "@/shared/constants";
 import bs58 from "bs58";
+import crypto from "crypto";
 
 /**
  * Generate a new Solana wallet with seed phrase
@@ -14,18 +15,36 @@ export function createWallet(): {
   privateKey: string; // Base64 encoded secret key
   seedPhrase: string; // 12-word seed phrase for backup
 } {
-  // Generate new keypair
-  const keypair = Keypair.generate();
+  // Generate a random seed phrase first (12 words)
+  // Then use it to create a deterministic keypair
+  const randomBytes = crypto.randomBytes(16);
+  const seedPhrase = generateSeedPhrase(randomBytes);
+  
+  // Use seed phrase to generate deterministic keypair
+  // Hash the seed phrase to get a 32-byte seed
+  const seedPhraseHash = crypto.createHash("sha256").update(seedPhrase).digest();
+  const seed = seedPhraseHash.slice(0, 32); // First 32 bytes as seed
+  
+  // Create a deterministic 64-byte secret key from the seed
+  const secretKey = new Uint8Array(64);
+  
+  // First 32 bytes: use the seed directly
+  for (let i = 0; i < 32; i++) {
+    secretKey[i] = seed[i];
+  }
+  
+  // Last 32 bytes: derive from seed using another hash
+  const derivedBytes = crypto.createHash("sha256").update(seed).update("tigerpayx").digest();
+  for (let i = 0; i < 32; i++) {
+    secretKey[32 + i] = derivedBytes[i];
+  }
+  
+  // Create keypair from the deterministic secret key
+  const keypair = Keypair.fromSecretKey(secretKey);
   
   // Convert private key to base64 for storage
   const privateKey = Buffer.from(keypair.secretKey).toString("base64");
   const publicKey = keypair.publicKey.toBase58();
-  
-  // Generate seed phrase from private key (first 16 bytes = 128 bits = 12 words)
-  // We'll use a simple approach: convert the first 16 bytes to a seed phrase
-  // For production, consider using bip39 library for proper BIP39 mnemonic
-  const seedBytes = keypair.secretKey.slice(0, 16);
-  const seedPhrase = generateSeedPhrase(seedBytes);
   
   // Store in localStorage (client-side only)
   if (typeof window !== "undefined") {
@@ -34,6 +53,8 @@ export function createWallet(): {
     localStorage.setItem(STORAGE_KEYS.WALLET_IMPORTED, "false");
     // Store seed phrase shown flag (so we only show it once)
     localStorage.setItem(STORAGE_KEYS.WALLET_SEED_SHOWN, "false");
+    // Store seed phrase hash for verification
+    localStorage.setItem(STORAGE_KEYS.WALLET_SEED_HASH, seedPhraseHash.toString("base64"));
   }
   
   return {
@@ -45,10 +66,11 @@ export function createWallet(): {
 
 /**
  * Generate a simple 12-word seed phrase from bytes
- * Note: This is a simplified version. For production, use bip39 library
+ * This is a deterministic, reversible mapping for MVP
+ * For production, consider using BIP39 library
  */
 function generateSeedPhrase(bytes: Uint8Array): string {
-  // BIP39 word list (first 2048 words)
+  // BIP39 word list (first 2048 words) - same as import function
   const wordList = [
     "abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract",
     "absurd", "abuse", "access", "accident", "account", "accuse", "achieve", "acid",
@@ -312,10 +334,14 @@ function generateSeedPhrase(bytes: Uint8Array): string {
     "young", "youth", "zebra", "zero", "zone", "zoo"
   ];
 
-  // Convert bytes to indices (0-255) and map to word list
+  // Convert bytes to word indices - use direct mapping for reversibility
+  // Each byte (0-255) maps to a word index (0-2047) using modulo
+  // This is reversible: wordIndex = byte % wordList.length
+  // To reverse: byte = wordIndex (for values < wordList.length)
   const words: string[] = [];
   for (let i = 0; i < 12; i++) {
     const byteIndex = i % bytes.length;
+    // Use modulo to map byte to word index
     const wordIndex = bytes[byteIndex] % wordList.length;
     words.push(wordList[wordIndex]);
   }
