@@ -38,13 +38,15 @@ export const SOLANA_CONFIG = {
       "https://solana-devnet.g.alchemy.com/v2/demo",
     ],
     mainnet: [
-      // Try public endpoints
+      // Note: Most public endpoints are rate-limited
+      // Helius should be primary, these are just fallbacks
       "https://solana-api.projectserum.com",
-      "https://solana.public-rpc.com",
-      "https://api.mainnet-beta.solana.com",
-      "https://rpc.ankr.com/solana",
-      "https://solana-rpc.publicnode.com",
-      "https://api.mainnet.solana.com",
+      // Removed unreliable endpoints that cause CORS/403 errors
+      // "https://solana.public-rpc.com", // CORS issues
+      // "https://api.mainnet-beta.solana.com", // 403 errors
+      // "https://rpc.ankr.com/solana", // 403 errors
+      // "https://solana-rpc.publicnode.com", // CORS issues
+      // "https://api.mainnet.solana.com", // DNS issues
     ],
   },
   network: (process.env.SOLANA_NETWORK || process.env.NEXT_PUBLIC_SOLANA_NETWORK || (process.env.NODE_ENV === "production" ? "mainnet-beta" : "devnet")) as "mainnet-beta" | "devnet",

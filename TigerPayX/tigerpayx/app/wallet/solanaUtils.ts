@@ -85,15 +85,32 @@ async function tryWithFallback<T>(
       const errorCode = error?.code;
       const errorStatus = error?.status;
       const errorResponse = error?.response;
+      const errorName = error?.name;
+      
+      // Check for CORS errors (common with Helius)
+      const isCorsError = errorName === "TypeError" && 
+                         (errorMsg?.includes("Failed to fetch") || 
+                          errorMsg === "" || 
+                          !errorMsg || 
+                          errorMsg === "Unknown error");
       
       // Log full error details for debugging
-      console.warn(`[tryWithFallback] RPC ${maskedUrl} failed:`, {
-        message: errorMsg.substring(0, 200),
-        code: errorCode,
-        status: errorStatus,
-        type: error?.name,
-        stack: error?.stack?.substring(0, 200)
-      });
+      if (isCorsError && url.includes('helius-rpc.com')) {
+        console.error(`[tryWithFallback] Helius RPC CORS/Network Error:`, {
+          url: maskedUrl,
+          errorName,
+          errorMsg: errorMsg || "(empty - likely CORS)",
+          suggestion: "Helius RPC may be blocked by browser. Try QuickNode or Alchemy instead."
+        });
+      } else {
+        console.warn(`[tryWithFallback] RPC ${maskedUrl} failed:`, {
+          message: errorMsg.substring(0, 200),
+          code: errorCode,
+          status: errorStatus,
+          type: errorName,
+          stack: error?.stack?.substring(0, 200)
+        });
+      }
       
       // Check for 403, rate limit, or network errors
       const is403 = errorMsg?.includes("403") || 
@@ -106,7 +123,8 @@ async function tryWithFallback<T>(
                             errorMsg?.includes("ERR_CONNECTION") ||
                             errorMsg?.includes("CORS") ||
                             errorMsg?.includes("NetworkError") ||
-                            error?.name === "TypeError";
+                            errorName === "TypeError" ||
+                            isCorsError;
       
       // For Helius specifically, check if it's an API key issue
       if (url.includes('helius-rpc.com')) {
