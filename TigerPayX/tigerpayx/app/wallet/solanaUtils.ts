@@ -370,12 +370,21 @@ export async function getTokenBalance(
     }
     
     const finalBalance = totalBalance.toFixed(usedDecimals);
-    console.log(`[getTokenBalance] Final balance for ${tokenMint}: ${finalBalance}`);
+    console.log(`[getTokenBalance] ✅ Final balance for ${address.substring(0, 8)}...: ${finalBalance} (mint: ${tokenMint.substring(0, 8)}...)`);
     
     return finalBalance;
   } catch (error: any) {
-    // Token account doesn't exist or other error
-    console.error(`[getTokenBalance] Error getting token balance for ${tokenMint}:`, error);
+    const errorName = error?.name || "";
+    const errorMsg = error?.message || "";
+    console.error(`[getTokenBalance] ❌ Error getting balance for ${address.substring(0, 8)}... (mint: ${tokenMint.substring(0, 8)}...): ${errorName} - ${errorMsg}`);
+    
+    // If it's a TokenAccountNotFoundError, return 0 (account doesn't exist)
+    if (errorName === "TokenAccountNotFoundError" || errorMsg?.includes("could not find account")) {
+      console.log(`[getTokenBalance] Token account not found - returning 0`);
+      return "0";
+    }
+    
+    // For other errors, still return 0 but log the error
     return "0";
   }
 }
