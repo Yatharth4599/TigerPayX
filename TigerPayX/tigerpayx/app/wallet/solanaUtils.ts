@@ -202,11 +202,14 @@ export async function getTokenBalance(
     
     let totalBalance = 0;
     let usedDecimals = decimals;
+    const countedAccounts = new Set<string>(); // Track accounts we've already counted
     
     // First, try to get the Associated Token Account (ATA)
+    let ataAddress: string | null = null;
     try {
       const tokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
-      console.log(`[getTokenBalance] ATA address: ${tokenAccount.toString()}`);
+      ataAddress = tokenAccount.toString();
+      console.log(`[getTokenBalance] ATA address: ${ataAddress}`);
       
       const accountInfo = await tryWithFallback(async (connection) => {
         return await getAccount(connection, tokenAccount);
@@ -215,9 +218,10 @@ export async function getTokenBalance(
       const balance = Number(accountInfo.amount) / Math.pow(10, decimals);
       console.log(`[getTokenBalance] ATA balance: ${balance}`);
       
-      // If ATA exists and has balance, add it to total
+      // If ATA exists and has balance, add it to total and mark as counted
       if (balance > 0) {
         totalBalance += balance;
+        countedAccounts.add(ataAddress);
       }
     } catch (ataError: any) {
       // ATA doesn't exist or has no balance, continue to search all token accounts
@@ -225,7 +229,8 @@ export async function getTokenBalance(
     }
     
     // Search for ALL token accounts owned by this wallet, then filter by mint
-    // This is more reliable than filtering by mint in the query
+    // This handles cases where tokens were sent before ATA was created
+    // IMPORTANT: Skip accounts we've already counted (like the ATA)
     try {
       const allTokenAccounts = await tryWithFallback(async (connection) => {
         // Get all token accounts owned by this wallet
@@ -236,17 +241,25 @@ export async function getTokenBalance(
       
       console.log(`[getTokenBalance] Found ${allTokenAccounts.value.length} total token accounts`);
       
-      // Filter by mint and sum balances
+      // Filter by mint and sum balances (excluding already counted accounts)
       for (const accountInfo of allTokenAccounts.value) {
+        const accountAddress = accountInfo.pubkey.toString();
         const parsedInfo = accountInfo.account.data.parsed.info;
+        
+        // Skip if we've already counted this account (e.g., ATA)
+        if (countedAccounts.has(accountAddress)) {
+          console.log(`[getTokenBalance] Skipping already counted account: ${accountAddress}`);
+          continue;
+        }
         
         // Check if this account is for the mint we're looking for
         if (parsedInfo.mint === tokenMint) {
           const accountDecimals = parsedInfo.tokenAmount.decimals || decimals;
           usedDecimals = accountDecimals; // Use the actual decimals from the account
           const balance = Number(parsedInfo.tokenAmount.amount) / Math.pow(10, accountDecimals);
-          console.log(`[getTokenBalance] Found token account ${accountInfo.pubkey.toString()} with balance: ${balance}`);
+          console.log(`[getTokenBalance] Found token account ${accountAddress} with balance: ${balance}`);
           totalBalance += balance;
+          countedAccounts.add(accountAddress); // Mark as counted
         }
       }
     } catch (searchError: any) {
@@ -305,23 +318,35 @@ export async function buildSolTransferTransaction(
   toAddress: string,
   amount: number
 ): Promise<Transaction> {
-  const connection = getSolanaConnection();
-  const toPublicKey = new PublicKey(toAddress);
-  
-  const transaction = new Transaction().add(
-    SystemProgram.transfer({
-      fromPubkey: fromKeypair.publicKey,
-      toPubkey: toPublicKey,
-      lamports: amount * LAMPORTS_PER_SOL,
-    })
-  );
+  try {
+    console.log(`[buildSolTransferTransaction] Building SOL transfer: ${amount} SOL to ${toAddress}`);
+    const connection = getSolanaConnection();
+    const toPublicKey = new PublicKey(toAddress);
+    
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: fromKeypair.publicKey,
+        toPubkey: toPublicKey,
+        lamports: amount * LAMPORTS_PER_SOL,
+      })
+    );
 
-  // Get recent blockhash
-  const { blockhash } = await connection.getLatestBlockhash("confirmed");
-  transaction.recentBlockhash = blockhash;
-  transaction.feePayer = fromKeypair.publicKey;
+    // Get recent blockhash with fallback
+    console.log(`[buildSolTransferTransaction] Getting recent blockhash...`);
+    const { blockhash, lastValidBlockHeight } = await tryWithFallback(async (conn) => {
+      return await conn.getLatestBlockhash("confirmed");
+    });
+    
+    transaction.recentBlockhash = blockhash;
+    transaction.lastValidBlockHeight = lastValidBlockHeight;
+    transaction.feePayer = fromKeypair.publicKey;
 
-  return transaction;
+    console.log(`[buildSolTransferTransaction] Transaction built successfully`);
+    return transaction;
+  } catch (error: any) {
+    console.error(`[buildSolTransferTransaction] Error:`, error);
+    throw new Error(`Failed to build transaction: ${error.message || "Unknown error"}`);
+  }
 }
 
 /**
@@ -381,12 +406,17 @@ export async function buildTokenTransferTransaction(
     )
   );
 
-  // Get recent blockhash
-  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+  // Get recent blockhash with fallback
+  console.log(`[buildTokenTransferTransaction] Getting recent blockhash...`);
+  const { blockhash, lastValidBlockHeight } = await tryWithFallback(async (conn) => {
+    return await conn.getLatestBlockhash("confirmed");
+  });
+  
   transaction.recentBlockhash = blockhash;
   transaction.feePayer = fromKeypair.publicKey;
   transaction.lastValidBlockHeight = lastValidBlockHeight;
 
+  console.log(`[buildTokenTransferTransaction] Transaction built successfully`);
   return transaction;
 }
 
@@ -419,10 +449,24 @@ export async function signAndSendTransaction(
     } catch (rpcError: any) {
       // If all RPC endpoints fail, provide a helpful error message
       const errorMsg = rpcError?.message || "RPC connection failed";
+      console.error(`[signAndSendTransaction] RPC Error:`, rpcError);
+      
       if (errorMsg.includes("403") || errorMsg.includes("Forbidden")) {
         throw new Error("RPC endpoints are rate-limited. Please configure a dedicated RPC provider or try again later.");
-      } else if (errorMsg.includes("timeout") || errorMsg.includes("Failed to fetch")) {
-        throw new Error("Network connection failed. Please check your internet connection and try again.");
+      } else if (errorMsg.includes("timeout") || errorMsg.includes("Failed to fetch") || errorMsg.includes("network")) {
+        // Check if it's actually a network issue or RPC issue
+        const isNetworkIssue = errorMsg.includes("ERR_INTERNET_DISCONNECTED") || 
+                               errorMsg.includes("ERR_NETWORK_CHANGED") ||
+                               errorMsg.includes("ERR_CONNECTION_REFUSED");
+        
+        if (isNetworkIssue) {
+          throw new Error("Network connection failed. Please check your internet connection and try again.");
+        } else {
+          // Likely RPC endpoint issue, not network
+          throw new Error("RPC endpoint connection failed. Please check your RPC provider configuration or try again in a moment.");
+        }
+      } else if (errorMsg.includes("Transaction simulation failed") || errorMsg.includes("insufficient funds")) {
+        throw new Error("Transaction failed: Insufficient funds or invalid transaction. Please check your balance.");
       } else {
         throw new Error(`Failed to send transaction: ${errorMsg}`);
       }
