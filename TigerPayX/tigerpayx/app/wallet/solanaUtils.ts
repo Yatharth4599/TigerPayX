@@ -352,6 +352,7 @@ export async function buildSolTransferTransaction(
 /**
  * Build SPL token transfer transaction
  * Automatically creates recipient's token account if it doesn't exist
+ * Verifies sender's token account exists and has sufficient balance
  */
 export async function buildTokenTransferTransaction(
   fromKeypair: Keypair,
@@ -360,64 +361,97 @@ export async function buildTokenTransferTransaction(
   amount: number,
   decimals: number = 9
 ): Promise<Transaction> {
-  const connection = getSolanaConnection();
-  const toPublicKey = new PublicKey(toAddress);
-  const mintPublicKey = new PublicKey(tokenMint);
-  
-  // Get associated token addresses
-  const fromTokenAccount = getAssociatedTokenAddressSync(
-    mintPublicKey,
-    fromKeypair.publicKey
-  );
-  
-  const toTokenAccount = getAssociatedTokenAddressSync(
-    mintPublicKey,
-    toPublicKey
-  );
-
-  const transaction = new Transaction();
-
-  // Check if recipient's token account exists, if not, create it
   try {
-    await getAccount(connection, toTokenAccount);
-    // Account exists, no need to create it
-  } catch (error) {
-    // Account doesn't exist, add instruction to create it
-    console.log(`[buildTokenTransferTransaction] Creating token account for recipient: ${toTokenAccount.toString()}`);
+    console.log(`[buildTokenTransferTransaction] Building token transfer: ${amount} tokens`);
+    const connection = getSolanaConnection();
+    const toPublicKey = new PublicKey(toAddress);
+    const mintPublicKey = new PublicKey(tokenMint);
+    
+    // Get associated token addresses
+    const fromTokenAccount = getAssociatedTokenAddressSync(
+      mintPublicKey,
+      fromKeypair.publicKey
+    );
+    
+    const toTokenAccount = getAssociatedTokenAddressSync(
+      mintPublicKey,
+      toPublicKey
+    );
+
+    console.log(`[buildTokenTransferTransaction] From token account: ${fromTokenAccount.toString()}`);
+    console.log(`[buildTokenTransferTransaction] To token account: ${toTokenAccount.toString()}`);
+
+    // CRITICAL: Check if sender's token account exists and has balance
+    console.log(`[buildTokenTransferTransaction] Checking sender's token account...`);
+    let senderAccount;
+    try {
+      senderAccount = await tryWithFallback(async (conn) => {
+        return await getAccount(conn, fromTokenAccount);
+      });
+      const senderBalance = Number(senderAccount.amount) / Math.pow(10, decimals);
+      console.log(`[buildTokenTransferTransaction] Sender balance: ${senderBalance}`);
+      
+      if (senderBalance < amount) {
+        throw new Error(`Insufficient balance. You have ${senderBalance.toFixed(decimals)} but trying to send ${amount}`);
+      }
+    } catch (error: any) {
+      if (error.message.includes("Insufficient balance")) {
+        throw error;
+      }
+      // Account doesn't exist
+      throw new Error(`You don't have a ${tokenMint.substring(0, 8)}... token account. You need to receive tokens first before you can send them.`);
+    }
+
+    const transaction = new Transaction();
+
+    // Check if recipient's token account exists, if not, create it
+    try {
+      await tryWithFallback(async (conn) => {
+        return await getAccount(conn, toTokenAccount);
+      });
+      console.log(`[buildTokenTransferTransaction] Recipient token account exists`);
+      // Account exists, no need to create it
+    } catch (error) {
+      // Account doesn't exist, add instruction to create it
+      console.log(`[buildTokenTransferTransaction] Creating token account for recipient: ${toTokenAccount.toString()}`);
+      transaction.add(
+        createAssociatedTokenAccountInstruction(
+          fromKeypair.publicKey, // Payer (sender pays for account creation)
+          toTokenAccount, // Associated token account to create
+          toPublicKey, // Owner of the token account
+          mintPublicKey // Token mint
+        )
+      );
+    }
+
+    const amountInSmallestUnit = BigInt(Math.floor(amount * Math.pow(10, decimals)));
+
+    // Add transfer instruction
     transaction.add(
-      createAssociatedTokenAccountInstruction(
-        fromKeypair.publicKey, // Payer (sender pays for account creation)
-        toTokenAccount, // Associated token account to create
-        toPublicKey, // Owner of the token account
-        mintPublicKey // Token mint
+      createTransferInstruction(
+        fromTokenAccount,
+        toTokenAccount,
+        fromKeypair.publicKey,
+        amountInSmallestUnit
       )
     );
+
+    // Get recent blockhash with fallback
+    console.log(`[buildTokenTransferTransaction] Getting recent blockhash...`);
+    const { blockhash, lastValidBlockHeight } = await tryWithFallback(async (conn) => {
+      return await conn.getLatestBlockhash("confirmed");
+    });
+    
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = fromKeypair.publicKey;
+    transaction.lastValidBlockHeight = lastValidBlockHeight;
+
+    console.log(`[buildTokenTransferTransaction] Transaction built successfully`);
+    return transaction;
+  } catch (error: any) {
+    console.error(`[buildTokenTransferTransaction] Error:`, error);
+    throw error; // Re-throw to preserve the error message
   }
-
-  const amountInSmallestUnit = BigInt(Math.floor(amount * Math.pow(10, decimals)));
-
-  // Add transfer instruction
-  transaction.add(
-    createTransferInstruction(
-      fromTokenAccount,
-      toTokenAccount,
-      fromKeypair.publicKey,
-      amountInSmallestUnit
-    )
-  );
-
-  // Get recent blockhash with fallback
-  console.log(`[buildTokenTransferTransaction] Getting recent blockhash...`);
-  const { blockhash, lastValidBlockHeight } = await tryWithFallback(async (conn) => {
-    return await conn.getLatestBlockhash("confirmed");
-  });
-  
-  transaction.recentBlockhash = blockhash;
-  transaction.feePayer = fromKeypair.publicKey;
-  transaction.lastValidBlockHeight = lastValidBlockHeight;
-
-  console.log(`[buildTokenTransferTransaction] Transaction built successfully`);
-  return transaction;
 }
 
 /**
@@ -465,8 +499,12 @@ export async function signAndSendTransaction(
           // Likely RPC endpoint issue, not network
           throw new Error("RPC endpoint connection failed. Please check your RPC provider configuration or try again in a moment.");
         }
-      } else if (errorMsg.includes("Transaction simulation failed") || errorMsg.includes("insufficient funds")) {
-        throw new Error("Transaction failed: Insufficient funds or invalid transaction. Please check your balance.");
+      } else if (errorMsg.includes("Transaction simulation failed") || 
+                 errorMsg.includes("insufficient funds") ||
+                 errorMsg.includes("Attempt to debit") ||
+                 errorMsg.includes("no record of a prior credit")) {
+        // This usually means sender's token account doesn't exist or has no balance
+        throw new Error("Transaction failed: Your token account doesn't exist or has insufficient balance. Please check your balance and try again.");
       } else {
         throw new Error(`Failed to send transaction: ${errorMsg}`);
       }
