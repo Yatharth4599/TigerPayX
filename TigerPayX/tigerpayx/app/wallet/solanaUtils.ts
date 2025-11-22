@@ -12,6 +12,13 @@ export function getSolanaConnection(): Connection {
   const rpcUrl = network === "mainnet-beta" 
     ? SOLANA_CONFIG.rpcUrl 
     : SOLANA_CONFIG.devnetRpcUrl;
+  
+  // Log which RPC is being used (hide API key for security)
+  const maskedUrl = rpcUrl.includes('api-key') 
+    ? rpcUrl.split('api-key')[0] + 'api-key=***'
+    : rpcUrl;
+  console.log(`[getSolanaConnection] Using RPC: ${maskedUrl} on ${network}`);
+  
   return new Connection(rpcUrl, "confirmed");
 }
 
@@ -53,19 +60,28 @@ async function tryWithFallback<T>(
   
   let lastError: any;
   
-  for (const url of urlsToTry) {
+  for (let i = 0; i < urlsToTry.length; i++) {
+    const url = urlsToTry[i];
+    const maskedUrl = url.includes('api-key') 
+      ? url.split('api-key')[0] + 'api-key=***'
+      : url;
+    console.log(`[tryWithFallback] Trying RPC ${i + 1}/${urlsToTry.length}: ${maskedUrl}`);
+    
     try {
       const connection = new Connection(url, "confirmed");
       // Set a timeout for the operation
       const result = await Promise.race([
         operation(connection),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("RPC request timeout")), 10000)
+          setTimeout(() => reject(new Error("RPC request timeout")), 15000) // Increased timeout
         )
       ]) as T;
+      console.log(`[tryWithFallback] Success with RPC: ${maskedUrl}`);
       return result;
     } catch (error: any) {
       lastError = error;
+      const errorMsg = error?.message || "Unknown error";
+      console.warn(`[tryWithFallback] RPC ${maskedUrl} failed: ${errorMsg.substring(0, 100)}`);
       // Check for 403, rate limit, or network errors
       const is403 = error?.message?.includes("403") || 
                    error?.code === 403 || 

@@ -6,6 +6,8 @@ import {
   buildTokenTransferTransaction,
   signAndSendTransaction,
   getKeypairFromPrivateKey,
+  getTokenBalance,
+  getSolBalance,
 } from "./solanaUtils";
 import { getTokenMint, TOKEN_DECIMALS, SOLANA_CONFIG } from "@/shared/config";
 import { getStoredPrivateKey } from "./createWallet";
@@ -85,6 +87,22 @@ export async function sendToken(
     }
 
     console.log(`[sendToken] Using token mint: ${tokenMint} on ${network}`);
+
+    // Pre-flight check: Verify sender has token account and sufficient balance
+    console.log(`[sendToken] Checking sender balance...`);
+    const senderAddress = keypair.publicKey.toString();
+    const currentBalance = await getTokenBalance(senderAddress, tokenMint);
+    const balanceNum = parseFloat(currentBalance);
+    
+    console.log(`[sendToken] Current balance: ${balanceNum} ${token}`);
+    
+    if (balanceNum === 0) {
+      throw new Error(`You don't have any ${token} in your wallet. You need to receive ${token} first before you can send it.`);
+    }
+    
+    if (balanceNum < amount) {
+      throw new Error(`Insufficient ${token} balance. You have ${currentBalance} but trying to send ${amount}.`);
+    }
 
     // Build transaction
     console.log(`[sendToken] Building transaction...`);
