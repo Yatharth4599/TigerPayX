@@ -91,17 +91,30 @@ export async function sendToken(
     // Pre-flight check: Verify sender has token account and sufficient balance
     console.log(`[sendToken] Checking sender balance...`);
     const senderAddress = keypair.publicKey.toString();
-    const currentBalance = await getTokenBalance(senderAddress, tokenMint);
-    const balanceNum = parseFloat(currentBalance);
     
-    console.log(`[sendToken] Current balance: ${balanceNum} ${token}`);
-    
-    if (balanceNum === 0) {
-      throw new Error(`You don't have any ${token} in your wallet. You need to receive ${token} first before you can send it.`);
-    }
-    
-    if (balanceNum < amount) {
-      throw new Error(`Insufficient ${token} balance. You have ${currentBalance} but trying to send ${amount}.`);
+    try {
+      const currentBalance = await getTokenBalance(senderAddress, tokenMint);
+      const balanceNum = parseFloat(currentBalance);
+      
+      console.log(`[sendToken] Current balance: ${balanceNum} ${token}`);
+      
+      if (isNaN(balanceNum) || balanceNum === 0) {
+        throw new Error(`You don't have any ${token} in your wallet. You need to receive ${token} first before you can send it. Current balance: ${currentBalance}`);
+      }
+      
+      if (balanceNum < amount) {
+        throw new Error(`Insufficient ${token} balance. You have ${currentBalance} ${token} but trying to send ${amount} ${token}.`);
+      }
+      
+      console.log(`[sendToken] Balance check passed: ${balanceNum} >= ${amount}`);
+    } catch (balanceError: any) {
+      // If balance check fails, throw a clear error
+      if (balanceError.message.includes("don't have any") || balanceError.message.includes("Insufficient")) {
+        throw balanceError; // Re-throw our custom errors
+      }
+      // If it's an RPC error during balance check, still try to proceed but warn
+      console.warn(`[sendToken] Balance check failed, but continuing: ${balanceError.message}`);
+      // Don't throw - let the transaction simulation catch the error
     }
 
     // Build transaction

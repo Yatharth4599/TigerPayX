@@ -410,12 +410,19 @@ export async function buildTokenTransferTransaction(
       if (senderBalance < amount) {
         throw new Error(`Insufficient balance. You have ${senderBalance.toFixed(decimals)} but trying to send ${amount}`);
       }
-    } catch (error: any) {
-      if (error.message.includes("Insufficient balance")) {
-        throw error;
+      
+      if (senderBalance === 0) {
+        throw new Error(`Your token account exists but has zero balance. You need to receive tokens first before you can send them.`);
       }
-      // Account doesn't exist
-      throw new Error(`You don't have a ${tokenMint.substring(0, 8)}... token account. You need to receive tokens first before you can send them.`);
+    } catch (error: any) {
+      // Check if it's an account not found error
+      if (error.message?.includes("could not find account") || 
+          error.message?.includes("InvalidAccountData") ||
+          error.message?.includes("AccountNotFound")) {
+        throw new Error(`You don't have a token account for this token. You need to receive tokens first before you can send them.`);
+      }
+      // Re-throw other errors (like insufficient balance)
+      throw error;
     }
 
     const transaction = new Transaction();

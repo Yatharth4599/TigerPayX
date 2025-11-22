@@ -245,11 +245,14 @@ export default function DashboardPage() {
     if (!walletAddress) return;
     try {
       setRefreshing(true);
+      console.log(`[loadBalances] Loading balances for ${walletAddress.substring(0, 8)}...`);
       const bal = await getAllTokenBalances(walletAddress);
+      console.log(`[loadBalances] Loaded balances:`, bal);
       setBalances(bal);
     } catch (error: any) {
-      console.error("Error loading balances:", error);
+      console.error("[loadBalances] Error loading balances:", error);
       setBalances({ sol: "0", usdc: "0", usdt: "0", tt: "0" });
+      showToast("Failed to load balances. Check console for details.", "error");
     } finally {
       setRefreshing(false);
     }

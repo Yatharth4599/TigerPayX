@@ -18,8 +18,11 @@ export const SOLANA_CONFIG = {
   // NEXT_PUBLIC_SOLANA_RPC_URL="https://your-rpc-provider-url"
   
   // Primary RPC URL - Set this via environment variable!
-  rpcUrl: process.env.SOLANA_RPC_URL || 
-          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 
+  // NOTE: In Next.js, NEXT_PUBLIC_* variables are available on client-side
+  // For server-side, use SOLANA_RPC_URL
+  // For client-side, use NEXT_PUBLIC_SOLANA_RPC_URL
+  rpcUrl: process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 
+          process.env.SOLANA_RPC_URL || 
           "https://solana-api.projectserum.com", // Fallback (may be rate-limited)
   
   // For development, use devnet with multiple fallback options
