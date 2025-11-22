@@ -134,23 +134,20 @@ async function tryWithFallback<T>(
         }
       }
       
-      // Check for TokenAccountNotFoundError - this is a valid error, not an RPC issue
-      // BUT: We should still try fallbacks because different RPCs might have different data
-      // Only skip fallbacks if we've tried all RPCs and all returned TokenAccountNotFoundError
+      // Check for TokenAccountNotFoundError or "Attempt to debit" - these are valid blockchain errors, not RPC issues
+      // These errors mean the account doesn't exist or has no balance - no point trying other RPCs
       const isTokenAccountNotFound = errorName === "TokenAccountNotFoundError" || 
                                      errorMsg?.includes("TokenAccountNotFound") ||
                                      errorMsg?.includes("could not find account");
       
-      if (isTokenAccountNotFound && i === rpcUrls.length - 1) {
-        // Last RPC also returned TokenAccountNotFoundError - account truly doesn't exist
-        console.log(`[tryWithFallback] Token account not found on all RPCs - account doesn't exist`);
-        throw error; // Re-throw so caller can handle it
-      }
+      const isAttemptToDebit = errorMsg?.includes("Attempt to debit") || 
+                               errorMsg?.includes("no record of a prior credit");
       
-      if (isTokenAccountNotFound) {
-        // Token account not found on this RPC, but try next one
-        console.log(`[tryWithFallback] Token account not found on this RPC, trying next...`);
-        continue;
+      if (isTokenAccountNotFound || isAttemptToDebit) {
+        // This is a valid blockchain error - account doesn't exist or has no balance
+        // No point trying other RPCs, they'll all return the same error
+        console.log(`[tryWithFallback] Blockchain error (not RPC issue): ${isTokenAccountNotFound ? 'TokenAccountNotFoundError' : 'Attempt to debit'}`);
+        throw error; // Re-throw so caller can handle it with a clear message
       }
       
       if (is403 || isRateLimit || isNetworkError) {
@@ -585,8 +582,22 @@ export async function signAndSendTransaction(
       });
     } catch (rpcError: any) {
       // If all RPC endpoints fail, provide a helpful error message
+      const errorName = rpcError?.name || "";
       const errorMsg = rpcError?.message || "RPC connection failed";
       console.error(`[signAndSendTransaction] RPC Error:`, rpcError);
+      
+      // Check for blockchain errors first (these are not RPC connection issues)
+      const isTokenAccountNotFound = errorName === "TokenAccountNotFoundError" ||
+                                     errorMsg?.includes("TokenAccountNotFound") ||
+                                     errorMsg?.includes("could not find account");
+      
+      const isAttemptToDebit = errorMsg?.includes("Attempt to debit") || 
+                               errorMsg?.includes("no record of a prior credit");
+      
+      if (isTokenAccountNotFound || isAttemptToDebit) {
+        // This is a blockchain error - account doesn't exist or has no balance
+        throw new Error("You don't have a token account for this token or your balance is zero. You need to receive tokens first before you can send them.");
+      }
       
       if (errorMsg.includes("403") || errorMsg.includes("Forbidden")) {
         throw new Error("RPC endpoints are rate-limited. Please configure a dedicated RPC provider or try again later.");
@@ -603,9 +614,7 @@ export async function signAndSendTransaction(
           throw new Error("RPC endpoint connection failed. Please check your RPC provider configuration or try again in a moment.");
         }
       } else if (errorMsg.includes("Transaction simulation failed") || 
-                 errorMsg.includes("insufficient funds") ||
-                 errorMsg.includes("Attempt to debit") ||
-                 errorMsg.includes("no record of a prior credit")) {
+                 errorMsg.includes("insufficient funds")) {
         // This usually means sender's token account doesn't exist or has no balance
         throw new Error("Transaction failed: Your token account doesn't exist or has insufficient balance. Please check your balance and try again.");
       } else {
