@@ -22,6 +22,7 @@ import { WalletConnectionModal } from "@/components/WalletConnectionModal";
 import { FundWalletModal } from "@/components/FundWalletModal";
 import { SeedPhraseModal } from "@/components/SeedPhraseModal";
 import { ImportWalletPrompt } from "@/components/ImportWalletPrompt";
+import { ExportPrivateKeyModal } from "@/components/ExportPrivateKeyModal";
 import { formatAddress, formatTokenAmount, getSolanaExplorerUrl } from "@/utils/formatting";
 import { SOLANA_CONFIG } from "@/shared/config";
 import { STORAGE_KEYS } from "@/shared/constants";
@@ -81,6 +82,7 @@ export default function DashboardPage() {
   const [newWalletAddress, setNewWalletAddress] = useState<string>("");
   const [showWalletAddress, setShowWalletAddress] = useState(true); // Toggle to show/hide address
   const [showImportWalletPrompt, setShowImportWalletPrompt] = useState(false);
+  const [showExportPrivateKey, setShowExportPrivateKey] = useState(false);
   const [existingWalletAddress, setExistingWalletAddress] = useState<string | null>(null);
 
   // Check authentication
@@ -604,6 +606,35 @@ export default function DashboardPage() {
                         <CopyButton text={walletAddress} />
                       </div>
                       </div>
+                    </div>
+                    
+                    {/* Wallet Security Options */}
+                    <div className="mt-4 pt-4 border-t border-white/10">
+                      <p className="text-xs uppercase tracking-wider text-zinc-400 mb-3">Wallet Security</p>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => setShowSeedPhrase(true)}
+                          className="w-full px-4 py-2 text-sm rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-colors flex items-center justify-between"
+                        >
+                          <span>View Seed Phrase</span>
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setShowExportPrivateKey(true)}
+                          className="w-full px-4 py-2 text-sm rounded-lg bg-red-950/20 hover:bg-red-950/30 border border-red-500/30 text-red-300 transition-colors flex items-center justify-between"
+                        >
+                          <span className="text-xs">Export Private Key (Not Recommended)</span>
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                        </button>
+                      </div>
+                      <p className="text-xs text-zinc-500 mt-2">
+                        💡 Use your seed phrase for backup. Only export private key if absolutely necessary.
+                      </p>
                     </div>
                   <button
                     onClick={() => setShowFundWallet(true)}
@@ -1304,6 +1335,12 @@ export default function DashboardPage() {
             showToast("Please save your seed phrase before continuing", "warning");
           }}
           onConfirm={handleSeedPhraseConfirmed}
+        />
+
+        {/* Export Private Key Modal */}
+        <ExportPrivateKeyModal
+          isOpen={showExportPrivateKey}
+          onClose={() => setShowExportPrivateKey(false)}
         />
 
         <ImportWalletPrompt
