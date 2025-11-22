@@ -284,7 +284,7 @@ export async function getTokenBalance(
     // First, try to get the Associated Token Account (ATA)
     let ataAddress: string | null = null;
     try {
-      const tokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
+    const tokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
       ataAddress = tokenAccount.toString();
       console.log(`[getTokenBalance] ATA address: ${ataAddress}`);
     
@@ -484,12 +484,23 @@ export async function buildTokenTransferTransaction(
         throw new Error(`Your token account exists but has zero balance. You need to receive tokens first before you can send them.`);
       }
     } catch (error: any) {
+      const errorName = error?.name || "";
+      const errorMsg = error?.message || "";
+      
       // Check if it's an account not found error
-      if (error.message?.includes("could not find account") || 
-          error.message?.includes("InvalidAccountData") ||
-          error.message?.includes("AccountNotFound")) {
+      if (errorName === "TokenAccountNotFoundError" ||
+          errorMsg?.includes("could not find account") || 
+          errorMsg?.includes("InvalidAccountData") ||
+          errorMsg?.includes("AccountNotFound") ||
+          errorMsg?.includes("TokenAccountNotFound")) {
         throw new Error(`You don't have a token account for this token. You need to receive tokens first before you can send them.`);
       }
+      
+      // Check for "Attempt to debit" error - this means account doesn't exist or has no balance
+      if (errorMsg?.includes("Attempt to debit") || errorMsg?.includes("no record of a prior credit")) {
+        throw new Error(`You don't have a token account for this token or your balance is zero. You need to receive tokens first before you can send them.`);
+      }
+      
       // Re-throw other errors (like insufficient balance)
       throw error;
     }
