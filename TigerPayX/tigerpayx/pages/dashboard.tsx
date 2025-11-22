@@ -27,6 +27,19 @@ import { SOLANA_CONFIG } from "@/shared/config";
 import { STORAGE_KEYS } from "@/shared/constants";
 import type { Token, WalletBalance, Transaction as TxType } from "@/shared/types";
 
+// Check if custom RPC is configured (not using default public endpoints)
+const isCustomRpcConfigured = () => {
+  const rpcUrl = SOLANA_CONFIG.rpcUrl;
+  // Default public endpoints that indicate no custom RPC is configured
+  const defaultEndpoints = [
+    "https://solana-api.projectserum.com",
+    "https://api.mainnet-beta.solana.com",
+    "https://api.devnet.solana.com",
+  ];
+  // If RPC URL is not in the default list, assume custom RPC is configured
+  return !defaultEndpoints.includes(rpcUrl);
+};
+
 type ActiveTab = "home" | "send" | "swap" | "earn" | "merchant";
 
 // Disable SSR for dashboard (client-side only)
@@ -456,17 +469,24 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-          {/* RPC Connection Warning */}
-          {refreshing && (
+          {/* RPC Connection Warning - Only show if using default/public RPC */}
+          {!isCustomRpcConfigured() && (
             <div className="mb-6 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-3 flex items-start gap-3">
               <svg className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-orange-400 mb-1">⚠️ RPC Connection Issues</p>
+                <p className="text-sm font-semibold text-orange-400 mb-1">⚠️ RPC Provider Not Configured</p>
                 <p className="text-xs text-orange-300">
-                  Public RPC endpoints are experiencing high load. Transactions may be slow or fail. 
-                  For better reliability, configure a dedicated RPC provider in your environment variables.
+                  You're using public RPC endpoints which are rate-limited. 
+                  <a 
+                    href="https://github.com/Yatharth4599/TigerPayX/blob/main/tigerpayx/SETUP_RPC_PROVIDER.md" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="underline ml-1 hover:text-orange-200"
+                  >
+                    Set up a free RPC provider
+                  </a> for better reliability.
                 </p>
               </div>
             </div>
