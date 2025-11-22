@@ -3,12 +3,11 @@
 export const SOLANA_CONFIG = {
   // Use public RPC endpoints with fallbacks
   // For production, use a reliable RPC provider (Helius, QuickNode, Alchemy)
-  rpcUrl: process.env.SOLANA_RPC_URL || (process.env.NODE_ENV === "production" 
-    ? "https://api.mainnet-beta.solana.com" 
-    : "https://api.mainnet-beta.solana.com"),
+  // IMPORTANT: Set SOLANA_RPC_URL environment variable with your RPC provider URL for better reliability
+  rpcUrl: process.env.SOLANA_RPC_URL || process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://solana-api.projectserum.com",
   // For development, use devnet with multiple fallback options
-  devnetRpcUrl: process.env.SOLANA_DEVNET_RPC_URL || "https://api.devnet.solana.com",
-  // Fallback RPC URLs if primary fails
+  devnetRpcUrl: process.env.SOLANA_DEVNET_RPC_URL || process.env.NEXT_PUBLIC_SOLANA_DEVNET_RPC_URL || "https://api.devnet.solana.com",
+  // Fallback RPC URLs if primary fails (tried in order)
   fallbackRpcUrls: {
     devnet: [
       "https://api.devnet.solana.com",
@@ -16,9 +15,14 @@ export const SOLANA_CONFIG = {
       "https://solana-devnet.g.alchemy.com/v2/demo",
     ],
     mainnet: [
-      "https://api.mainnet-beta.solana.com",
-      "https://rpc.ankr.com/solana",
+      // Try public endpoints that are more reliable
       "https://solana-api.projectserum.com",
+      "https://solana.public-rpc.com",
+      "https://api.mainnet-beta.solana.com",
+      // Try with different paths
+      "https://rpc.ankr.com/solana",
+      "https://solana-rpc.publicnode.com",
+      "https://api.mainnet.solana.com",
     ],
   },
   network: (process.env.SOLANA_NETWORK || process.env.NEXT_PUBLIC_SOLANA_NETWORK || (process.env.NODE_ENV === "production" ? "mainnet-beta" : "devnet")) as "mainnet-beta" | "devnet",

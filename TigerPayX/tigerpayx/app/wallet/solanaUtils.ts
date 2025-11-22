@@ -56,12 +56,28 @@ async function tryWithFallback<T>(
   for (const url of urlsToTry) {
     try {
       const connection = new Connection(url, "confirmed");
-      return await operation(connection);
+      // Set a timeout for the operation
+      const result = await Promise.race([
+        operation(connection),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("RPC request timeout")), 10000)
+        )
+      ]) as T;
+      return result;
     } catch (error: any) {
       lastError = error;
-      // If it's a 403 or rate limit error, try next endpoint
-      if (error?.message?.includes("403") || error?.code === 403 || error?.message?.includes("rate limit")) {
-        console.warn(`RPC ${url} returned 403, trying fallback...`);
+      // Check for 403, rate limit, or network errors
+      const is403 = error?.message?.includes("403") || 
+                   error?.code === 403 || 
+                   error?.status === 403 ||
+                   error?.message?.includes("Forbidden");
+      const isRateLimit = error?.message?.includes("rate limit") || 
+                        error?.message?.includes("429");
+      const isNetworkError = error?.message?.includes("Failed to fetch") ||
+                            error?.message?.includes("ERR_CONNECTION");
+      
+      if (is403 || isRateLimit || isNetworkError) {
+        console.warn(`RPC ${url} failed (${is403 ? '403' : isRateLimit ? 'rate limit' : 'network error'}), trying fallback...`);
         continue;
       }
       // For other errors, still try next endpoint
