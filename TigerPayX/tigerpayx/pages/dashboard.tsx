@@ -714,6 +714,21 @@ export default function DashboardPage() {
           >
             <h2 className="text-2xl font-bold text-white mb-6">Send Payment</h2>
             
+            {/* Solana Chain Warning */}
+            <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-blue-400 mb-1">⚠️ Solana Network Required</p>
+                  <p className="text-xs text-blue-300">
+                    Make sure the recipient address is a <strong>Solana wallet address</strong>. Sending to addresses on other blockchains (Ethereum, BSC, etc.) will result in permanent loss of funds.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
             {/* Show user's wallet address */}
             {walletAddress && (
               <div className="mb-6 p-4 glass-panel tiger-stripes-soft border border-white/10 rounded-lg">
@@ -764,7 +779,7 @@ export default function DashboardPage() {
                     value={sendToAddress}
                     onChange={(e) => setSendToAddress(e.target.value)}
                     className="flex-1 glass-panel tiger-stripes-soft border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-sm placeholder:text-zinc-500 focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00] outline-none transition-all"
-                    placeholder="TigerPayX wallet address"
+                    placeholder="Any Solana wallet address"
                   />
                   <button
                     onClick={() => setShowQRScanner(true)}

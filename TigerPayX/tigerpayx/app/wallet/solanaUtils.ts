@@ -1,7 +1,7 @@
 // Solana utility functions for TigerPayX
 
 import { Connection, PublicKey, Keypair, Transaction, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { getAssociatedTokenAddress, createTransferInstruction, getAccount, TOKEN_PROGRAM_ID, getMint } from "@solana/spl-token";
+import { getAssociatedTokenAddress, createTransferInstruction, getAccount, TOKEN_PROGRAM_ID, getMint, createAssociatedTokenAccountInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { SOLANA_CONFIG, TOKEN_DECIMALS, getTokenMint, TOKEN_MINTS, TOKEN_MINTS_DEVNET } from "@/shared/config";
 
 /**
@@ -310,6 +310,7 @@ export async function buildSolTransferTransaction(
 
 /**
  * Build SPL token transfer transaction
+ * Automatically creates recipient's token account if it doesn't exist
  */
 export async function buildTokenTransferTransaction(
   fromKeypair: Keypair,
@@ -322,19 +323,40 @@ export async function buildTokenTransferTransaction(
   const toPublicKey = new PublicKey(toAddress);
   const mintPublicKey = new PublicKey(tokenMint);
   
-  const fromTokenAccount = await getAssociatedTokenAddress(
+  // Get associated token addresses
+  const fromTokenAccount = getAssociatedTokenAddressSync(
     mintPublicKey,
     fromKeypair.publicKey
   );
   
-  const toTokenAccount = await getAssociatedTokenAddress(
+  const toTokenAccount = getAssociatedTokenAddressSync(
     mintPublicKey,
     toPublicKey
   );
 
+  const transaction = new Transaction();
+
+  // Check if recipient's token account exists, if not, create it
+  try {
+    await getAccount(connection, toTokenAccount);
+    // Account exists, no need to create it
+  } catch (error) {
+    // Account doesn't exist, add instruction to create it
+    console.log(`[buildTokenTransferTransaction] Creating token account for recipient: ${toTokenAccount.toString()}`);
+    transaction.add(
+      createAssociatedTokenAccountInstruction(
+        fromKeypair.publicKey, // Payer (sender pays for account creation)
+        toTokenAccount, // Associated token account to create
+        toPublicKey, // Owner of the token account
+        mintPublicKey // Token mint
+      )
+    );
+  }
+
   const amountInSmallestUnit = BigInt(Math.floor(amount * Math.pow(10, decimals)));
 
-  const transaction = new Transaction().add(
+  // Add transfer instruction
+  transaction.add(
     createTransferInstruction(
       fromTokenAccount,
       toTokenAccount,
@@ -344,9 +366,10 @@ export async function buildTokenTransferTransaction(
   );
 
   // Get recent blockhash
-  const { blockhash } = await connection.getLatestBlockhash("confirmed");
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
   transaction.recentBlockhash = blockhash;
   transaction.feePayer = fromKeypair.publicKey;
+  transaction.lastValidBlockHeight = lastValidBlockHeight;
 
   return transaction;
 }
@@ -358,23 +381,38 @@ export async function signAndSendTransaction(
   transaction: Transaction,
   keypair: Keypair
 ): Promise<string> {
-  const connection = getSolanaConnection();
-  
-  // Sign transaction
-  transaction.sign(keypair);
-  
-  // Send transaction
-  const signature = await connection.sendRawTransaction(
-    transaction.serialize(),
-    {
-      skipPreflight: false,
-      maxRetries: 3,
+  try {
+    const connection = getSolanaConnection();
+    
+    console.log(`[signAndSendTransaction] Signing transaction...`);
+    // Sign transaction
+    transaction.sign(keypair);
+    
+    console.log(`[signAndSendTransaction] Sending transaction to network...`);
+    // Send transaction
+    const signature = await connection.sendRawTransaction(
+      transaction.serialize(),
+      {
+        skipPreflight: false,
+        maxRetries: 3,
+      }
+    );
+    
+    console.log(`[signAndSendTransaction] Transaction sent, signature: ${signature}`);
+    console.log(`[signAndSendTransaction] Waiting for confirmation...`);
+    
+    // Wait for confirmation
+    const confirmation = await connection.confirmTransaction(signature, "confirmed");
+    
+    if (confirmation.value.err) {
+      throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
     }
-  );
-  
-  // Wait for confirmation
-  await connection.confirmTransaction(signature, "confirmed");
-  
-  return signature;
+    
+    console.log(`[signAndSendTransaction] Transaction confirmed!`);
+    return signature;
+  } catch (error: any) {
+    console.error(`[signAndSendTransaction] Error:`, error);
+    throw error;
+  }
 }
 

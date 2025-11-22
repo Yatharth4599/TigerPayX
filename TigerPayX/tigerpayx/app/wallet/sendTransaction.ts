@@ -20,6 +20,8 @@ export async function sendSol(
   privateKey?: string
 ): Promise<SolanaTransactionResult> {
   try {
+    console.log(`[sendSol] Sending ${amount} SOL to ${toAddress}`);
+    
     // Get private key from storage if not provided
     const key = privateKey || getStoredPrivateKey();
     if (!key) {
@@ -29,24 +31,28 @@ export async function sendSol(
     const keypair = getKeypairFromPrivateKey(key);
     
     // Build transaction
+    console.log(`[sendSol] Building transaction...`);
     const transaction = await buildSolTransferTransaction(
       keypair,
       toAddress,
       amount
     );
 
+    console.log(`[sendSol] Transaction built, signing and sending...`);
     // Sign and send
     const signature = await signAndSendTransaction(transaction, keypair);
 
+    console.log(`[sendSol] Transaction sent successfully: ${signature}`);
     return {
       signature,
       success: true,
     };
   } catch (error: any) {
+    console.error(`[sendSol] Error:`, error);
     return {
       signature: "",
       success: false,
-      error: error.message || "Transaction failed",
+      error: error.message || "Transaction failed. Please check your balance and try again.",
     };
   }
 }
@@ -61,6 +67,8 @@ export async function sendToken(
   privateKey?: string
 ): Promise<SolanaTransactionResult> {
   try {
+    console.log(`[sendToken] Sending ${amount} ${token} to ${toAddress}`);
+    
     // Get private key from storage if not provided
     const key = privateKey || getStoredPrivateKey();
     if (!key) {
@@ -76,7 +84,10 @@ export async function sendToken(
       throw new Error(`Token mint not found for ${token}`);
     }
 
+    console.log(`[sendToken] Using token mint: ${tokenMint} on ${network}`);
+
     // Build transaction
+    console.log(`[sendToken] Building transaction...`);
     const transaction = await buildTokenTransferTransaction(
       keypair,
       toAddress,
@@ -85,18 +96,21 @@ export async function sendToken(
       decimals
     );
 
+    console.log(`[sendToken] Transaction built, signing and sending...`);
     // Sign and send
     const signature = await signAndSendTransaction(transaction, keypair);
 
+    console.log(`[sendToken] Transaction sent successfully: ${signature}`);
     return {
       signature,
       success: true,
     };
   } catch (error: any) {
+    console.error(`[sendToken] Error:`, error);
     return {
       signature: "",
       success: false,
-      error: error.message || "Transaction failed",
+      error: error.message || "Transaction failed. Please check your balance and try again.",
     };
   }
 }
