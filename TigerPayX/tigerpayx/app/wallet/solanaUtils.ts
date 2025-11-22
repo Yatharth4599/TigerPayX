@@ -314,6 +314,7 @@ export async function getTokenBalance(
     // This handles cases where tokens were sent before ATA was created
     // IMPORTANT: Skip accounts we've already counted (like the ATA)
     try {
+      console.log(`[getTokenBalance] Searching all token accounts for mint ${tokenMint}...`);
       const allTokenAccounts = await tryWithFallback(async (connection) => {
         // Get all token accounts owned by this wallet
         return await connection.getParsedTokenAccountsByOwner(publicKey, {
@@ -324,6 +325,7 @@ export async function getTokenBalance(
       console.log(`[getTokenBalance] Found ${allTokenAccounts.value.length} total token accounts`);
       
       // Filter by mint and sum balances (excluding already counted accounts)
+      let foundMatchingAccounts = 0;
       for (const accountInfo of allTokenAccounts.value) {
         const accountAddress = accountInfo.pubkey.toString();
         const parsedInfo = accountInfo.account.data.parsed.info;
@@ -334,18 +336,36 @@ export async function getTokenBalance(
           continue;
         }
         
+        // Debug: Log all token accounts to see what we're getting
+        if (parsedInfo.mint) {
+          console.log(`[getTokenBalance] Token account ${accountAddress}: mint=${parsedInfo.mint}, amount=${parsedInfo.tokenAmount?.amount || 0}`);
+        }
+        
         // Check if this account is for the mint we're looking for
         if (parsedInfo.mint === tokenMint) {
+          foundMatchingAccounts++;
           const accountDecimals = parsedInfo.tokenAmount.decimals || decimals;
           usedDecimals = accountDecimals; // Use the actual decimals from the account
           const balance = Number(parsedInfo.tokenAmount.amount) / Math.pow(10, accountDecimals);
-          console.log(`[getTokenBalance] Found token account ${accountAddress} with balance: ${balance}`);
+          console.log(`[getTokenBalance] ✅ Found matching token account ${accountAddress} with balance: ${balance}`);
           totalBalance += balance;
           countedAccounts.add(accountAddress); // Mark as counted
         }
       }
+      
+      if (foundMatchingAccounts === 0 && allTokenAccounts.value.length > 0) {
+        console.warn(`[getTokenBalance] Found ${allTokenAccounts.value.length} token accounts but none match mint ${tokenMint}`);
+      }
     } catch (searchError: any) {
-      console.error(`[getTokenBalance] Error searching token accounts: ${searchError?.message || searchError}`);
+      const errorName = searchError?.name || "";
+      const errorMsg = searchError?.message || "";
+      
+      // TokenAccountNotFoundError is expected if no token accounts exist
+      if (errorName === "TokenAccountNotFoundError" || errorMsg?.includes("could not find account")) {
+        console.log(`[getTokenBalance] No token accounts found for this wallet`);
+      } else {
+        console.error(`[getTokenBalance] Error searching token accounts: ${errorMsg || errorName}`);
+      }
       // If search fails, we still have the ATA balance if it exists
     }
     
