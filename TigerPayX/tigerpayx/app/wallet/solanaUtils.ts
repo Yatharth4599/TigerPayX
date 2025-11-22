@@ -80,24 +80,48 @@ async function tryWithFallback<T>(
       return result;
     } catch (error: any) {
       lastError = error;
-      const errorMsg = error?.message || "Unknown error";
-      console.warn(`[tryWithFallback] RPC ${maskedUrl} failed: ${errorMsg.substring(0, 100)}`);
+      // Get more detailed error information
+      const errorMsg = error?.message || error?.toString() || "Unknown error";
+      const errorCode = error?.code;
+      const errorStatus = error?.status;
+      const errorResponse = error?.response;
+      
+      // Log full error details for debugging
+      console.warn(`[tryWithFallback] RPC ${maskedUrl} failed:`, {
+        message: errorMsg.substring(0, 200),
+        code: errorCode,
+        status: errorStatus,
+        type: error?.name,
+        stack: error?.stack?.substring(0, 200)
+      });
+      
       // Check for 403, rate limit, or network errors
-      const is403 = error?.message?.includes("403") || 
-                   error?.code === 403 || 
-                   error?.status === 403 ||
-                   error?.message?.includes("Forbidden");
-      const isRateLimit = error?.message?.includes("rate limit") || 
-                        error?.message?.includes("429");
-      const isNetworkError = error?.message?.includes("Failed to fetch") ||
-                            error?.message?.includes("ERR_CONNECTION");
+      const is403 = errorMsg?.includes("403") || 
+                   errorCode === 403 || 
+                   errorStatus === 403 ||
+                   errorMsg?.includes("Forbidden");
+      const isRateLimit = errorMsg?.includes("rate limit") || 
+                        errorMsg?.includes("429");
+      const isNetworkError = errorMsg?.includes("Failed to fetch") ||
+                            errorMsg?.includes("ERR_CONNECTION") ||
+                            errorMsg?.includes("CORS") ||
+                            errorMsg?.includes("NetworkError") ||
+                            error?.name === "TypeError";
+      
+      // For Helius specifically, check if it's an API key issue
+      if (url.includes('helius-rpc.com')) {
+        if (is403 || errorMsg?.includes("Unauthorized") || errorMsg?.includes("Invalid") || errorMsg?.includes("api-key")) {
+          console.error(`[tryWithFallback] Helius RPC authentication failed. Check your API key.`);
+          // Still try fallbacks, but log the issue
+        }
+      }
       
       if (is403 || isRateLimit || isNetworkError) {
-        console.warn(`RPC ${url} failed (${is403 ? '403' : isRateLimit ? 'rate limit' : 'network error'}), trying fallback...`);
+        console.warn(`RPC ${maskedUrl} failed (${is403 ? '403' : isRateLimit ? 'rate limit' : 'network error'}), trying fallback...`);
         continue;
       }
       // For other errors, still try next endpoint
-      console.warn(`RPC ${url} failed: ${error?.message}, trying fallback...`);
+      console.warn(`RPC ${maskedUrl} failed: ${errorMsg.substring(0, 100)}, trying fallback...`);
     }
   }
   
