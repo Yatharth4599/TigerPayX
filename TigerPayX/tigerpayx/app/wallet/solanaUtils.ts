@@ -326,6 +326,8 @@ export async function getTokenBalance(
       
       // Filter by mint and sum balances (excluding already counted accounts)
       let foundMatchingAccounts = 0;
+      const foundMints: string[] = []; // Track all mint addresses found
+      
       for (const accountInfo of allTokenAccounts.value) {
         const accountAddress = accountInfo.pubkey.toString();
         const parsedInfo = accountInfo.account.data.parsed.info;
@@ -338,7 +340,12 @@ export async function getTokenBalance(
         
         // Debug: Log all token accounts to see what we're getting
         if (parsedInfo.mint) {
-          console.log(`[getTokenBalance] Token account ${accountAddress}: mint=${parsedInfo.mint}, amount=${parsedInfo.tokenAmount?.amount || 0}`);
+          const accountDecimals = parsedInfo.tokenAmount?.decimals || decimals;
+          const accountBalance = parsedInfo.tokenAmount?.amount 
+            ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, accountDecimals)
+            : 0;
+          console.log(`[getTokenBalance] 🔍 Token account ${accountAddress.substring(0, 8)}...: mint=${parsedInfo.mint}, balance=${accountBalance}, decimals=${accountDecimals}`);
+          foundMints.push(parsedInfo.mint);
         }
         
         // Check if this account is for the mint we're looking for
@@ -354,7 +361,10 @@ export async function getTokenBalance(
       }
       
       if (foundMatchingAccounts === 0 && allTokenAccounts.value.length > 0) {
-        console.warn(`[getTokenBalance] Found ${allTokenAccounts.value.length} token accounts but none match mint ${tokenMint}`);
+        console.warn(`[getTokenBalance] ⚠️ Found ${allTokenAccounts.value.length} token accounts but none match mint ${tokenMint}`);
+        console.warn(`[getTokenBalance] 📋 Mint addresses found in wallet: ${foundMints.join(", ")}`);
+        console.warn(`[getTokenBalance] 🔎 Looking for mint: ${tokenMint}`);
+        console.warn(`[getTokenBalance] 💡 This might be a different USDT version or the mint address in config is incorrect`);
       }
     } catch (searchError: any) {
       const errorName = searchError?.name || "";
