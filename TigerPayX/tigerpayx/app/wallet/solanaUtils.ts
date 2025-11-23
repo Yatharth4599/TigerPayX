@@ -638,7 +638,9 @@ export async function buildTokenTransferTransaction(
       // Normalize mint comparison (handle PublicKey objects vs strings)
       const searchMint = tokenMint.toString().trim();
       const matchingAccount = allAccounts.find((acc) => {
-        const normalizedMint = acc.mint.trim();
+        // Handle both string and PublicKey mint formats
+        const accMint = typeof acc.mint === 'string' ? acc.mint : acc.mint.toString();
+        const normalizedMint = accMint.trim();
         const matches = normalizedMint === searchMint;
         if (!matches) {
           console.log(`[buildTokenTransferTransaction] Account mint "${normalizedMint}" doesn't match search "${searchMint}"`);
@@ -653,6 +655,34 @@ export async function buildTokenTransferTransaction(
         fromTokenAccount = new PublicKey(matchingAccount.accountAddress);
         senderBalance = matchingAccount.balance;
         console.log(`[buildTokenTransferTransaction] ✅ Found token account: ${fromTokenAccount.toString()}, balance: ${senderBalance}`);
+      } else if (allAccounts.length === 0) {
+        // If getAllTokenAccounts returned empty but we know balance exists, 
+        // it might be an RPC issue. Try using getTokenBalance to get the account address
+        console.log(`[buildTokenTransferTransaction] ⚠️ getAllTokenAccounts returned empty, but balance check passed. Trying alternative method...`);
+        
+        // Try to get the account directly using getParsedTokenAccountsByOwner
+        const connection = getSolanaConnection();
+        const parsedAccounts = await connection.getParsedTokenAccountsByOwner(fromKeypair.publicKey, {
+          programId: TOKEN_PROGRAM_ID,
+        });
+        
+        const foundAccount = parsedAccounts.value.find((acc) => {
+          const accMint = acc.account.data.parsed.info.mint;
+          const normalizedMint = typeof accMint === 'string' ? accMint.trim() : accMint.toString().trim();
+          return normalizedMint === searchMint;
+        });
+        
+        if (foundAccount) {
+          fromTokenAccount = foundAccount.pubkey;
+          const parsedInfo = foundAccount.account.data.parsed.info;
+          const accountDecimals = parsedInfo.tokenAmount?.decimals || decimals;
+          senderBalance = parsedInfo.tokenAmount?.amount 
+            ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, accountDecimals)
+            : 0;
+          console.log(`[buildTokenTransferTransaction] ✅ Found account via direct RPC call: ${fromTokenAccount.toString()}, balance: ${senderBalance}`);
+        } else {
+          throw new Error(`Could not find token account for mint ${tokenMint}`);
+        }
       } else {
         // Fallback to ATA if no account found
         console.log(`[buildTokenTransferTransaction] No matching account found, using ATA...`);
