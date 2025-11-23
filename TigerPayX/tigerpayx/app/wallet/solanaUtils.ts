@@ -681,16 +681,22 @@ export async function buildTokenTransferTransaction(
         // it might be an RPC issue. Try using getTokenBalance to get the account address
         console.log(`[buildTokenTransferTransaction] ⚠️ getAllTokenAccounts returned empty, but balance check passed. Trying alternative method...`);
         
-        // Try to get the account directly using getParsedTokenAccountsByOwner
-        const connection = getSolanaConnection();
-        const parsedAccounts = await connection.getParsedTokenAccountsByOwner(fromKeypair.publicKey, {
-          programId: TOKEN_PROGRAM_ID,
+        // Try to get the account directly using getParsedTokenAccountsByOwner with fallback
+        console.log(`[buildTokenTransferTransaction] Trying direct RPC call with tryWithFallback...`);
+        const parsedAccounts = await tryWithFallback(async (conn) => {
+          return await conn.getParsedTokenAccountsByOwner(fromKeypair.publicKey, {
+            programId: TOKEN_PROGRAM_ID,
+          });
         });
+        
+        console.log(`[buildTokenTransferTransaction] Direct RPC call found ${parsedAccounts.value.length} accounts`);
         
         const foundAccount = parsedAccounts.value.find((acc) => {
           const accMint = acc.account.data.parsed.info.mint;
           const normalizedMint = typeof accMint === 'string' ? accMint.trim() : accMint.toString().trim();
-          return normalizedMint === searchMint;
+          const matches = normalizedMint === searchMint;
+          console.log(`[buildTokenTransferTransaction] Checking account: mint="${normalizedMint}", matches="${searchMint}"? ${matches}`);
+          return matches;
         });
         
         if (foundAccount) {
