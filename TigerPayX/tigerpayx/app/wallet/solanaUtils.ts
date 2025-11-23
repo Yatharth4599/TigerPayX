@@ -641,12 +641,11 @@ export async function buildTokenTransferTransaction(
       });
       
       // Find the account that matches the mint
-      // Normalize mint comparison (handle PublicKey objects vs strings)
+      // Normalize mint comparison (mint is always string from getAllTokenAccounts)
       const searchMint = tokenMint.toString().trim();
       const matchingAccount = allAccounts.find((acc) => {
-        // Handle both string and PublicKey mint formats
-        const accMint = typeof acc.mint === 'string' ? acc.mint : acc.mint.toString();
-        const normalizedMint = accMint.trim();
+        // acc.mint is always a string from getAllTokenAccounts
+        const normalizedMint = acc.mint.trim();
         const matches = normalizedMint === searchMint;
         if (!matches) {
           console.log(`[buildTokenTransferTransaction] Account mint "${normalizedMint}" doesn't match search "${searchMint}"`);
