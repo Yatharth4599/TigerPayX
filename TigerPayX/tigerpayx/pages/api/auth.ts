@@ -250,11 +250,21 @@ export default async function handler(
               return res.status(400).json({ error: "User already exists" });
             }
           } else {
-            throw createError;
+            // If we get here, it's an unexpected error
+            // Log it and return a user-friendly error
+            console.error("Unexpected user creation error:", createError);
+            return res.status(500).json({ 
+              error: "Failed to create account. Please try again.",
+              details: process.env.NODE_ENV === "development" ? {
+                message: createError.message,
+                code: createError.code,
+              } : undefined,
+            });
           }
         }
 
         // Send OTP email (non-blocking - don't fail signup if email fails)
+        let emailSent = false;
         try {
           const emailResult = await sendEmail({
             to: email,
@@ -264,22 +274,34 @@ export default async function handler(
 
           if (!emailResult.success) {
             console.error("Failed to send OTP email:", emailResult.error);
-            // Still allow signup to proceed, but log the error
-            // In production, you might want to handle this differently
+            // In development, log the OTP so user can test
+            if (process.env.NODE_ENV === "development") {
+              console.log("📧 OTP for testing (dev mode):", otp);
+            }
           } else {
             console.log("OTP email sent successfully to:", email);
+            emailSent = true;
           }
         } catch (emailError: any) {
           console.error("Error sending OTP email (non-fatal):", emailError);
+          // In development, log the OTP so user can test
+          if (process.env.NODE_ENV === "development") {
+            console.log("📧 OTP for testing (dev mode, email failed):", otp);
+          }
           // Don't throw - allow signup to proceed even if email fails
         }
 
         // Don't generate token yet - user needs to verify email first
         return res.status(201).json({
           success: true,
-          message: "Account created! Please check your email for verification code.",
+          message: emailSent 
+            ? "Account created! Please check your email for verification code."
+            : "Account created! Please check your email for verification code. If you don't receive it, check server logs (dev mode) or contact support.",
           requiresVerification: true,
           email: user.email,
+          ...(process.env.NODE_ENV === "development" && { 
+            devModeOTP: otp // Only in dev mode for testing
+          }),
         });
       } else {
         // Login
