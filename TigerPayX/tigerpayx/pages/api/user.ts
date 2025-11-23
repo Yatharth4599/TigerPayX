@@ -10,6 +10,7 @@ type Data = {
     avatarInitials: string;
   };
   solanaAddress?: string;
+  isAdmin?: boolean;
 };
 
 async function handler(
@@ -38,7 +39,7 @@ async function handler(
         console.warn("Prisma client out of sync - querying without emailVerified field");
         // Use raw query or select specific fields
         user = await prisma.$queryRaw`
-          SELECT id, email, name, handle, "avatarInitials", "solanaAddress"
+          SELECT id, email, name, handle, "avatarInitials", "solanaAddress", "isAdmin"
           FROM "User"
           WHERE id = ${req.user.userId}
         ` as any;
@@ -58,6 +59,7 @@ async function handler(
         avatarInitials: user.avatarInitials || (user.name || "TX").slice(0, 2).toUpperCase(),
       },
       solanaAddress: user.solanaAddress || undefined,
+      isAdmin: user.isAdmin || false,
     });
   } catch (error: any) {
     console.error("Error fetching user:", error);

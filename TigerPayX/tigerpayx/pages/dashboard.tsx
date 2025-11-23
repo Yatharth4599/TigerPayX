@@ -83,6 +83,7 @@ export default function DashboardPage() {
   const [showWalletAddress, setShowWalletAddress] = useState(true); // Toggle to show/hide address
   const [showImportWalletPrompt, setShowImportWalletPrompt] = useState(false);
   const [existingWalletAddress, setExistingWalletAddress] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Check authentication
   useEffect(() => {
@@ -129,6 +130,7 @@ export default function DashboardPage() {
       if (userResponse.ok) {
         const userData = await userResponse.json();
         dbWalletAddress = userData.solanaAddress || null;
+        setIsAdmin(userData.isAdmin || false);
       }
       
       // Check if user has a wallet in localStorage
@@ -477,6 +479,21 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-950 via-[#1a0a00] to-orange-900 text-white">
       <Navbar />
+      {isAdmin && (
+        <div className="section-padding pt-4">
+          <div className="max-width">
+            <a
+              href="/admin"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              Admin Dashboard
+            </a>
+          </div>
+        </div>
+      )}
       <main className="section-padding py-8 lg:py-12">
           <div className="max-width">
           {/* Network Indicator */}

@@ -28,6 +28,9 @@ model User {
   // Solana wallet address (non-custodial - private key stored client-side only)
   solanaAddress String?  @unique
   
+  // Admin access
+  isAdmin        Boolean  @default(false)
+  
   transactions  Transaction[]
   merchants     Merchant[]
 }
