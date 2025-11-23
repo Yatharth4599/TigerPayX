@@ -130,10 +130,20 @@ export default async function handler(
           console.error("User creation error:", createError);
           
           // Check if error is due to missing columns (migration not run)
-          if (createError.message?.includes("Unknown arg") || 
-              createError.message?.includes("emailVerified") ||
-              createError.message?.includes("emailVerificationToken")) {
+          // Prisma errors for unknown fields can come in different formats
+          const errorMessage = createError.message || "";
+          const errorCode = createError.code || "";
+          const isUnknownFieldError = 
+            errorMessage.includes("Unknown arg") ||
+            errorMessage.includes("emailVerified") ||
+            errorMessage.includes("emailVerificationToken") ||
+            errorMessage.includes("Unknown field") ||
+            errorCode === "P2009" || // Prisma validation error
+            errorCode === "P2012"; // Missing required value (but we're providing it, so it's likely missing column)
+            
+          if (isUnknownFieldError) {
             console.warn("Email verification columns not found - migration may not have run. Creating user without verification.");
+            console.warn("Original error:", createError.message, createError.code);
             // Fallback: create user without email verification fields (for backward compatibility)
             try {
               user = await prisma.user.create({
