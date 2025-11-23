@@ -128,20 +128,37 @@ export default async function handler(
           });
         } catch (createError: any) {
           console.error("User creation error:", createError);
+          console.error("Error details:", {
+            message: createError.message,
+            code: createError.code,
+            name: createError.name,
+            meta: createError.meta,
+          });
           
           // Check if error is due to missing columns (migration not run)
           // Prisma errors for unknown fields can come in different formats
-          const errorMessage = createError.message || "";
-          const errorCode = createError.code || "";
+          const errorMessage = String(createError.message || "");
+          const errorCode = String(createError.code || "");
+          const errorName = String(createError.name || "");
+          
+          // Try fallback for ANY error (safer approach)
+          // If it's not a duplicate user error, try creating without email verification fields
+          const isDuplicateError = createError.code === "P2002";
           const isUnknownFieldError = 
-            errorMessage.includes("Unknown arg") ||
-            errorMessage.includes("emailVerified") ||
-            errorMessage.includes("emailVerificationToken") ||
-            errorMessage.includes("Unknown field") ||
-            errorCode === "P2009" || // Prisma validation error
-            errorCode === "P2012"; // Missing required value (but we're providing it, so it's likely missing column)
+            !isDuplicateError && (
+              errorMessage.includes("Unknown arg") ||
+              errorMessage.includes("emailVerified") ||
+              errorMessage.includes("emailVerificationToken") ||
+              errorMessage.includes("Unknown field") ||
+              errorCode === "P2009" || // Prisma validation error
+              errorCode === "P2012" || // Missing required value
+              errorName.includes("Prisma") ||
+              errorMessage.toLowerCase().includes("column") ||
+              errorMessage.toLowerCase().includes("field")
+            );
             
-          if (isUnknownFieldError) {
+          // Always try fallback if it's not a duplicate user error
+          if (!isDuplicateError) {
             console.warn("Email verification columns not found - migration may not have run. Creating user without verification.");
             console.warn("Original error:", createError.message, createError.code);
             // Fallback: create user without email verification fields (for backward compatibility)
@@ -181,17 +198,29 @@ export default async function handler(
               });
             } catch (fallbackError: any) {
               console.error("Fallback user creation error:", fallbackError);
+              console.error("Fallback error details:", {
+                message: fallbackError.message,
+                code: fallbackError.code,
+                name: fallbackError.name,
+                meta: fallbackError.meta,
+              });
               if (fallbackError.code === "P2002") {
                 if (fallbackError.meta?.target?.includes("email")) {
                   return res.status(400).json({ error: "User with this email already exists" });
                 }
               }
+              // If fallback also fails, return the original error message
               return res.status(500).json({ 
-                error: "Database migration required. Please run: npx prisma migrate deploy" 
+                error: fallbackError.message || "Failed to create user. Please check server logs.",
+                details: process.env.NODE_ENV === "development" ? {
+                  originalError: createError.message,
+                  fallbackError: fallbackError.message,
+                } : undefined,
               });
             }
           }
           
+          // Handle duplicate user error
           if (createError.code === "P2002") {
             // Unique constraint violation
             if (createError.meta?.target?.includes("email")) {
