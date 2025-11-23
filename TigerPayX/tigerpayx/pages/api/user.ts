@@ -25,9 +25,27 @@ async function handler(
       return res.status(401).json({ error: "Authentication required" });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.userId },
-    });
+    // Use select to avoid errors if emailVerified column doesn't exist in Prisma client
+    // Try to get user - handle case where Prisma client might be out of sync with database
+    let user;
+    try {
+      user = await prisma.user.findUnique({
+        where: { id: req.user.userId },
+      });
+    } catch (prismaError: any) {
+      // If error is due to missing column (P2022), try without selecting that field
+      if (prismaError.code === "P2022" && prismaError.message?.includes("emailVerified")) {
+        console.warn("Prisma client out of sync - querying without emailVerified field");
+        // Use raw query or select specific fields
+        user = await prisma.$queryRaw`
+          SELECT id, email, name, handle, "avatarInitials", "solanaAddress"
+          FROM "User"
+          WHERE id = ${req.user.userId}
+        ` as any;
+      } else {
+        throw prismaError;
+      }
+    }
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });

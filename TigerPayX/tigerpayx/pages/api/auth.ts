@@ -31,9 +31,23 @@ export default async function handler(
           return res.status(400).json({ error: "Name is required" });
         }
 
-        const existingUser = await prisma.user.findUnique({
-          where: { email },
-        });
+        // Check if user exists - handle Prisma client sync issues
+        let existingUser;
+        try {
+          existingUser = await prisma.user.findUnique({
+            where: { email },
+          });
+        } catch (prismaError: any) {
+          // If error is due to missing column, try raw query
+          if (prismaError.code === "P2022" && prismaError.message?.includes("emailVerified")) {
+            const rawUser = await prisma.$queryRaw`
+              SELECT id, email FROM "User" WHERE email = ${email}
+            ` as any[];
+            existingUser = rawUser.length > 0 ? { id: rawUser[0].id, email: rawUser[0].email } : null;
+          } else {
+            throw prismaError;
+          }
+        }
 
         if (existingUser) {
           return res.status(400).json({ error: "User already exists" });
@@ -304,10 +318,40 @@ export default async function handler(
           }),
         });
       } else {
-        // Login
-        const user = await prisma.user.findUnique({
-          where: { email },
-        });
+        // Login - handle Prisma client sync issues
+        let user;
+        try {
+          user = await prisma.user.findUnique({
+            where: { email },
+          });
+        } catch (prismaError: any) {
+          // If error is due to missing column (P2022), use raw query
+          if (prismaError.code === "P2022" && prismaError.message?.includes("emailVerified")) {
+            console.warn("Prisma client out of sync - using raw query for login");
+            // Try to include emailVerified if column exists in DB
+            try {
+              const rawUsers = await prisma.$queryRaw`
+                SELECT id, email, password, name, handle, "emailVerified"
+                FROM "User"
+                WHERE email = ${email}
+              ` as any[];
+              user = rawUsers.length > 0 ? rawUsers[0] : null;
+            } catch (rawError: any) {
+              // If emailVerified column doesn't exist in DB either, query without it
+              const rawUsers = await prisma.$queryRaw`
+                SELECT id, email, password, name, handle
+                FROM "User"
+                WHERE email = ${email}
+              ` as any[];
+              user = rawUsers.length > 0 ? rawUsers[0] : null;
+              if (user) {
+                user.emailVerified = undefined;
+              }
+            }
+          } else {
+            throw prismaError;
+          }
+        }
 
         if (!user) {
           return res.status(401).json({ error: "Invalid credentials" });
