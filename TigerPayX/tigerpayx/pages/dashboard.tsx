@@ -6,7 +6,7 @@ import { useRouter } from "next/router";
 import { Navbar } from "@/components/Navbar";
 import { isAuthenticated, getAuthHeader } from "@/utils/auth";
 import { createWallet, hasWallet, getStoredWalletAddress } from "@/app/wallet/createWallet";
-import { getAllTokenBalances, isValidSolanaAddress } from "@/app/wallet/solanaUtils";
+import { getAllTokenBalances, isValidSolanaAddress, getSolBalance } from "@/app/wallet/solanaUtils";
 import { sendP2PPayment } from "@/app/payments/p2pSend";
 import { parseQRCode } from "@/app/payments/qrScanner";
 import { getSwapPreview, executeSwap } from "@/app/swap/swapExecute";
@@ -59,6 +59,7 @@ export default function DashboardPage() {
   const [sendAmount, setSendAmount] = useState("");
   const [sending, setSending] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [solBalance, setSolBalance] = useState<number>(0);
 
   // Swap tab state
   const [swapFrom, setSwapFrom] = useState<Token>("USDC");
@@ -254,9 +255,20 @@ export default function DashboardPage() {
       const bal = await getAllTokenBalances(walletAddress);
       console.log(`[loadBalances] Loaded balances:`, bal);
       setBalances(bal);
+      
+      // Also load SOL balance separately for transaction fee checking
+      try {
+        const solBal = await getSolBalance(walletAddress);
+        setSolBalance(solBal);
+        console.log(`[loadBalances] SOL balance: ${solBal} SOL`);
+      } catch (solError) {
+        console.error("[loadBalances] Error loading SOL balance:", solError);
+        setSolBalance(0);
+      }
     } catch (error: any) {
       console.error("[loadBalances] Error loading balances:", error);
       setBalances({ sol: "0", usdc: "0", usdt: "0", tt: "0" });
+      setSolBalance(0);
       showToast("Failed to load balances. Check console for details.", "error");
     } finally {
       setRefreshing(false);
@@ -925,9 +937,53 @@ export default function DashboardPage() {
                 )}
           </div>
 
+                {/* Transaction Fees Info */}
+                <div className="mt-4 p-4 glass-panel tiger-stripes-soft rounded-lg border border-white/10">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-zinc-300">Transaction Fees</span>
+                    <span className="text-xs text-zinc-400">~0.000005 SOL</span>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-zinc-400">Required SOL</span>
+                    <span className="text-sm font-medium text-white">0.001 SOL (minimum)</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-zinc-400">Your SOL Balance</span>
+                    <span className={`text-sm font-medium ${solBalance >= 0.001 ? 'text-green-400' : solBalance > 0 ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {solBalance.toFixed(9)} SOL
+                    </span>
+                  </div>
+                  {solBalance < 0.001 && (
+                    <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                      <p className="text-xs text-yellow-400 mb-2">
+                        ⚠️ Insufficient SOL for transaction fees. You need at least 0.001 SOL to send transactions.
+                      </p>
+                      <button
+                        onClick={() => setShowFundWallet(true)}
+                        className="w-full text-xs bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 font-medium py-2 rounded-lg transition-colors border border-yellow-500/30"
+                      >
+                        Add SOL to Wallet
+                      </button>
+                    </div>
+                  )}
+                  {solBalance === 0 && (
+                    <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                      <p className="text-xs text-red-400 mb-2">
+                        ❌ No SOL in wallet. You need SOL to pay for transaction fees.
+                      </p>
+                      <button
+                        onClick={() => setShowFundWallet(true)}
+                        className="w-full text-xs bg-red-500/20 hover:bg-red-500/30 text-red-300 font-medium py-2 rounded-lg transition-colors border border-red-500/30"
+                      >
+                        Add SOL to Wallet
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <button
                   onClick={handleSend}
-                  disabled={sending || !sendToAddress || !sendAmount || !isValidSolanaAddress(sendToAddress)}
+                  disabled={sending || !sendToAddress || !sendAmount || !isValidSolanaAddress(sendToAddress) || solBalance < 0.001}
                   className="w-full bg-[#ff6b00] text-black font-semibold py-3 rounded-lg hover:bg-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-[#ff6b00]/20 mt-4"
                 >
                   {sending ? (
@@ -935,6 +991,8 @@ export default function DashboardPage() {
                       <LoadingSpinner size="sm" />
                       Sending...
                     </>
+                  ) : solBalance < 0.001 ? (
+                    "Insufficient SOL for Fees"
                   ) : (
                     "Send Payment"
                   )}
