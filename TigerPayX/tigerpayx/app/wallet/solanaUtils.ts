@@ -623,36 +623,22 @@ export async function buildTokenTransferTransaction(
     let senderBalance = 0;
     
     try {
-      // Get all token accounts owned by the sender
-      const allTokenAccounts = await tryWithFallback(async (conn) => {
-        return await conn.getParsedTokenAccountsByOwner(fromKeypair.publicKey, {
-          programId: TOKEN_PROGRAM_ID,
-        });
-      });
+      // Use getAllTokenAccounts helper which we know works (same as getTokenBalance uses)
+      console.log(`[buildTokenTransferTransaction] Getting all token accounts using helper function...`);
+      const allAccounts = await getAllTokenAccounts(fromKeypair.publicKey.toString());
       
-      console.log(`[buildTokenTransferTransaction] Found ${allTokenAccounts.value.length} token accounts`);
+      console.log(`[buildTokenTransferTransaction] Found ${allAccounts.length} token accounts`);
       
       // Log all accounts for debugging
-      allTokenAccounts.value.forEach((acc, idx) => {
-        const parsedInfo = acc.account.data.parsed.info;
-        const accountMint = parsedInfo.mint;
-        const normalizedMint = typeof accountMint === 'string' 
-          ? accountMint.trim() 
-          : accountMint.toString().trim();
-        const balance = parsedInfo.tokenAmount?.amount 
-          ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, parsedInfo.tokenAmount.decimals || decimals)
-          : 0;
-        console.log(`[buildTokenTransferTransaction] Account ${idx + 1}: ${acc.pubkey.toString()}, mint: ${normalizedMint}, balance: ${balance}`);
+      allAccounts.forEach((acc, idx) => {
+        console.log(`[buildTokenTransferTransaction] Account ${idx + 1}: ${acc.accountAddress}, mint: ${acc.mint}, balance: ${acc.balance}`);
       });
       
       // Find the account that matches the mint
       // Normalize mint comparison (handle PublicKey objects vs strings)
       const searchMint = tokenMint.toString().trim();
-      const matchingAccount = allTokenAccounts.value.find((acc) => {
-        const accountMint = acc.account.data.parsed.info.mint;
-        const normalizedMint = typeof accountMint === 'string' 
-          ? accountMint.trim() 
-          : accountMint.toString().trim();
+      const matchingAccount = allAccounts.find((acc) => {
+        const normalizedMint = acc.mint.trim();
         const matches = normalizedMint === searchMint;
         if (!matches) {
           console.log(`[buildTokenTransferTransaction] Account mint "${normalizedMint}" doesn't match search "${searchMint}"`);
@@ -660,16 +646,12 @@ export async function buildTokenTransferTransaction(
         return matches;
       });
       
-      console.log(`[buildTokenTransferTransaction] Searched ${allTokenAccounts.value.length} accounts, found match: ${!!matchingAccount}`);
+      console.log(`[buildTokenTransferTransaction] Searched ${allAccounts.length} accounts, found match: ${!!matchingAccount}`);
       
       if (matchingAccount) {
         // Use the actual token account address
-        fromTokenAccount = matchingAccount.pubkey;
-        const parsedInfo = matchingAccount.account.data.parsed.info;
-        const accountDecimals = parsedInfo.tokenAmount?.decimals || decimals;
-        senderBalance = parsedInfo.tokenAmount?.amount 
-          ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, accountDecimals)
-          : 0;
+        fromTokenAccount = new PublicKey(matchingAccount.accountAddress);
+        senderBalance = matchingAccount.balance;
         console.log(`[buildTokenTransferTransaction] ✅ Found token account: ${fromTokenAccount.toString()}, balance: ${senderBalance}`);
       } else {
         // Fallback to ATA if no account found
