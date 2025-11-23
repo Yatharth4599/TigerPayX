@@ -760,7 +760,7 @@ export async function buildTokenTransferTransaction(
         
         // Try to get the account
         senderAccount = await tryWithFallback(async (conn) => {
-          return await getAccount(conn, fromTokenAccount);
+          return await getAccount(conn, fromTokenAccount!); // We just set it above, so it's not null
         });
         senderBalance = Number(senderAccount.amount) / Math.pow(10, decimals);
         console.log(`[buildTokenTransferTransaction] ATA balance: ${senderBalance}`);
@@ -795,6 +795,11 @@ export async function buildTokenTransferTransaction(
       }
     }
     } // Close if (!accountVerified) block
+    
+    // Validate that we have a token account
+    if (!fromTokenAccount) {
+      throw new Error(`Could not find or create token account for mint ${tokenMint}`);
+    }
     
     // Validate balance
     console.log(`[buildTokenTransferTransaction] Sender balance: ${senderBalance}`);
@@ -844,7 +849,7 @@ export async function buildTokenTransferTransaction(
     // Add transfer instruction
     transaction.add(
     createTransferInstruction(
-      fromTokenAccount,
+      fromTokenAccount, // Now guaranteed to be non-null
       toTokenAccount,
       fromKeypair.publicKey,
       amountInSmallestUnit
