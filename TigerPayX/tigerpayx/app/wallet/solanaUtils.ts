@@ -611,7 +611,13 @@ export async function buildTokenTransferTransaction(
   decimals: number = 9
 ): Promise<Transaction> {
   try {
+    console.log(`[buildTokenTransferTransaction] ===== START =====`);
     console.log(`[buildTokenTransferTransaction] Building token transfer: ${amount} tokens`);
+    console.log(`[buildTokenTransferTransaction] From: ${fromKeypair.publicKey.toString()}`);
+    console.log(`[buildTokenTransferTransaction] To: ${toAddress}`);
+    console.log(`[buildTokenTransferTransaction] Mint: ${tokenMint}`);
+    console.log(`[buildTokenTransferTransaction] Amount: ${amount}`);
+    
   const connection = getSolanaConnection();
   const toPublicKey = new PublicKey(toAddress);
   const mintPublicKey = new PublicKey(tokenMint);
@@ -743,8 +749,11 @@ export async function buildTokenTransferTransaction(
     toPublicKey
   );
 
+    console.log(`[buildTokenTransferTransaction] ===== ACCOUNT ADDRESSES =====`);
     console.log(`[buildTokenTransferTransaction] From token account: ${fromTokenAccount.toString()}`);
     console.log(`[buildTokenTransferTransaction] To token account: ${toTokenAccount.toString()}`);
+    console.log(`[buildTokenTransferTransaction] Expected account: H9QCxp9jzABLGZUGc4Bu4v2VGmhr7YF4NdSxaKZuSG9D`);
+    console.log(`[buildTokenTransferTransaction] Using correct account? ${fromTokenAccount.toString() === 'H9QCxp9jzABLGZUGc4Bu4v2VGmhr7YF4NdSxaKZuSG9D'}`);
 
     const transaction = new Transaction();
 
