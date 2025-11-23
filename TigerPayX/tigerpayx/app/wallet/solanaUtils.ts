@@ -708,9 +708,14 @@ export async function buildTokenTransferTransaction(
             : 0;
           console.log(`[buildTokenTransferTransaction] ✅ Found account via direct RPC call: ${fromTokenAccount.toString()}, balance: ${senderBalance}`);
         } else {
-          throw new Error(`Could not find token account for mint ${tokenMint}`);
+          console.error(`[buildTokenTransferTransaction] ❌ Could not find account for mint ${searchMint} even with direct RPC call`);
+          console.error(`[buildTokenTransferTransaction] ❌ This should not happen if getTokenBalance found the account`);
+          throw new Error(`Could not find token account for mint ${tokenMint}. Please check your RPC connection.`);
         }
       } else {
+        // No matching account found but other accounts exist
+        console.error(`[buildTokenTransferTransaction] ❌ Found ${allAccounts.length} accounts but none match mint ${searchMint}`);
+        console.error(`[buildTokenTransferTransaction] ❌ Available mints: ${allAccounts.map(a => a.mint).join(', ')}`);
         // Fallback to ATA if no account found
         console.log(`[buildTokenTransferTransaction] No matching account found, using ATA...`);
         fromTokenAccount = getAssociatedTokenAddressSync(
