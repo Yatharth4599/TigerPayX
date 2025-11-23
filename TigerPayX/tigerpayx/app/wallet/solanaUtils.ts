@@ -616,58 +616,96 @@ export async function buildTokenTransferTransaction(
   const toPublicKey = new PublicKey(toAddress);
   const mintPublicKey = new PublicKey(tokenMint);
   
-    // Get associated token addresses
-    const fromTokenAccount = getAssociatedTokenAddressSync(
-    mintPublicKey,
-    fromKeypair.publicKey
-  );
+    // First, try to find the actual token account address (might not be ATA)
+    console.log(`[buildTokenTransferTransaction] Finding sender's token account for mint ${tokenMint}...`);
+    let fromTokenAccount: PublicKey;
+    let senderAccount;
+    let senderBalance = 0;
+    
+    try {
+      // Get all token accounts owned by the sender
+      const allTokenAccounts = await tryWithFallback(async (conn) => {
+        return await conn.getParsedTokenAccountsByOwner(fromKeypair.publicKey, {
+          programId: TOKEN_PROGRAM_ID,
+        });
+      });
+      
+      // Find the account that matches the mint
+      const matchingAccount = allTokenAccounts.value.find(
+        (acc) => acc.account.data.parsed.info.mint === tokenMint
+      );
+      
+      if (matchingAccount) {
+        // Use the actual token account address
+        fromTokenAccount = matchingAccount.pubkey;
+        const parsedInfo = matchingAccount.account.data.parsed.info;
+        const accountDecimals = parsedInfo.tokenAmount?.decimals || decimals;
+        senderBalance = parsedInfo.tokenAmount?.amount 
+          ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, accountDecimals)
+          : 0;
+        console.log(`[buildTokenTransferTransaction] ✅ Found token account: ${fromTokenAccount.toString()}, balance: ${senderBalance}`);
+      } else {
+        // Fallback to ATA if no account found
+        console.log(`[buildTokenTransferTransaction] No matching account found, using ATA...`);
+        fromTokenAccount = getAssociatedTokenAddressSync(
+          mintPublicKey,
+          fromKeypair.publicKey
+        );
+        
+        // Try to get the account
+        senderAccount = await tryWithFallback(async (conn) => {
+          return await getAccount(conn, fromTokenAccount);
+        });
+        senderBalance = Number(senderAccount.amount) / Math.pow(10, decimals);
+        console.log(`[buildTokenTransferTransaction] ATA balance: ${senderBalance}`);
+      }
+    } catch (error: any) {
+      // If we can't find any account, try ATA as fallback
+      console.log(`[buildTokenTransferTransaction] Error finding account, trying ATA...`);
+      fromTokenAccount = getAssociatedTokenAddressSync(
+        mintPublicKey,
+        fromKeypair.publicKey
+      );
+      
+      try {
+        senderAccount = await tryWithFallback(async (conn) => {
+          return await getAccount(conn, fromTokenAccount);
+        });
+        senderBalance = Number(senderAccount.amount) / Math.pow(10, decimals);
+      } catch (ataError: any) {
+        const errorName = ataError?.name || "";
+        const errorMsg = ataError?.message || "";
+        
+        // Check if it's an account not found error
+        if (errorName === "TokenAccountNotFoundError" ||
+            errorMsg?.includes("could not find account") || 
+            errorMsg?.includes("InvalidAccountData") ||
+            errorMsg?.includes("AccountNotFound") ||
+            errorMsg?.includes("TokenAccountNotFound")) {
+          throw new Error(`You don't have a token account for this token. You need to receive tokens first before you can send them.`);
+        }
+        
+        throw ataError;
+      }
+    }
+    
+    // Validate balance
+    console.log(`[buildTokenTransferTransaction] Sender balance: ${senderBalance}`);
+    if (senderBalance < amount) {
+      throw new Error(`Insufficient balance. You have ${senderBalance.toFixed(decimals)} but trying to send ${amount}`);
+    }
+    
+    if (senderBalance === 0) {
+      throw new Error(`Your token account exists but has zero balance. You need to receive tokens first before you can send them.`);
+    }
   
     const toTokenAccount = getAssociatedTokenAddressSync(
-    mintPublicKey,
-    toPublicKey
-  );
+      mintPublicKey,
+      toPublicKey
+    );
 
     console.log(`[buildTokenTransferTransaction] From token account: ${fromTokenAccount.toString()}`);
     console.log(`[buildTokenTransferTransaction] To token account: ${toTokenAccount.toString()}`);
-
-    // CRITICAL: Check if sender's token account exists and has balance
-    console.log(`[buildTokenTransferTransaction] Checking sender's token account...`);
-    let senderAccount;
-    try {
-      senderAccount = await tryWithFallback(async (conn) => {
-        return await getAccount(conn, fromTokenAccount);
-      });
-      const senderBalance = Number(senderAccount.amount) / Math.pow(10, decimals);
-      console.log(`[buildTokenTransferTransaction] Sender balance: ${senderBalance}`);
-      
-      if (senderBalance < amount) {
-        throw new Error(`Insufficient balance. You have ${senderBalance.toFixed(decimals)} but trying to send ${amount}`);
-      }
-      
-      if (senderBalance === 0) {
-        throw new Error(`Your token account exists but has zero balance. You need to receive tokens first before you can send them.`);
-      }
-    } catch (error: any) {
-      const errorName = error?.name || "";
-      const errorMsg = error?.message || "";
-      
-      // Check if it's an account not found error
-      if (errorName === "TokenAccountNotFoundError" ||
-          errorMsg?.includes("could not find account") || 
-          errorMsg?.includes("InvalidAccountData") ||
-          errorMsg?.includes("AccountNotFound") ||
-          errorMsg?.includes("TokenAccountNotFound")) {
-        throw new Error(`You don't have a token account for this token. You need to receive tokens first before you can send them.`);
-      }
-      
-      // Check for "Attempt to debit" error - this means account doesn't exist or has no balance
-      if (errorMsg?.includes("Attempt to debit") || errorMsg?.includes("no record of a prior credit")) {
-        throw new Error(`You don't have a token account for this token or your balance is zero. You need to receive tokens first before you can send them.`);
-      }
-      
-      // Re-throw other errors (like insufficient balance)
-      throw error;
-    }
 
     const transaction = new Transaction();
 
