@@ -436,12 +436,19 @@ export async function getTokenBalance(
           // If this account matches the mint but was skipped (already counted), 
           // and we haven't found a matching account, use this one
           if (accountMint === searchMint && countedAccounts.has(accountAddress) && accountBalance > 0) {
-            console.error(`[getTokenBalance] 🔄 Found matching account that was already counted - using its balance`);
-            // The balance was already added during ATA check, so don't add again
-            // But if ATA check got 0, we need to add it now
-            if (totalBalance === 0 && accountBalance > 0) {
-              console.error(`[getTokenBalance] ✅ ATA check returned 0 but account has balance ${accountBalance}, adding now`);
-              totalBalance += accountBalance;
+            console.error(`[getTokenBalance] 🔄 Found matching account that was already counted - checking if balance was added`);
+            // If we found 0 matching accounts, it means this account was skipped
+            // The ATA check might have marked it as counted but got 0 balance from RPC
+            // In that case, we need to use the account's actual balance
+            if (foundMatchingAccounts === 0) {
+              // Check if totalBalance is less than accountBalance (meaning ATA check didn't add it)
+              if (totalBalance < accountBalance) {
+                console.error(`[getTokenBalance] ✅ ATA check didn't add balance (totalBalance=${totalBalance} < accountBalance=${accountBalance}), using account balance`);
+                totalBalance = accountBalance; // Use the account's balance
+                foundMatchingAccounts = 1; // Mark as found so we don't show error
+              } else {
+                console.error(`[getTokenBalance] ℹ️ Balance was already added (totalBalance=${totalBalance} >= accountBalance=${accountBalance})`);
+              }
             }
           }
         }
