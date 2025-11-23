@@ -348,27 +348,13 @@ export async function getTokenBalance(
         console.log(`[getTokenBalance] 🔍 Account matches ATA? ${accountAddress === ataAddress}`);
         
         // Skip if we've already counted this account (e.g., ATA)
+        // IMPORTANT: If an account is already counted, it means we already added its balance
+        // Don't add it again or we'll get double counting!
         if (countedAccounts.has(accountAddress)) {
           console.log(`[getTokenBalance] ⚠️ Skipping already counted account: ${accountAddress}`);
-          console.log(`[getTokenBalance] ⚠️ This account was marked as counted during ATA check`);
+          console.log(`[getTokenBalance] ⚠️ This account was already processed and its balance was added`);
           console.log(`[getTokenBalance] ⚠️ Account mint: ${parsedInfo.mint}, Looking for: ${tokenMint}`);
-          // If this is the account we're looking for but was marked as counted with 0 balance,
-          // we need to check it again
-          const accountMint = parsedInfo.mint?.toString() || parsedInfo.mint || "";
-          if (accountMint === tokenMint.toString()) {
-            console.log(`[getTokenBalance] 🔄 Found matching account that was marked as counted - checking balance again`);
-            const accountDecimals = parsedInfo.tokenAmount?.decimals || decimals;
-            const balance = parsedInfo.tokenAmount?.amount 
-              ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, accountDecimals)
-              : 0;
-            if (balance > 0) {
-              console.log(`[getTokenBalance] ✅ Account has balance ${balance}, adding to total`);
-              totalBalance += balance;
-              // Update the counted account with the correct balance
-            } else {
-              console.log(`[getTokenBalance] ⚠️ Account marked as counted but has 0 balance - this shouldn't happen`);
-            }
-          }
+          // Skip this account - it's already been counted
           continue;
         }
         
@@ -422,17 +408,42 @@ export async function getTokenBalance(
         console.error(`[getTokenBalance] 🔎 Looking for mint: ${tokenMint}`);
         console.error(`[getTokenBalance] 💡 This might be a different USDT version or the mint address in config is incorrect`);
         
-        // Log detailed info about each token account found
+        // Check if any of the accounts match the mint but were skipped (already counted)
+        // This can happen if the ATA check marked it as counted but got wrong balance from RPC
+        const searchMint = tokenMint.toString().trim();
         for (const accountInfo of allTokenAccounts.value) {
+          const accountAddress = accountInfo.pubkey.toString();
           const parsedInfo = accountInfo.account.data.parsed.info;
+          let accountMint: string = "";
+          if (parsedInfo.mint) {
+            accountMint = typeof parsedInfo.mint === 'string' 
+              ? parsedInfo.mint.trim()
+              : parsedInfo.mint.toString().trim();
+          }
+          
           const accountBalance = parsedInfo.tokenAmount?.amount 
             ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, parsedInfo.tokenAmount.decimals || decimals)
             : 0;
+          
           console.error(`[getTokenBalance] 📊 Token Account Details:`);
-          console.error(`  - Address: ${accountInfo.pubkey.toString()}`);
-          console.error(`  - Mint: ${parsedInfo.mint}`);
+          console.error(`  - Address: ${accountAddress}`);
+          console.error(`  - Mint: ${accountMint}`);
           console.error(`  - Balance: ${accountBalance}`);
           console.error(`  - Decimals: ${parsedInfo.tokenAmount?.decimals || decimals}`);
+          console.error(`  - Already counted: ${countedAccounts.has(accountAddress)}`);
+          console.error(`  - Mint matches? ${accountMint === searchMint}`);
+          
+          // If this account matches the mint but was skipped (already counted), 
+          // and we haven't found a matching account, use this one
+          if (accountMint === searchMint && countedAccounts.has(accountAddress) && accountBalance > 0) {
+            console.error(`[getTokenBalance] 🔄 Found matching account that was already counted - using its balance`);
+            // The balance was already added during ATA check, so don't add again
+            // But if ATA check got 0, we need to add it now
+            if (totalBalance === 0 && accountBalance > 0) {
+              console.error(`[getTokenBalance] ✅ ATA check returned 0 but account has balance ${accountBalance}, adding now`);
+              totalBalance += accountBalance;
+            }
+          }
         }
       }
     } catch (searchError: any) {
