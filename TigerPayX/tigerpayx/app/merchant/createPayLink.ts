@@ -59,18 +59,21 @@ export async function createPayLink(data: {
 }
 
 /**
- * Get PayLink by ID
+ * Get PayLink by ID (public - no auth required)
  */
-export async function getPayLink(payLinkId: string): Promise<{
+export async function getPayLink(payLinkId: string, publicAccess: boolean = false): Promise<{
   success: boolean;
   payLink?: PayLink;
   error?: string;
 }> {
   try {
-    const response = await fetch(`${API_BASE}/paylink/${payLinkId}`, {
-      headers: {
-        ...getAuthHeader(),
-      },
+    // Use public API route for payment page, authenticated route for merchant dashboard
+    const apiPath = publicAccess 
+      ? `/api/paylink/${payLinkId}`
+      : `${API_BASE}/paylink/${payLinkId}`;
+    
+    const response = await fetch(apiPath, {
+      headers: publicAccess ? {} : getAuthHeader(),
     });
 
     const contentType = response.headers.get("content-type");
@@ -153,20 +156,21 @@ export async function getMerchantPayLinks(merchantId: string): Promise<{
 }
 
 /**
- * Pay a PayLink (initiate payment)
+ * Pay a PayLink (initiate payment - public API)
  */
 export async function payPayLink(
   payLinkId: string,
-  txHash: string
+  txHash: string,
+  fromAddress?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch(`${API_BASE}/paylink/${payLinkId}/pay`, {
+    // Use public API route for payments
+    const response = await fetch(`/api/paylink/${payLinkId}/pay`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...getAuthHeader(),
       },
-      body: JSON.stringify({ txHash }),
+      body: JSON.stringify({ txHash, fromAddress }),
     });
 
     const contentType = response.headers.get("content-type");
