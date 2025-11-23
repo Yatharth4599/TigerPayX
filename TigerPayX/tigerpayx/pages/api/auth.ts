@@ -104,6 +104,8 @@ export default async function handler(
         // Create user
         let user;
         try {
+          // Try to create user with email verification fields
+          // If migration hasn't run yet, this will fail and we'll retry without those fields
           user = await prisma.user.create({
             data: {
               email,
@@ -119,6 +121,60 @@ export default async function handler(
           });
         } catch (createError: any) {
           console.error("User creation error:", createError);
+          
+          // Check if error is due to missing columns (migration not run)
+          if (createError.message?.includes("Unknown arg") || 
+              createError.message?.includes("emailVerified") ||
+              createError.message?.includes("emailVerificationToken")) {
+            console.warn("Email verification columns not found - migration may not have run. Creating user without verification.");
+            // Fallback: create user without email verification fields (for backward compatibility)
+            try {
+              user = await prisma.user.create({
+                data: {
+                  email,
+                  password: hashedPassword,
+                  name: name.trim(),
+                  handle: finalHandle,
+                  avatarInitials,
+                  // Skip email verification fields if migration hasn't run
+                },
+              });
+              // Send OTP email anyway (it will just log in dev mode)
+              await sendEmail({
+                to: email,
+                subject: "Verify Your Email - TigerPayX",
+                html: generateOTPEmail(otp, name.trim()),
+              });
+              // Return success but note that verification is not enforced
+              return res.status(201).json({
+                success: true,
+                message: "Account created! Please run database migration to enable email verification.",
+                requiresVerification: false,
+                email: user.email,
+                token: generateToken({
+                  userId: user.id,
+                  email: user.email,
+                }),
+                user: {
+                  id: user.id,
+                  email: user.email,
+                  name: user.name,
+                  handle: user.handle,
+                },
+              });
+            } catch (fallbackError: any) {
+              console.error("Fallback user creation error:", fallbackError);
+              if (fallbackError.code === "P2002") {
+                if (fallbackError.meta?.target?.includes("email")) {
+                  return res.status(400).json({ error: "User with this email already exists" });
+                }
+              }
+              return res.status(500).json({ 
+                error: "Database migration required. Please run: npx prisma migrate deploy" 
+              });
+            }
+          }
+          
           if (createError.code === "P2002") {
             // Unique constraint violation
             if (createError.meta?.target?.includes("email")) {
@@ -188,8 +244,9 @@ export default async function handler(
           return res.status(401).json({ error: "Invalid credentials" });
         }
 
-        // Check if email is verified
-        if (!user.emailVerified) {
+        // Check if email is verified (only if the column exists)
+        // If emailVerified field doesn't exist (migration not run), skip verification check
+        if (user.emailVerified !== undefined && !user.emailVerified) {
           return res.status(403).json({ 
             error: "Please verify your email address before logging in.",
             requiresVerification: true,
