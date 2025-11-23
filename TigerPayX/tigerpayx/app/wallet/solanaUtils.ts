@@ -490,6 +490,72 @@ export async function getTokenBalance(
  * Get all token accounts in a wallet with their mint addresses and balances
  * Useful for debugging mint address mismatches
  */
+/**
+ * Get the token account address for a specific mint
+ * Uses the same logic as getTokenBalance to find the account
+ */
+export async function getTokenAccountAddress(
+  address: string,
+  tokenMint: string
+): Promise<string | null> {
+  try {
+    if (!address || !tokenMint || tokenMint.trim() === "") {
+      return null;
+    }
+    
+    const publicKey = new PublicKey(address);
+    const mintPublicKey = new PublicKey(tokenMint);
+    
+    // First try ATA
+    try {
+      const tokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
+      const accountInfo = await tryWithFallback(async (connection) => {
+        return await getAccount(connection, tokenAccount);
+      });
+      const decimals = accountInfo.mint.toString() === tokenMint ? (await tryWithFallback(async (conn) => {
+        return await getMint(conn, mintPublicKey);
+      })).decimals : 9;
+      const balance = Number(accountInfo.amount) / Math.pow(10, decimals);
+      if (balance > 0) {
+        console.log(`[getTokenAccountAddress] ✅ Found ATA: ${tokenAccount.toString()}`);
+        return tokenAccount.toString();
+      }
+    } catch (ataError: any) {
+      // ATA doesn't exist or has 0 balance, continue to search
+    }
+    
+    // Search all token accounts
+    const allTokenAccounts = await tryWithFallback(async (connection) => {
+      return await connection.getParsedTokenAccountsByOwner(publicKey, {
+        programId: TOKEN_PROGRAM_ID,
+      });
+    });
+    
+    const searchMint = tokenMint.trim();
+    for (const accountInfo of allTokenAccounts.value) {
+      const parsedInfo = accountInfo.account.data.parsed.info;
+      let accountMint: string = "";
+      if (parsedInfo.mint) {
+        accountMint = typeof parsedInfo.mint === 'string' 
+          ? parsedInfo.mint 
+          : parsedInfo.mint.toString();
+      }
+      
+      const normalizedAccountMint = accountMint.trim();
+      if (normalizedAccountMint === searchMint) {
+        const accountAddress = accountInfo.pubkey.toString();
+        console.log(`[getTokenAccountAddress] ✅ Found account: ${accountAddress}`);
+        return accountAddress;
+      }
+    }
+    
+    return null;
+  } catch (error: any) {
+    console.error(`[getTokenAccountAddress] Error:`, error);
+    return null;
+  }
+}
+
 export async function getAllTokenAccounts(address: string): Promise<Array<{
   accountAddress: string;
   mint: string;
@@ -674,8 +740,16 @@ export async function buildTokenTransferTransaction(
         console.warn(`[buildTokenTransferTransaction] ⚠️ Known account address verification failed (RPC issue?), but using it anyway since getTokenBalance confirmed it exists:`, verifyError?.message);
         fromTokenAccount = knownAccount;
         accountVerified = true;
-        // Set a placeholder balance - the actual balance was already checked in sendToken
-        senderBalance = amount; // Will be validated by transaction simulation
+        // Try to get balance from getTokenBalance as fallback
+        try {
+          const balanceStr = await getTokenBalance(fromKeypair.publicKey.toString(), tokenMint);
+          senderBalance = parseFloat(balanceStr);
+          console.log(`[buildTokenTransferTransaction] ✅ Got balance from getTokenBalance: ${senderBalance}`);
+        } catch (balanceError) {
+          // If that also fails, use amount as placeholder (balance was already checked in sendToken)
+          console.warn(`[buildTokenTransferTransaction] ⚠️ Could not get balance, using amount as placeholder:`, balanceError);
+          senderBalance = amount;
+        }
       }
     }
     
@@ -821,8 +895,13 @@ export async function buildTokenTransferTransaction(
     console.log(`[buildTokenTransferTransaction] ===== ACCOUNT ADDRESSES =====`);
     console.log(`[buildTokenTransferTransaction] From token account: ${fromTokenAccount.toString()}`);
     console.log(`[buildTokenTransferTransaction] To token account: ${toTokenAccount.toString()}`);
-    console.log(`[buildTokenTransferTransaction] Expected account: H9QCxp9jzABLGZUGc4Bu4v2VGmhr7YF4NdSxaKZuSG9D`);
-    console.log(`[buildTokenTransferTransaction] Using correct account? ${fromTokenAccount.toString() === 'H9QCxp9jzABLGZUGc4Bu4v2VGmhr7YF4NdSxaKZuSG9D'}`);
+    console.log(`[buildTokenTransferTransaction] Known account address (from param): ${knownTokenAccountAddress || 'none'}`);
+    console.log(`[buildTokenTransferTransaction] Account verified: ${accountVerified}`);
+    console.log(`[buildTokenTransferTransaction] Sender balance: ${senderBalance}`);
+    console.log(`[buildTokenTransferTransaction] Amount to send: ${amount}`);
+    if (knownTokenAccountAddress) {
+      console.log(`[buildTokenTransferTransaction] Using known account? ${fromTokenAccount.toString() === knownTokenAccountAddress}`);
+    }
 
     const transaction = new Transaction();
 

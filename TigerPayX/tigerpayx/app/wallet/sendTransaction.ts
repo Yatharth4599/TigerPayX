@@ -11,6 +11,7 @@ import {
   getSolBalance,
   getSolanaConnection,
   getAllTokenAccounts,
+  getTokenAccountAddress,
 } from "./solanaUtils";
 import { getTokenMint, TOKEN_DECIMALS, SOLANA_CONFIG } from "@/shared/config";
 import { getStoredPrivateKey } from "./createWallet";
@@ -103,22 +104,30 @@ export async function sendToken(
       console.log(`[sendToken] Current balance from getTokenBalance: ${currentBalance} (parsed: ${balanceNum})`);
       
       // Try to get the account address if balance exists
+      // Use getTokenAccountAddress which uses the same logic as getTokenBalance
       if (balanceNum > 0) {
         try {
-          const allAccounts = await getAllTokenAccounts(senderAddress);
-          // Normalize mint comparison (both should be trimmed strings)
-          const searchMint = tokenMint.trim();
-          const matchingAccount = allAccounts.find((acc) => {
-            const normalizedMint = acc.mint.trim();
-            return normalizedMint === searchMint;
-          });
-          if (matchingAccount) {
-            knownTokenAccountAddress = matchingAccount.accountAddress;
-            console.log(`[sendToken] ✅ Found token account address: ${knownTokenAccountAddress}`);
+          const accountAddress = await getTokenAccountAddress(senderAddress, tokenMint);
+          if (accountAddress) {
+            knownTokenAccountAddress = accountAddress;
+            console.log(`[sendToken] ✅ Found token account address using getTokenAccountAddress: ${knownTokenAccountAddress}`);
           } else {
-            console.warn(`[sendToken] ⚠️ Balance exists (${balanceNum}) but no matching account found in getAllTokenAccounts`);
-            console.warn(`[sendToken] ⚠️ Searched for mint: ${searchMint}`);
-            console.warn(`[sendToken] ⚠️ Found ${allAccounts.length} accounts with mints:`, allAccounts.map(acc => acc.mint));
+            console.warn(`[sendToken] ⚠️ Balance exists (${balanceNum}) but getTokenAccountAddress returned null`);
+            // Fallback to getAllTokenAccounts
+            try {
+              const allAccounts = await getAllTokenAccounts(senderAddress);
+              const searchMint = tokenMint.trim();
+              const matchingAccount = allAccounts.find((acc) => {
+                const normalizedMint = acc.mint.trim();
+                return normalizedMint === searchMint;
+              });
+              if (matchingAccount) {
+                knownTokenAccountAddress = matchingAccount.accountAddress;
+                console.log(`[sendToken] ✅ Found token account address via getAllTokenAccounts fallback: ${knownTokenAccountAddress}`);
+              }
+            } catch (fallbackErr) {
+              console.warn(`[sendToken] Fallback to getAllTokenAccounts also failed:`, fallbackErr);
+            }
           }
         } catch (err) {
           console.warn(`[sendToken] Could not get account address, will let buildTokenTransferTransaction find it:`, err);
