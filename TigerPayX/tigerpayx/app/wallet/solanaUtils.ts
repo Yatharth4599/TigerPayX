@@ -630,10 +630,37 @@ export async function buildTokenTransferTransaction(
         });
       });
       
+      console.log(`[buildTokenTransferTransaction] Found ${allTokenAccounts.value.length} token accounts`);
+      
+      // Log all accounts for debugging
+      allTokenAccounts.value.forEach((acc, idx) => {
+        const parsedInfo = acc.account.data.parsed.info;
+        const accountMint = parsedInfo.mint;
+        const normalizedMint = typeof accountMint === 'string' 
+          ? accountMint.trim() 
+          : accountMint.toString().trim();
+        const balance = parsedInfo.tokenAmount?.amount 
+          ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, parsedInfo.tokenAmount.decimals || decimals)
+          : 0;
+        console.log(`[buildTokenTransferTransaction] Account ${idx + 1}: ${acc.pubkey.toString()}, mint: ${normalizedMint}, balance: ${balance}`);
+      });
+      
       // Find the account that matches the mint
-      const matchingAccount = allTokenAccounts.value.find(
-        (acc) => acc.account.data.parsed.info.mint === tokenMint
-      );
+      // Normalize mint comparison (handle PublicKey objects vs strings)
+      const searchMint = tokenMint.toString().trim();
+      const matchingAccount = allTokenAccounts.value.find((acc) => {
+        const accountMint = acc.account.data.parsed.info.mint;
+        const normalizedMint = typeof accountMint === 'string' 
+          ? accountMint.trim() 
+          : accountMint.toString().trim();
+        const matches = normalizedMint === searchMint;
+        if (!matches) {
+          console.log(`[buildTokenTransferTransaction] Account mint "${normalizedMint}" doesn't match search "${searchMint}"`);
+        }
+        return matches;
+      });
+      
+      console.log(`[buildTokenTransferTransaction] Searched ${allTokenAccounts.value.length} accounts, found match: ${!!matchingAccount}`);
       
       if (matchingAccount) {
         // Use the actual token account address
@@ -663,10 +690,10 @@ export async function buildTokenTransferTransaction(
       // If we can't find any account, try ATA as fallback
       console.log(`[buildTokenTransferTransaction] Error finding account, trying ATA...`);
       fromTokenAccount = getAssociatedTokenAddressSync(
-        mintPublicKey,
-        fromKeypair.publicKey
-      );
-      
+    mintPublicKey,
+    fromKeypair.publicKey
+  );
+  
       try {
         senderAccount = await tryWithFallback(async (conn) => {
           return await getAccount(conn, fromTokenAccount);
@@ -700,9 +727,9 @@ export async function buildTokenTransferTransaction(
     }
   
     const toTokenAccount = getAssociatedTokenAddressSync(
-      mintPublicKey,
-      toPublicKey
-    );
+    mintPublicKey,
+    toPublicKey
+  );
 
     console.log(`[buildTokenTransferTransaction] From token account: ${fromTokenAccount.toString()}`);
     console.log(`[buildTokenTransferTransaction] To token account: ${toTokenAccount.toString()}`);
