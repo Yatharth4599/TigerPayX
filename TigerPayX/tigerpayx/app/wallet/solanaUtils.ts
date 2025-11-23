@@ -283,14 +283,16 @@ export async function getTokenBalance(
     try {
     const tokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
       ataAddress = tokenAccount.toString();
-      console.log(`[getTokenBalance] ATA address: ${ataAddress}`);
+      console.log(`[getTokenBalance] 🔍 ATA address calculated: ${ataAddress}`);
+      console.log(`[getTokenBalance] 🔍 Wallet address: ${address}`);
+      console.log(`[getTokenBalance] 🔍 Mint: ${tokenMint}`);
     
     const accountInfo = await tryWithFallback(async (connection) => {
       return await getAccount(connection, tokenAccount);
     });
     
       const balance = Number(accountInfo.amount) / Math.pow(10, decimals);
-      console.log(`[getTokenBalance] ATA balance: ${balance}`);
+      console.log(`[getTokenBalance] ✅ ATA exists! Balance: ${balance}`);
       
       // If ATA exists and has balance, add it to total and mark as counted
       // Only mark as counted if we successfully got a balance > 0
@@ -298,9 +300,10 @@ export async function getTokenBalance(
       if (balance > 0) {
         totalBalance += balance;
         countedAccounts.add(ataAddress);
-        console.log(`[getTokenBalance] ATA marked as counted (balance > 0): ${ataAddress}`);
+        console.log(`[getTokenBalance] ✅ ATA marked as counted (balance > 0): ${ataAddress}`);
       } else {
-        console.log(`[getTokenBalance] ATA has 0 balance, will check in search: ${ataAddress}`);
+        console.log(`[getTokenBalance] ⚠️ ATA has 0 balance (or RPC returned 0), will check in search: ${ataAddress}`);
+        console.log(`[getTokenBalance] ⚠️ NOT marking as counted - search will find it with correct balance`);
         // Don't mark as counted - let the search find it and use the correct balance
       }
     } catch (ataError: any) {
@@ -329,6 +332,7 @@ export async function getTokenBalance(
       });
       
       console.log(`[getTokenBalance] Found ${allTokenAccounts.value.length} total token accounts`);
+      console.log(`[getTokenBalance] Accounts already counted: ${Array.from(countedAccounts).join(", ") || "none"}`);
       
       // Filter by mint and sum balances (excluding already counted accounts)
       let foundMatchingAccounts = 0;
@@ -337,6 +341,11 @@ export async function getTokenBalance(
       for (const accountInfo of allTokenAccounts.value) {
         const accountAddress = accountInfo.pubkey.toString();
         const parsedInfo = accountInfo.account.data.parsed.info;
+        
+        console.log(`[getTokenBalance] 🔍 Processing account: ${accountAddress}`);
+        console.log(`[getTokenBalance] 🔍 Is already counted? ${countedAccounts.has(accountAddress)}`);
+        console.log(`[getTokenBalance] 🔍 ATA address was: ${ataAddress}`);
+        console.log(`[getTokenBalance] 🔍 Account matches ATA? ${accountAddress === ataAddress}`);
         
         // Skip if we've already counted this account (e.g., ATA)
         if (countedAccounts.has(accountAddress)) {
