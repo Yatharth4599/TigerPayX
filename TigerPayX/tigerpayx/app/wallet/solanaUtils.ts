@@ -499,56 +499,74 @@ export async function getTokenAccountAddress(
   tokenMint: string
 ): Promise<string | null> {
   try {
+    console.log(`[getTokenAccountAddress] Looking for account address for mint ${tokenMint}...`);
     if (!address || !tokenMint || tokenMint.trim() === "") {
+      console.warn(`[getTokenAccountAddress] Invalid inputs: address=${address}, tokenMint=${tokenMint}`);
       return null;
     }
     
     const publicKey = new PublicKey(address);
     const mintPublicKey = new PublicKey(tokenMint);
+    const searchMint = tokenMint.trim();
     
-    // First try ATA
+    // Search all token accounts first (same logic as getTokenBalance)
+    // This finds accounts even if they're not the ATA
     try {
+      console.log(`[getTokenAccountAddress] Searching all token accounts...`);
+      const allTokenAccounts = await tryWithFallback(async (connection) => {
+        return await connection.getParsedTokenAccountsByOwner(publicKey, {
+          programId: TOKEN_PROGRAM_ID,
+        });
+      });
+      
+      console.log(`[getTokenAccountAddress] Found ${allTokenAccounts.value.length} token accounts`);
+      
+      for (const accountInfo of allTokenAccounts.value) {
+        const parsedInfo = accountInfo.account.data.parsed.info;
+        let accountMint: string = "";
+        if (parsedInfo.mint) {
+          accountMint = typeof parsedInfo.mint === 'string' 
+            ? parsedInfo.mint 
+            : parsedInfo.mint.toString();
+        }
+        
+        const normalizedAccountMint = accountMint.trim();
+        if (normalizedAccountMint === searchMint) {
+          const accountAddress = accountInfo.pubkey.toString();
+          const accountDecimals = parsedInfo.tokenAmount?.decimals || 9;
+          const balance = parsedInfo.tokenAmount?.amount 
+            ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, accountDecimals)
+            : 0;
+          console.log(`[getTokenAccountAddress] ✅ Found matching account: ${accountAddress}, balance: ${balance}`);
+          return accountAddress;
+        }
+      }
+      
+      console.log(`[getTokenAccountAddress] ⚠️ No matching account found in search`);
+    } catch (searchError: any) {
+      console.error(`[getTokenAccountAddress] Error searching accounts:`, searchError);
+    }
+    
+    // Fallback: try ATA if search didn't find anything
+    try {
+      console.log(`[getTokenAccountAddress] Trying ATA as fallback...`);
       const tokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
       const accountInfo = await tryWithFallback(async (connection) => {
         return await getAccount(connection, tokenAccount);
       });
-      const decimals = accountInfo.mint.toString() === tokenMint ? (await tryWithFallback(async (conn) => {
+      const decimals = (await tryWithFallback(async (conn) => {
         return await getMint(conn, mintPublicKey);
-      })).decimals : 9;
+      })).decimals;
       const balance = Number(accountInfo.amount) / Math.pow(10, decimals);
       if (balance > 0) {
-        console.log(`[getTokenAccountAddress] ✅ Found ATA: ${tokenAccount.toString()}`);
+        console.log(`[getTokenAccountAddress] ✅ Found ATA: ${tokenAccount.toString()}, balance: ${balance}`);
         return tokenAccount.toString();
       }
     } catch (ataError: any) {
-      // ATA doesn't exist or has 0 balance, continue to search
+      console.log(`[getTokenAccountAddress] ATA not found or has 0 balance`);
     }
     
-    // Search all token accounts
-    const allTokenAccounts = await tryWithFallback(async (connection) => {
-      return await connection.getParsedTokenAccountsByOwner(publicKey, {
-        programId: TOKEN_PROGRAM_ID,
-      });
-    });
-    
-    const searchMint = tokenMint.trim();
-    for (const accountInfo of allTokenAccounts.value) {
-      const parsedInfo = accountInfo.account.data.parsed.info;
-      let accountMint: string = "";
-      if (parsedInfo.mint) {
-        accountMint = typeof parsedInfo.mint === 'string' 
-          ? parsedInfo.mint 
-          : parsedInfo.mint.toString();
-      }
-      
-      const normalizedAccountMint = accountMint.trim();
-      if (normalizedAccountMint === searchMint) {
-        const accountAddress = accountInfo.pubkey.toString();
-        console.log(`[getTokenAccountAddress] ✅ Found account: ${accountAddress}`);
-        return accountAddress;
-      }
-    }
-    
+    console.log(`[getTokenAccountAddress] ❌ Could not find account address`);
     return null;
   } catch (error: any) {
     console.error(`[getTokenAccountAddress] Error:`, error);
@@ -877,8 +895,41 @@ export async function buildTokenTransferTransaction(
       throw new Error(`Could not find or create token account for mint ${tokenMint}`);
     }
     
+    // Verify the account exists on-chain (final check before building transaction)
+    console.log(`[buildTokenTransferTransaction] Verifying account ${fromTokenAccount.toString()} exists on-chain...`);
+    try {
+      const accountCheck = await tryWithFallback(async (conn) => {
+        return await getAccount(conn, fromTokenAccount);
+      });
+      const accountDecimals = (await tryWithFallback(async (conn) => {
+        return await getMint(conn, mintPublicKey);
+      })).decimals;
+      const actualBalance = Number(accountCheck.amount) / Math.pow(10, accountDecimals);
+      console.log(`[buildTokenTransferTransaction] ✅ Account verified on-chain, balance: ${actualBalance}`);
+      
+      // Use the actual on-chain balance
+      if (actualBalance > 0) {
+        senderBalance = actualBalance;
+      } else {
+        throw new Error(`Account ${fromTokenAccount.toString()} exists but has zero balance. You need to receive tokens first before you can send them.`);
+      }
+    } catch (verifyError: any) {
+      const errorName = verifyError?.name || "";
+      const errorMsg = verifyError?.message || "";
+      if (errorName === "TokenAccountNotFoundError" || errorMsg?.includes("could not find account")) {
+        throw new Error(`Token account ${fromTokenAccount.toString()} does not exist on-chain. This should not happen if getTokenBalance found the account. Please check your RPC connection.`);
+      }
+      // If it's an RPC error but we have a known account address, proceed anyway
+      // since getTokenBalance already confirmed it exists
+      if (knownTokenAccountAddress && fromTokenAccount.toString() === knownTokenAccountAddress) {
+        console.warn(`[buildTokenTransferTransaction] ⚠️ Account verification failed (RPC issue?), but proceeding with known address: ${verifyError?.message}`);
+      } else {
+        throw verifyError;
+      }
+    }
+    
     // Validate balance
-    console.log(`[buildTokenTransferTransaction] Sender balance: ${senderBalance}`);
+    console.log(`[buildTokenTransferTransaction] Final sender balance: ${senderBalance}`);
     if (senderBalance < amount) {
       throw new Error(`Insufficient balance. You have ${senderBalance.toFixed(decimals)} but trying to send ${amount}`);
     }
