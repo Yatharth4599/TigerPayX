@@ -794,6 +794,7 @@ export async function buildTokenTransferTransaction(
         throw ataError;
       }
     }
+    } // Close if (!accountVerified) block
     
     // Validate balance
     console.log(`[buildTokenTransferTransaction] Sender balance: ${senderBalance}`);
