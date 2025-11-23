@@ -93,12 +93,14 @@ export default function AdminDashboard() {
         });
 
         if (statsRes.status === 403) {
-          setError("You don't have admin access. Please contact an administrator.");
+          const errorData = await statsRes.json().catch(() => ({}));
+          setError(errorData.error || "You don't have admin access. Please contact an administrator.");
           return;
         }
 
         if (!statsRes.ok) {
-          throw new Error("Failed to fetch stats");
+          const errorData = await statsRes.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to fetch stats");
         }
 
         const statsData = await statsRes.json();
@@ -111,12 +113,14 @@ export default function AdminDashboard() {
         });
 
         if (usersRes.status === 403) {
-          setError("You don't have admin access. Please contact an administrator.");
+          const errorData = await usersRes.json().catch(() => ({}));
+          setError(errorData.error || "You don't have admin access. Please contact an administrator.");
           return;
         }
 
         if (!usersRes.ok) {
-          throw new Error("Failed to fetch users");
+          const errorData = await usersRes.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to fetch users");
         }
 
         const usersData = await usersRes.json();
@@ -129,12 +133,14 @@ export default function AdminDashboard() {
         });
 
         if (txRes.status === 403) {
-          setError("You don't have admin access. Please contact an administrator.");
+          const errorData = await txRes.json().catch(() => ({}));
+          setError(errorData.error || "You don't have admin access. Please contact an administrator.");
           return;
         }
 
         if (!txRes.ok) {
-          throw new Error("Failed to fetch transactions");
+          const errorData = await txRes.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to fetch transactions");
         }
 
         const txData = await txRes.json();
