@@ -292,11 +292,14 @@ export async function getTokenBalance(
       const balance = Number(accountInfo.amount) / Math.pow(10, decimals);
       console.log(`[getTokenBalance] ATA balance: ${balance}`);
       
-      // If ATA exists and has balance, add it to total and mark as counted
+      // If ATA exists, add it to total and mark as counted (even if balance is 0)
+      // This prevents double-counting when we search all accounts
       if (balance > 0) {
         totalBalance += balance;
-        countedAccounts.add(ataAddress);
       }
+      // Always mark ATA as counted to avoid processing it again in the search
+      countedAccounts.add(ataAddress);
+      console.log(`[getTokenBalance] ATA marked as counted: ${ataAddress}`);
     } catch (ataError: any) {
       // ATA doesn't exist or has no balance, continue to search all token accounts
       const errorName = ataError?.name || "";
@@ -339,17 +342,30 @@ export async function getTokenBalance(
         }
         
         // Debug: Log all token accounts to see what we're getting
-        if (parsedInfo.mint) {
-          const accountDecimals = parsedInfo.tokenAmount?.decimals || decimals;
-          const accountBalance = parsedInfo.tokenAmount?.amount 
-            ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, accountDecimals)
-            : 0;
-          console.log(`[getTokenBalance] 🔍 Token account ${accountAddress.substring(0, 8)}...: mint=${parsedInfo.mint}, balance=${accountBalance}, decimals=${accountDecimals}`);
-          foundMints.push(parsedInfo.mint);
+        const accountMint = parsedInfo.mint?.toString() || parsedInfo.mint || "";
+        const accountDecimals = parsedInfo.tokenAmount?.decimals || decimals;
+        const accountBalance = parsedInfo.tokenAmount?.amount 
+          ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, accountDecimals)
+          : 0;
+        
+        if (accountMint) {
+          console.log(`[getTokenBalance] 🔍 Token account ${accountAddress.substring(0, 8)}...: mint=${accountMint}, balance=${accountBalance}, decimals=${accountDecimals}`);
+          foundMints.push(accountMint);
         }
         
         // Check if this account is for the mint we're looking for
-        if (parsedInfo.mint === tokenMint) {
+        // Use strict comparison and also check if mint exists
+        const searchMint = tokenMint.toString();
+        
+        // Debug: Log the comparison with detailed info
+        console.log(`[getTokenBalance] 🔎 Comparing mints:`);
+        console.log(`  - Account mint: "${accountMint}" (type: ${typeof accountMint}, length: ${accountMint.length})`);
+        console.log(`  - Search mint:  "${searchMint}" (type: ${typeof searchMint}, length: ${searchMint.length})`);
+        console.log(`  - Match: ${accountMint === searchMint}`);
+        console.log(`  - Account address: ${accountAddress}`);
+        console.log(`  - Already counted: ${countedAccounts.has(accountAddress)}`);
+        
+        if (accountMint && accountMint === searchMint) {
           foundMatchingAccounts++;
           const accountDecimals = parsedInfo.tokenAmount.decimals || decimals;
           usedDecimals = accountDecimals; // Use the actual decimals from the account
