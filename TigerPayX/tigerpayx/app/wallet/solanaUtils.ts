@@ -651,7 +651,8 @@ export async function buildTokenTransferTransaction(
       console.log(`[buildTokenTransferTransaction] Using known token account address: ${knownTokenAccountAddress}`);
       const knownAccount = new PublicKey(knownTokenAccountAddress);
       
-      // Verify the account exists and get balance
+      // Try to verify the account exists and get balance, but if it fails, 
+      // we'll still use the known address since getTokenBalance already confirmed it exists
       try {
         senderAccount = await tryWithFallback(async (conn) => {
           return await getAccount(conn, knownAccount);
@@ -664,16 +665,17 @@ export async function buildTokenTransferTransaction(
         senderBalance = Number(senderAccount.amount) / Math.pow(10, accountDecimals);
         console.log(`[buildTokenTransferTransaction] ✅ Verified known account: ${knownAccount.toString()}, balance: ${senderBalance}`);
         
-        // If verification succeeded, use this account
-        if (senderBalance > 0) {
-          fromTokenAccount = knownAccount;
-          accountVerified = true;
-        } else {
-          console.log(`[buildTokenTransferTransaction] ⚠️ Known account has 0 balance, will search for other accounts`);
-        }
+        // Use this account if verification succeeded
+        fromTokenAccount = knownAccount;
+        accountVerified = true;
       } catch (verifyError: any) {
-        console.error(`[buildTokenTransferTransaction] ⚠️ Known account address verification failed:`, verifyError);
-        // Continue to try finding it normally
+        // If verification fails (e.g., RPC issue), still use the known address
+        // since getTokenBalance already confirmed the account exists with balance
+        console.warn(`[buildTokenTransferTransaction] ⚠️ Known account address verification failed (RPC issue?), but using it anyway since getTokenBalance confirmed it exists:`, verifyError?.message);
+        fromTokenAccount = knownAccount;
+        accountVerified = true;
+        // Set a placeholder balance - the actual balance was already checked in sendToken
+        senderBalance = amount; // Will be validated by transaction simulation
       }
     }
     

@@ -106,10 +106,19 @@ export async function sendToken(
       if (balanceNum > 0) {
         try {
           const allAccounts = await getAllTokenAccounts(senderAddress);
-          const matchingAccount = allAccounts.find((acc) => acc.mint === tokenMint);
+          // Normalize mint comparison (both should be trimmed strings)
+          const searchMint = tokenMint.trim();
+          const matchingAccount = allAccounts.find((acc) => {
+            const normalizedMint = acc.mint.trim();
+            return normalizedMint === searchMint;
+          });
           if (matchingAccount) {
             knownTokenAccountAddress = matchingAccount.accountAddress;
             console.log(`[sendToken] ✅ Found token account address: ${knownTokenAccountAddress}`);
+          } else {
+            console.warn(`[sendToken] ⚠️ Balance exists (${balanceNum}) but no matching account found in getAllTokenAccounts`);
+            console.warn(`[sendToken] ⚠️ Searched for mint: ${searchMint}`);
+            console.warn(`[sendToken] ⚠️ Found ${allAccounts.length} accounts with mints:`, allAccounts.map(acc => acc.mint));
           }
         } catch (err) {
           console.warn(`[sendToken] Could not get account address, will let buildTokenTransferTransaction find it:`, err);
@@ -128,10 +137,12 @@ export async function sendToken(
           
           console.log(`[sendToken] Found ${allAccounts.length} total token accounts`);
           
-          // Check if any account matches our mint
-          const matchingAccount = allAccounts.find(
-            (acc) => acc.mint === tokenMint
-          );
+          // Check if any account matches our mint (normalize comparison)
+          const searchMint = tokenMint.trim();
+          const matchingAccount = allAccounts.find((acc) => {
+            const normalizedMint = acc.mint.trim();
+            return normalizedMint === searchMint;
+          });
           
           if (matchingAccount) {
             console.log(`[sendToken] Found matching token account with balance: ${matchingAccount.balance}`);
