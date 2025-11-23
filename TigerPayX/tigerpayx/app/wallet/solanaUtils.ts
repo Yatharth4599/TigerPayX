@@ -624,7 +624,8 @@ export async function buildTokenTransferTransaction(
   toAddress: string,
   tokenMint: string,
   amount: number,
-  decimals: number = 9
+  decimals: number = 9,
+  knownTokenAccountAddress?: string // Optional: if we already know the token account address
 ): Promise<Transaction> {
   try {
     console.log(`[buildTokenTransferTransaction] ===== START =====`);
@@ -640,10 +641,44 @@ export async function buildTokenTransferTransaction(
   
     // First, try to find the actual token account address (might not be ATA)
     console.log(`[buildTokenTransferTransaction] Finding sender's token account for mint ${tokenMint}...`);
-    let fromTokenAccount: PublicKey;
+    let fromTokenAccount: PublicKey | null = null;
     let senderAccount;
     let senderBalance = 0;
+    let accountVerified = false;
     
+    // If we already know the token account address, use it directly
+    if (knownTokenAccountAddress) {
+      console.log(`[buildTokenTransferTransaction] Using known token account address: ${knownTokenAccountAddress}`);
+      const knownAccount = new PublicKey(knownTokenAccountAddress);
+      
+      // Verify the account exists and get balance
+      try {
+        senderAccount = await tryWithFallback(async (conn) => {
+          return await getAccount(conn, knownAccount);
+        });
+        // Get decimals from the mint
+        const mintInfo = await tryWithFallback(async (conn) => {
+          return await getMint(conn, mintPublicKey);
+        });
+        const accountDecimals = mintInfo.decimals;
+        senderBalance = Number(senderAccount.amount) / Math.pow(10, accountDecimals);
+        console.log(`[buildTokenTransferTransaction] ✅ Verified known account: ${knownAccount.toString()}, balance: ${senderBalance}`);
+        
+        // If verification succeeded, use this account
+        if (senderBalance > 0) {
+          fromTokenAccount = knownAccount;
+          accountVerified = true;
+        } else {
+          console.log(`[buildTokenTransferTransaction] ⚠️ Known account has 0 balance, will search for other accounts`);
+        }
+      } catch (verifyError: any) {
+        console.error(`[buildTokenTransferTransaction] ⚠️ Known account address verification failed:`, verifyError);
+        // Continue to try finding it normally
+      }
+    }
+    
+    // If we don't have a verified account yet, try to find it
+    if (!accountVerified) {
     try {
       // Use getAllTokenAccounts helper which we know works (same as getTokenBalance uses)
       console.log(`[buildTokenTransferTransaction] Getting all token accounts using helper function...`);

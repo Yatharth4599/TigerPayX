@@ -94,12 +94,27 @@ export async function sendToken(
     // Pre-flight check: Verify sender has token account and sufficient balance
     console.log(`[sendToken] Checking sender balance...`);
     const senderAddress = keypair.publicKey.toString();
+    let knownTokenAccountAddress: string | undefined = undefined;
     
     try {
       const currentBalance = await getTokenBalance(senderAddress, tokenMint);
       const balanceNum = parseFloat(currentBalance);
       
       console.log(`[sendToken] Current balance from getTokenBalance: ${currentBalance} (parsed: ${balanceNum})`);
+      
+      // Try to get the account address if balance exists
+      if (balanceNum > 0) {
+        try {
+          const allAccounts = await getAllTokenAccounts(senderAddress);
+          const matchingAccount = allAccounts.find((acc) => acc.mint === tokenMint);
+          if (matchingAccount) {
+            knownTokenAccountAddress = matchingAccount.accountAddress;
+            console.log(`[sendToken] ✅ Found token account address: ${knownTokenAccountAddress}`);
+          }
+        } catch (err) {
+          console.warn(`[sendToken] Could not get account address, will let buildTokenTransferTransaction find it:`, err);
+        }
+      }
       
       // If balance is 0 or NaN, check if it's because the account doesn't exist or RPC issue
       if (isNaN(balanceNum) || balanceNum === 0) {
@@ -195,12 +210,14 @@ export async function sendToken(
 
     // Build transaction
     console.log(`[sendToken] Building transaction...`);
+    console.log(`[sendToken] Known token account address: ${knownTokenAccountAddress || 'none (will search)'}`);
     const transaction = await buildTokenTransferTransaction(
       keypair,
       toAddress,
       tokenMint,
       amount,
-      decimals
+      decimals,
+      knownTokenAccountAddress // Pass the known account address if we have it
     );
 
     console.log(`[sendToken] Transaction built, signing and sending...`);
