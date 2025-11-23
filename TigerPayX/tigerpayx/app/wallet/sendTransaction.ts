@@ -92,9 +92,21 @@ export async function sendToken(
 
     console.log(`[sendToken] Using token mint: ${tokenMint} on ${network}`);
 
-    // Pre-flight check: Verify sender has token account and sufficient balance
-    console.log(`[sendToken] Checking sender balance...`);
+    // Pre-flight check: Verify sender has SOL for transaction fees
+    console.log(`[sendToken] Checking SOL balance for transaction fees...`);
     const senderAddress = keypair.publicKey.toString();
+    const solBalance = await getSolBalance(senderAddress);
+    console.log(`[sendToken] SOL balance: ${solBalance} SOL`);
+    
+    // Solana transactions require a small amount of SOL for fees (typically 0.000005 SOL or ~5000 lamports)
+    // We'll check for at least 0.001 SOL to be safe
+    const minSolForFees = 0.001;
+    if (solBalance < minSolForFees) {
+      throw new Error(`Insufficient SOL for transaction fees. You have ${solBalance.toFixed(9)} SOL but need at least ${minSolForFees} SOL to pay for transaction fees. Please add some SOL to your wallet.`);
+    }
+    
+    // Pre-flight check: Verify sender has token account and sufficient balance
+    console.log(`[sendToken] Checking token balance...`);
     let knownTokenAccountAddress: string | undefined = undefined;
     
     try {
