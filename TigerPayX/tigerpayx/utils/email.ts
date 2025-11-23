@@ -67,14 +67,38 @@ async function sendViaResend(options: EmailOptions): Promise<{ success: boolean;
       }),
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-      return { success: false, error: data.message || "Failed to send email via Resend" };
+      const errorText = await response.text();
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { message: errorText };
+      }
+      console.error("Resend API error:", errorData);
+      // In development, still return success to allow testing
+      if (process.env.NODE_ENV === "development") {
+        console.log("📧 Email (dev mode - Resend failed, but continuing):", {
+          to: options.to,
+          subject: options.subject,
+        });
+        return { success: true };
+      }
+      return { success: false, error: errorData.message || "Failed to send email via Resend" };
     }
 
+    const data = await response.json();
     return { success: true };
   } catch (error: any) {
+    console.error("Resend API exception:", error);
+    // In development, still return success to allow testing
+    if (process.env.NODE_ENV === "development") {
+      console.log("📧 Email (dev mode - exception caught, but continuing):", {
+        to: options.to,
+        subject: options.subject,
+      });
+      return { success: true };
+    }
     return { success: false, error: error.message || "Resend API error" };
   }
 }
