@@ -497,11 +497,15 @@ export async function getAllTokenAccounts(address: string): Promise<Array<{
   decimals: number;
 }>> {
   try {
+    console.log(`[getAllTokenAccounts] Getting token accounts for ${address}...`);
     const publicKey = new PublicKey(address);
     const allTokenAccounts = await tryWithFallback(async (connection) => {
-      return await connection.getParsedTokenAccountsByOwner(publicKey, {
+      console.log(`[getAllTokenAccounts] Calling getParsedTokenAccountsByOwner...`);
+      const result = await connection.getParsedTokenAccountsByOwner(publicKey, {
         programId: TOKEN_PROGRAM_ID,
       });
+      console.log(`[getAllTokenAccounts] Got ${result.value.length} accounts from RPC`);
+      return result;
     });
     
     const accounts = [];
@@ -512,17 +516,29 @@ export async function getAllTokenAccounts(address: string): Promise<Array<{
         ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, decimals)
         : 0;
       
+      // Handle mint as string or PublicKey
+      const mint = typeof parsedInfo.mint === 'string' ? parsedInfo.mint : parsedInfo.mint.toString();
+      
       accounts.push({
         accountAddress: accountInfo.pubkey.toString(),
-        mint: parsedInfo.mint,
+        mint,
         balance,
         decimals,
       });
     }
     
+    console.log(`[getAllTokenAccounts] Returning ${accounts.length} accounts`);
     return accounts;
   } catch (error: any) {
     console.error(`[getAllTokenAccounts] Error:`, error);
+    console.error(`[getAllTokenAccounts] Error name: ${error?.name}, message: ${error?.message}`);
+    // Don't return empty array silently - re-throw if it's a critical error
+    if (error?.name === 'TokenAccountNotFoundError') {
+      // This is expected if no accounts exist, return empty array
+      console.log(`[getAllTokenAccounts] TokenAccountNotFoundError - no accounts found (this is OK)`);
+      return [];
+    }
+    // For other errors, still return empty but log it
     return [];
   }
 }
