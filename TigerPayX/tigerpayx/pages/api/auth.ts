@@ -2,6 +2,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "@/utils/db";
 import { hashPassword, verifyPassword } from "@/utils/password";
 import { generateToken } from "@/utils/jwt";
+import { sendEmail, generateOTPEmail } from "@/utils/email";
+import crypto from "crypto";
 // Wallet generation removed - users create wallets client-side
 
 type AuthRequest = {
@@ -94,6 +96,11 @@ export default async function handler(
           ? name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
           : email.slice(0, 2).toUpperCase();
 
+        // Generate 6-digit OTP
+        const otp = crypto.randomInt(100000, 999999).toString();
+        const expiresAt = new Date();
+        expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 minutes expiry
+
         // Create user
         let user;
         try {
@@ -104,6 +111,9 @@ export default async function handler(
               name: name.trim(),
               handle: finalHandle,
               avatarInitials,
+              emailVerified: false,
+              emailVerificationToken: otp,
+              emailVerificationTokenExpires: expiresAt,
               // solanaAddress will be set when user creates wallet client-side
             },
           });
@@ -126,6 +136,9 @@ export default async function handler(
                     name: name.trim(),
                     handle: finalHandle,
                     avatarInitials,
+                    emailVerified: false,
+                    emailVerificationToken: otp,
+                    emailVerificationTokenExpires: expiresAt,
                   },
                 });
               } catch (retryError: any) {
@@ -139,27 +152,25 @@ export default async function handler(
           }
         }
 
-        // Generate JWT token
-        let token;
-        try {
-          token = generateToken({
-            userId: user.id,
-            email: user.email,
-          });
-        } catch (tokenError: any) {
-          console.error("Token generation error:", tokenError);
-          return res.status(500).json({ error: "Failed to generate authentication token" });
+        // Send OTP email
+        const emailResult = await sendEmail({
+          to: email,
+          subject: "Verify Your Email - TigerPayX",
+          html: generateOTPEmail(otp, name.trim()),
+        });
+
+        if (!emailResult.success) {
+          console.error("Failed to send OTP email:", emailResult.error);
+          // Still allow signup to proceed, but log the error
+          // In production, you might want to handle this differently
         }
 
+        // Don't generate token yet - user needs to verify email first
         return res.status(201).json({
           success: true,
-          token,
-          user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            handle: user.handle,
-          },
+          message: "Account created! Please check your email for verification code.",
+          requiresVerification: true,
+          email: user.email,
         });
       } else {
         // Login
@@ -177,6 +188,15 @@ export default async function handler(
           return res.status(401).json({ error: "Invalid credentials" });
         }
 
+        // Check if email is verified
+        if (!user.emailVerified) {
+          return res.status(403).json({ 
+            error: "Please verify your email address before logging in.",
+            requiresVerification: true,
+            email: user.email,
+          });
+        }
+
         // Generate JWT token
         const token = generateToken({
           userId: user.id,
@@ -191,6 +211,7 @@ export default async function handler(
             email: user.email,
             name: user.name,
             handle: user.handle,
+            emailVerified: user.emailVerified,
           },
         });
       }
