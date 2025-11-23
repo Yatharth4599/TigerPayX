@@ -97,9 +97,16 @@ export default async function handler(
           : email.slice(0, 2).toUpperCase();
 
         // Generate 6-digit OTP
-        const otp = crypto.randomInt(100000, 999999).toString();
-        const expiresAt = new Date();
-        expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 minutes expiry
+        let otp: string;
+        let expiresAt: Date;
+        try {
+          otp = crypto.randomInt(100000, 999999).toString();
+          expiresAt = new Date();
+          expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 minutes expiry
+        } catch (otpError: any) {
+          console.error("OTP generation error:", otpError);
+          return res.status(500).json({ error: "Failed to generate verification code" });
+        }
 
         // Create user
         let user;
@@ -208,17 +215,24 @@ export default async function handler(
           }
         }
 
-        // Send OTP email
-        const emailResult = await sendEmail({
-          to: email,
-          subject: "Verify Your Email - TigerPayX",
-          html: generateOTPEmail(otp, name.trim()),
-        });
+        // Send OTP email (non-blocking - don't fail signup if email fails)
+        try {
+          const emailResult = await sendEmail({
+            to: email,
+            subject: "Verify Your Email - TigerPayX",
+            html: generateOTPEmail(otp, name.trim()),
+          });
 
-        if (!emailResult.success) {
-          console.error("Failed to send OTP email:", emailResult.error);
-          // Still allow signup to proceed, but log the error
-          // In production, you might want to handle this differently
+          if (!emailResult.success) {
+            console.error("Failed to send OTP email:", emailResult.error);
+            // Still allow signup to proceed, but log the error
+            // In production, you might want to handle this differently
+          } else {
+            console.log("OTP email sent successfully to:", email);
+          }
+        } catch (emailError: any) {
+          console.error("Error sending OTP email (non-fatal):", emailError);
+          // Don't throw - allow signup to proceed even if email fails
         }
 
         // Don't generate token yet - user needs to verify email first
