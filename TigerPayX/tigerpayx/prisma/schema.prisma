@@ -20,6 +20,11 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
+  // Email verification
+  emailVerified Boolean  @default(false)
+  emailVerificationToken String?  @unique
+  emailVerificationTokenExpires DateTime?
+  
   // Solana wallet address (non-custodial - private key stored client-side only)
   solanaAddress String?  @unique
   

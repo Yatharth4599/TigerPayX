@@ -9,6 +9,11 @@ export default function SignupPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showVerification, setShowVerification] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [otp, setOtp] = useState<string>("");
+  const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -47,7 +52,15 @@ export default function SignupPage() {
         return;
       }
 
-      // Store auth state with JWT token
+      // Check if email verification is required
+      if (data.requiresVerification) {
+        setUserEmail(email);
+        setShowVerification(true);
+        setLoading(false);
+        return;
+      }
+
+      // Store auth state with JWT token (if verification not required)
       if (data.token && data.user) {
         setAuth(data.token, data.user.email);
         // Redirect to dashboard
@@ -59,6 +72,68 @@ export default function SignupPage() {
     } catch (err) {
       setError("Network error. Please try again.");
       setLoading(false);
+    }
+  }
+
+  async function handleVerifyOTP(e: React.FormEvent) {
+    e.preventDefault();
+    setVerifying(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail, otp }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Verification failed");
+        setVerifying(false);
+        return;
+      }
+
+      // Store auth state with JWT token
+      if (data.token && data.user) {
+        setAuth(data.token, data.user.email);
+        // Redirect to dashboard
+        router.push("/dashboard");
+      } else {
+        setError("Invalid response from server");
+        setVerifying(false);
+      }
+    } catch (err) {
+      setError("Network error. Please try again.");
+      setVerifying(false);
+    }
+  }
+
+  async function handleResendOTP() {
+    setResending(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/auth/resend-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Failed to resend OTP");
+      } else {
+        setError(null);
+        // Show success message (you can use a toast here)
+        alert("OTP sent! Please check your email.");
+      }
+    } catch (err) {
+      setError("Network error. Please try again.");
+    } finally {
+      setResending(false);
     }
   }
 
@@ -87,18 +162,20 @@ export default function SignupPage() {
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_0_0,rgba(255,107,0,0.25),transparent_55%)]" />
             <div className="relative space-y-6">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
-                  Sign up
-                </p>
-                <h2 className="mt-2 text-xl font-semibold">
-                  Create your TigerPayX account.
-                </h2>
-              </div>
-              <form
-                className="space-y-4"
-                onSubmit={handleSubmit}
-              >
+              {!showVerification ? (
+                <>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+                      Sign up
+                    </p>
+                    <h2 className="mt-2 text-xl font-semibold">
+                      Create your TigerPayX account.
+                    </h2>
+                  </div>
+                  <form
+                    className="space-y-4"
+                    onSubmit={handleSubmit}
+                  >
                 <div className="space-y-2 text-sm">
                   <label htmlFor="name" className="text-zinc-300">
                     Full Name <span className="text-red-400">*</span>
@@ -170,16 +247,76 @@ export default function SignupPage() {
                   {loading ? "Creating account..." : "Create account"}
                 </button>
               </form>
-              <p className="text-xs text-zinc-400">
-                Already using TigerPayX?{" "}
-                <Link
-                  href="/login"
-                  className="text-amber-300 hover:text-amber-200"
-                >
-                  Log in
-                </Link>
-                .
-              </p>
+                  <p className="text-xs text-zinc-400">
+                    Already using TigerPayX?{" "}
+                    <Link
+                      href="/login"
+                      className="text-amber-300 hover:text-amber-200"
+                    >
+                      Log in
+                    </Link>
+                    .
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+                      Verify Email
+                    </p>
+                    <h2 className="mt-2 text-xl font-semibold">
+                      Check your email
+                    </h2>
+                    <p className="mt-2 text-sm text-zinc-400">
+                      We've sent a 6-digit verification code to <strong className="text-white">{userEmail}</strong>
+                    </p>
+                  </div>
+                  <form
+                    className="space-y-4"
+                    onSubmit={handleVerifyOTP}
+                  >
+                    <div className="space-y-2 text-sm">
+                      <label htmlFor="otp" className="text-zinc-300">
+                        Verification Code <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        id="otp"
+                        name="otp"
+                        type="text"
+                        required
+                        maxLength={6}
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                        placeholder="000000"
+                        className="w-full rounded-2xl border border-white/12 bg-white/5 px-3 py-2 text-center text-2xl font-mono tracking-widest text-white placeholder:text-zinc-500 outline-none focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00]"
+                      />
+                      <p className="text-xs text-zinc-500">Enter the 6-digit code from your email</p>
+                    </div>
+                    {error && (
+                      <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2">
+                        <p className="text-xs text-red-400">{error}</p>
+                      </div>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={verifying || otp.length !== 6}
+                      className="mt-2 w-full rounded-full bg-[#ff6b00] py-2.5 text-sm font-semibold text-black tiger-glow hover:bg-orange-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {verifying ? "Verifying..." : "Verify Email"}
+                    </button>
+                    <div className="text-center">
+                      <button
+                        type="button"
+                        onClick={handleResendOTP}
+                        disabled={resending}
+                        className="text-xs text-amber-300 hover:text-amber-200 disabled:opacity-50"
+                      >
+                        {resending ? "Sending..." : "Resend Code"}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
             </div>
           </motion.div>
         </div>
