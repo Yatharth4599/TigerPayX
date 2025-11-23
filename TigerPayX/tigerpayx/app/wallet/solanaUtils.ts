@@ -361,10 +361,23 @@ export async function getTokenBalance(
       }
       
       if (foundMatchingAccounts === 0 && allTokenAccounts.value.length > 0) {
-        console.warn(`[getTokenBalance] ⚠️ Found ${allTokenAccounts.value.length} token accounts but none match mint ${tokenMint}`);
-        console.warn(`[getTokenBalance] 📋 Mint addresses found in wallet: ${foundMints.join(", ")}`);
-        console.warn(`[getTokenBalance] 🔎 Looking for mint: ${tokenMint}`);
-        console.warn(`[getTokenBalance] 💡 This might be a different USDT version or the mint address in config is incorrect`);
+        console.error(`[getTokenBalance] ⚠️ Found ${allTokenAccounts.value.length} token accounts but none match mint ${tokenMint}`);
+        console.error(`[getTokenBalance] 📋 Mint addresses found in wallet: ${foundMints.join(", ")}`);
+        console.error(`[getTokenBalance] 🔎 Looking for mint: ${tokenMint}`);
+        console.error(`[getTokenBalance] 💡 This might be a different USDT version or the mint address in config is incorrect`);
+        
+        // Log detailed info about each token account found
+        for (const accountInfo of allTokenAccounts.value) {
+          const parsedInfo = accountInfo.account.data.parsed.info;
+          const accountBalance = parsedInfo.tokenAmount?.amount 
+            ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, parsedInfo.tokenAmount.decimals || decimals)
+            : 0;
+          console.error(`[getTokenBalance] 📊 Token Account Details:`);
+          console.error(`  - Address: ${accountInfo.pubkey.toString()}`);
+          console.error(`  - Mint: ${parsedInfo.mint}`);
+          console.error(`  - Balance: ${accountBalance}`);
+          console.error(`  - Decimals: ${parsedInfo.tokenAmount?.decimals || decimals}`);
+        }
       }
     } catch (searchError: any) {
       const errorName = searchError?.name || "";
@@ -396,6 +409,47 @@ export async function getTokenBalance(
     
     // For other errors, still return 0 but log the error
     return "0";
+  }
+}
+
+/**
+ * Get all token accounts in a wallet with their mint addresses and balances
+ * Useful for debugging mint address mismatches
+ */
+export async function getAllTokenAccounts(address: string): Promise<Array<{
+  accountAddress: string;
+  mint: string;
+  balance: number;
+  decimals: number;
+}>> {
+  try {
+    const publicKey = new PublicKey(address);
+    const allTokenAccounts = await tryWithFallback(async (connection) => {
+      return await connection.getParsedTokenAccountsByOwner(publicKey, {
+        programId: TOKEN_PROGRAM_ID,
+      });
+    });
+    
+    const accounts = [];
+    for (const accountInfo of allTokenAccounts.value) {
+      const parsedInfo = accountInfo.account.data.parsed.info;
+      const decimals = parsedInfo.tokenAmount?.decimals || 9;
+      const balance = parsedInfo.tokenAmount?.amount 
+        ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, decimals)
+        : 0;
+      
+      accounts.push({
+        accountAddress: accountInfo.pubkey.toString(),
+        mint: parsedInfo.mint,
+        balance,
+        decimals,
+      });
+    }
+    
+    return accounts;
+  } catch (error: any) {
+    console.error(`[getAllTokenAccounts] Error:`, error);
+    return [];
   }
 }
 

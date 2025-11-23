@@ -10,6 +10,7 @@ import {
   getTokenBalance,
   getSolBalance,
   getSolanaConnection,
+  getAllTokenAccounts,
 } from "./solanaUtils";
 import { getTokenMint, TOKEN_DECIMALS, SOLANA_CONFIG } from "@/shared/config";
 import { getStoredPrivateKey } from "./createWallet";
@@ -107,38 +108,67 @@ export async function sendToken(
         // Try to directly check if any token accounts exist for this mint
         // This helps distinguish between "no account" vs "RPC error"
         try {
-          const connection = getSolanaConnection();
-          const publicKey = new PublicKey(senderAddress);
-          const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
-            programId: TOKEN_PROGRAM_ID,
-          });
+          // Use the helper function to get all token accounts
+          const allAccounts = await getAllTokenAccounts(senderAddress);
           
-          console.log(`[sendToken] Found ${tokenAccounts.value.length} total token accounts`);
+          console.log(`[sendToken] Found ${allAccounts.length} total token accounts`);
           
           // Check if any account matches our mint
-          const matchingAccount = tokenAccounts.value.find(
-            (acc) => acc.account.data.parsed.info.mint === tokenMint
+          const matchingAccount = allAccounts.find(
+            (acc) => acc.mint === tokenMint
           );
           
           if (matchingAccount) {
-            const accountBalance = Number(matchingAccount.account.data.parsed.info.tokenAmount.amount) / Math.pow(10, decimals);
-            console.log(`[sendToken] Found matching token account with balance: ${accountBalance}`);
+            console.log(`[sendToken] Found matching token account with balance: ${matchingAccount.balance}`);
             
-            if (accountBalance === 0) {
+            if (matchingAccount.balance === 0) {
               throw new Error(`You have a ${token} token account but it has zero balance. You need to receive ${token} first before you can send it.`);
             }
             
-            if (accountBalance < amount) {
-              throw new Error(`Insufficient ${token} balance. You have ${accountBalance.toFixed(decimals)} ${token} but trying to send ${amount} ${token}.`);
+            if (matchingAccount.balance < amount) {
+              throw new Error(`Insufficient ${token} balance. You have ${matchingAccount.balance.toFixed(matchingAccount.decimals)} ${token} but trying to send ${amount} ${token}.`);
             }
             
             // Balance is sufficient, continue
-            console.log(`[sendToken] Direct check passed: ${accountBalance} >= ${amount}`);
+            console.log(`[sendToken] Direct check passed: ${matchingAccount.balance} >= ${amount}`);
           } else {
-            throw new Error(`You don't have a ${token} token account. You need to receive ${token} first before you can send it. Found ${tokenAccounts.value.length} other token accounts but none match ${tokenMint.substring(0, 8)}...`);
+            // Log all mint addresses found for debugging
+            const foundMints = allAccounts.map((acc) => acc.mint);
+            const foundBalances = allAccounts.map((acc) => acc.balance);
+            
+            console.error(`[sendToken] ❌ No matching token account found`);
+            console.error(`[sendToken] Expected mint: ${tokenMint}`);
+            console.error(`[sendToken] Found ${allAccounts.length} token account(s):`);
+            allAccounts.forEach((acc, idx) => {
+              console.error(`[sendToken]   ${idx + 1}. Mint: ${acc.mint}`);
+              console.error(`[sendToken]      Balance: ${acc.balance}`);
+              console.error(`[sendToken]      Account: ${acc.accountAddress.substring(0, 16)}...`);
+            });
+            
+            // Check if any of the found mints might be a different version of the same token
+            // (e.g., different USDT mint)
+            const isUSDTSearch = token === "USDT";
+            const isUSDCSearch = token === "USDC";
+            
+            if (isUSDTSearch || isUSDCSearch) {
+              // Log a helpful message about potential mint mismatch
+              console.error(`[sendToken] 💡 Your wallet has token accounts, but they don't match the expected ${token} mint address.`);
+              console.error(`[sendToken] 💡 This could mean:`);
+              console.error(`[sendToken]    1. You received a different version of ${token} (different mint address)`);
+              console.error(`[sendToken]    2. The mint address in the config is incorrect`);
+              console.error(`[sendToken]    3. You need to receive ${token} using the correct mint address`);
+              console.error(`[sendToken] 💡 Please check Solscan (https://solscan.io/account/${senderAddress}) to see which mint address your ${token} uses.`);
+              console.error(`[sendToken] 💡 Then share the mint address with us so we can update the config.`);
+            }
+            
+            throw new Error(`You don't have a ${token} token account. You need to receive ${token} first before you can send it. Found ${allAccounts.length} other token account(s) but none match the expected ${token} mint address. Check the browser console for the actual mint address(es) in your wallet.`);
           }
         } catch (directCheckError: any) {
           // If direct check fails, use the original error
+          const errorMsg = directCheckError?.message || "";
+          if (errorMsg.includes("don't have a") || errorMsg.includes("Insufficient")) {
+            throw directCheckError; // Re-throw our custom errors
+          }
           throw new Error(`You don't have any ${token} in your wallet. You need to receive ${token} first before you can send it. Current balance: ${currentBalance}`);
         }
       } else {
