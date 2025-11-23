@@ -340,12 +340,39 @@ export async function getTokenBalance(
         
         // Skip if we've already counted this account (e.g., ATA)
         if (countedAccounts.has(accountAddress)) {
-          console.log(`[getTokenBalance] Skipping already counted account: ${accountAddress}`);
+          console.log(`[getTokenBalance] ⚠️ Skipping already counted account: ${accountAddress}`);
+          console.log(`[getTokenBalance] ⚠️ This account was marked as counted during ATA check`);
+          console.log(`[getTokenBalance] ⚠️ Account mint: ${parsedInfo.mint}, Looking for: ${tokenMint}`);
+          // If this is the account we're looking for but was marked as counted with 0 balance,
+          // we need to check it again
+          const accountMint = parsedInfo.mint?.toString() || parsedInfo.mint || "";
+          if (accountMint === tokenMint.toString()) {
+            console.log(`[getTokenBalance] 🔄 Found matching account that was marked as counted - checking balance again`);
+            const accountDecimals = parsedInfo.tokenAmount?.decimals || decimals;
+            const balance = parsedInfo.tokenAmount?.amount 
+              ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, accountDecimals)
+              : 0;
+            if (balance > 0) {
+              console.log(`[getTokenBalance] ✅ Account has balance ${balance}, adding to total`);
+              totalBalance += balance;
+              // Update the counted account with the correct balance
+            } else {
+              console.log(`[getTokenBalance] ⚠️ Account marked as counted but has 0 balance - this shouldn't happen`);
+            }
+          }
           continue;
         }
         
         // Debug: Log all token accounts to see what we're getting
-        const accountMint = parsedInfo.mint?.toString() || parsedInfo.mint || "";
+        // Handle mint as PublicKey object or string
+        let accountMint: string = "";
+        if (parsedInfo.mint) {
+          // If it's a PublicKey object, convert to string; if it's already a string, use it
+          accountMint = typeof parsedInfo.mint === 'string' 
+            ? parsedInfo.mint 
+            : parsedInfo.mint.toString();
+        }
+        
         const accountDecimals = parsedInfo.tokenAmount?.decimals || decimals;
         const accountBalance = parsedInfo.tokenAmount?.amount 
           ? Number(parsedInfo.tokenAmount.amount) / Math.pow(10, accountDecimals)
@@ -357,18 +384,19 @@ export async function getTokenBalance(
         }
         
         // Check if this account is for the mint we're looking for
-        // Use strict comparison and also check if mint exists
-        const searchMint = tokenMint.toString();
+        // Normalize both mints to strings for comparison
+        const searchMint = tokenMint.toString().trim();
+        const normalizedAccountMint = accountMint.trim();
         
         // Debug: Log the comparison with detailed info
         console.log(`[getTokenBalance] 🔎 Comparing mints:`);
-        console.log(`  - Account mint: "${accountMint}" (type: ${typeof accountMint}, length: ${accountMint.length})`);
+        console.log(`  - Account mint: "${normalizedAccountMint}" (type: ${typeof normalizedAccountMint}, length: ${normalizedAccountMint.length})`);
         console.log(`  - Search mint:  "${searchMint}" (type: ${typeof searchMint}, length: ${searchMint.length})`);
-        console.log(`  - Match: ${accountMint === searchMint}`);
+        console.log(`  - Match: ${normalizedAccountMint === searchMint}`);
         console.log(`  - Account address: ${accountAddress}`);
         console.log(`  - Already counted: ${countedAccounts.has(accountAddress)}`);
         
-        if (accountMint && accountMint === searchMint) {
+        if (normalizedAccountMint && normalizedAccountMint === searchMint) {
           foundMatchingAccounts++;
           const accountDecimals = parsedInfo.tokenAmount.decimals || decimals;
           usedDecimals = accountDecimals; // Use the actual decimals from the account
