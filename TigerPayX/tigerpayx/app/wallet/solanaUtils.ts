@@ -292,14 +292,17 @@ export async function getTokenBalance(
       const balance = Number(accountInfo.amount) / Math.pow(10, decimals);
       console.log(`[getTokenBalance] ATA balance: ${balance}`);
       
-      // If ATA exists, add it to total and mark as counted (even if balance is 0)
-      // This prevents double-counting when we search all accounts
+      // If ATA exists and has balance, add it to total and mark as counted
+      // Only mark as counted if we successfully got a balance > 0
+      // If balance is 0 or check failed, let the search find it and use the correct balance
       if (balance > 0) {
         totalBalance += balance;
+        countedAccounts.add(ataAddress);
+        console.log(`[getTokenBalance] ATA marked as counted (balance > 0): ${ataAddress}`);
+      } else {
+        console.log(`[getTokenBalance] ATA has 0 balance, will check in search: ${ataAddress}`);
+        // Don't mark as counted - let the search find it and use the correct balance
       }
-      // Always mark ATA as counted to avoid processing it again in the search
-      countedAccounts.add(ataAddress);
-      console.log(`[getTokenBalance] ATA marked as counted: ${ataAddress}`);
     } catch (ataError: any) {
       // ATA doesn't exist or has no balance, continue to search all token accounts
       const errorName = ataError?.name || "";
