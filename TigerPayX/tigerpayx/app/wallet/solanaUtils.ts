@@ -775,7 +775,7 @@ export async function buildTokenTransferTransaction(
   
       try {
         senderAccount = await tryWithFallback(async (conn) => {
-          return await getAccount(conn, fromTokenAccount);
+          return await getAccount(conn, fromTokenAccount!); // We just set it above, so it's not null
         });
         senderBalance = Number(senderAccount.amount) / Math.pow(10, decimals);
       } catch (ataError: any) {
