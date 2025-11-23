@@ -493,13 +493,14 @@ export async function getTokenBalance(
 /**
  * Get the token account address for a specific mint
  * Uses the same logic as getTokenBalance to find the account
+ * This function will retry with fallback RPCs to ensure it finds the account
  */
 export async function getTokenAccountAddress(
   address: string,
   tokenMint: string
 ): Promise<string | null> {
   try {
-    console.log(`[getTokenAccountAddress] Looking for account address for mint ${tokenMint}...`);
+    console.log(`[getTokenAccountAddress] 🔍 Looking for account address for mint ${tokenMint}...`);
     if (!address || !tokenMint || tokenMint.trim() === "") {
       console.warn(`[getTokenAccountAddress] Invalid inputs: address=${address}, tokenMint=${tokenMint}`);
       return null;
@@ -511,26 +512,32 @@ export async function getTokenAccountAddress(
     
     // Search all token accounts first (same logic as getTokenBalance)
     // This finds accounts even if they're not the ATA
+    // Use tryWithFallback to handle RPC issues
     try {
-      console.log(`[getTokenAccountAddress] Searching all token accounts...`);
+      console.log(`[getTokenAccountAddress] 🔍 Searching all token accounts with RPC fallback...`);
       const allTokenAccounts = await tryWithFallback(async (connection) => {
-        return await connection.getParsedTokenAccountsByOwner(publicKey, {
+        console.log(`[getTokenAccountAddress] Calling getParsedTokenAccountsByOwner on RPC...`);
+        const result = await connection.getParsedTokenAccountsByOwner(publicKey, {
           programId: TOKEN_PROGRAM_ID,
         });
+        console.log(`[getTokenAccountAddress] RPC returned ${result.value.length} accounts`);
+        return result;
       });
       
-      console.log(`[getTokenAccountAddress] Found ${allTokenAccounts.value.length} token accounts`);
+      console.log(`[getTokenAccountAddress] ✅ Found ${allTokenAccounts.value.length} token accounts after RPC fallback`);
       
       for (const accountInfo of allTokenAccounts.value) {
         const parsedInfo = accountInfo.account.data.parsed.info;
         let accountMint: string = "";
         if (parsedInfo.mint) {
           accountMint = typeof parsedInfo.mint === 'string' 
-            ? parsedInfo.mint 
-            : parsedInfo.mint.toString();
+            ? parsedInfo.mint.trim()
+            : parsedInfo.mint.toString().trim();
         }
         
         const normalizedAccountMint = accountMint.trim();
+        console.log(`[getTokenAccountAddress] 🔍 Checking account ${accountInfo.pubkey.toString().substring(0, 16)}...: mint="${normalizedAccountMint}", search="${searchMint}", match=${normalizedAccountMint === searchMint}`);
+        
         if (normalizedAccountMint === searchMint) {
           const accountAddress = accountInfo.pubkey.toString();
           const accountDecimals = parsedInfo.tokenAmount?.decimals || 9;
@@ -542,14 +549,15 @@ export async function getTokenAccountAddress(
         }
       }
       
-      console.log(`[getTokenAccountAddress] ⚠️ No matching account found in search`);
+      console.log(`[getTokenAccountAddress] ⚠️ No matching account found in search (searched ${allTokenAccounts.value.length} accounts)`);
     } catch (searchError: any) {
-      console.error(`[getTokenAccountAddress] Error searching accounts:`, searchError);
+      console.error(`[getTokenAccountAddress] ❌ Error searching accounts (all RPCs failed):`, searchError?.message || searchError);
+      // Don't return null yet - try ATA as fallback
     }
     
     // Fallback: try ATA if search didn't find anything
     try {
-      console.log(`[getTokenAccountAddress] Trying ATA as fallback...`);
+      console.log(`[getTokenAccountAddress] 🔍 Trying ATA as fallback...`);
       const tokenAccount = await getAssociatedTokenAddress(mintPublicKey, publicKey);
       const accountInfo = await tryWithFallback(async (connection) => {
         return await getAccount(connection, tokenAccount);
@@ -563,13 +571,13 @@ export async function getTokenAccountAddress(
         return tokenAccount.toString();
       }
     } catch (ataError: any) {
-      console.log(`[getTokenAccountAddress] ATA not found or has 0 balance`);
+      console.log(`[getTokenAccountAddress] ⚠️ ATA not found or has 0 balance: ${ataError?.message || ataError?.name}`);
     }
     
-    console.log(`[getTokenAccountAddress] ❌ Could not find account address`);
+    console.log(`[getTokenAccountAddress] ❌ Could not find account address after all attempts`);
     return null;
   } catch (error: any) {
-    console.error(`[getTokenAccountAddress] Error:`, error);
+    console.error(`[getTokenAccountAddress] ❌ Unexpected error:`, error);
     return null;
   }
 }
