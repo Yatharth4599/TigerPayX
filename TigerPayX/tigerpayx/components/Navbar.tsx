@@ -159,6 +159,7 @@ export function Navbar() {
                   <Link
                     href="/waiting-list"
                     className="rounded-full bg-[#ffedd5] px-5 py-2.5 text-sm font-semibold text-[#7c2d12] hover:bg-[#fed7aa] transition-colors"
+                    style={{ pointerEvents: 'auto' }}
                   >
                     Join Waitlist
                   </Link>

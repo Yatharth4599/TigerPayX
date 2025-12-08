@@ -1,5 +1,6 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useRef } from "react";
 import { ParticleBackground } from "./ParticleBackground";
 import { TiltCard } from "./TiltCard";
@@ -8,6 +9,7 @@ import { FloatingElements } from "./FloatingElements";
 import { HeroVisual } from "./HeroVisual";
 
 export function Hero() {
+  const router = useRouter();
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -16,6 +18,10 @@ export function Hero() {
 
   const y = useTransform(scrollYProgress, [0, 1], [0, 200]);
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+
+  function handleJoinWaitlist() {
+    router.push("/waiting-list");
+  }
 
   return (
     <section 
@@ -161,29 +167,26 @@ export function Hero() {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="flex flex-wrap items-center justify-center gap-4"
             >
-              <motion.div 
+              <motion.button
+                onClick={handleJoinWaitlist}
                 whileHover={{ scale: 1.08, y: -2 }} 
                 whileTap={{ scale: 0.95, y: 0 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                className="btn-3d inline-flex items-center justify-center rounded-full bg-[#ff6b00] px-10 py-5 text-base font-bold text-white hover:bg-[#e55a00] transition-all relative overflow-hidden group cursor-pointer"
               >
-                <Link
-                  href="/waiting-list"
-                  className="btn-3d inline-flex items-center justify-center rounded-full bg-[#ff6b00] px-10 py-5 text-base font-bold text-white hover:bg-[#e55a00] transition-all relative overflow-hidden group"
+                <motion.span
+                  className="relative z-10"
+                  animate={{ x: [0, 3, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
                 >
-                  <motion.span
-                    className="relative z-10"
-                    animate={{ x: [0, 3, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    Join Waitlist
-                  </motion.span>
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                    animate={{ x: ["-100%", "100%"] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  />
-                </Link>
-              </motion.div>
+                  Join Waitlist
+                </motion.span>
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none"
+                  animate={{ x: ["-100%", "100%"] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                />
+              </motion.button>
             </motion.div>
 
             <motion.div
