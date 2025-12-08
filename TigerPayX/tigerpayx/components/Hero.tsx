@@ -90,25 +90,55 @@ export function Hero() {
               transition={{ duration: 0.6 }}
               className="space-y-6"
             >
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.8, y: -10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
-                whileHover={{ scale: 1.05, y: -2 }}
-                className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50/80 backdrop-blur-md px-4 py-1.5 text-xs text-orange-700 shadow-lg shadow-orange-500/10"
-              >
-                <motion.span 
-                  className="h-1.5 w-1.5 rounded-full bg-[#ff6b00] shadow-[0_0_8px_rgba(255,107,0,0.6)]"
-                  animate={{ scale: [1, 1.4, 1], opacity: [1, 0.7, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                />
-                <motion.span
-                  animate={{ x: [0, 2, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.8, y: -10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50/80 backdrop-blur-md px-4 py-1.5 text-xs text-orange-700 shadow-lg shadow-orange-500/10"
                 >
-                  Powered by Solana
-                </motion.span>
-              </motion.div>
+                  <motion.span 
+                    className="h-1.5 w-1.5 rounded-full bg-[#ff6b00] shadow-[0_0_8px_rgba(255,107,0,0.6)]"
+                    animate={{ scale: [1, 1.4, 1], opacity: [1, 0.7, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <motion.span
+                    animate={{ x: [0, 2, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                  >
+                    Powered by Solana
+                  </motion.span>
+                </motion.div>
+
+                {/* Yield Badge */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8, y: -10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.5, type: "spring", stiffness: 200, delay: 0.2 }}
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-green-300 bg-gradient-to-r from-green-50 to-emerald-50/80 backdrop-blur-md px-5 py-2 text-sm font-bold text-green-700 shadow-lg shadow-green-500/20"
+                >
+                  <motion.span
+                    className="text-lg"
+                    animate={{ rotate: [0, 10, -10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    💎
+                  </motion.span>
+                  <motion.span
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    Get up to <span className="text-green-800">12% APY</span>
+                  </motion.span>
+                  <motion.span
+                    className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.8)]"
+                    animate={{ scale: [1, 1.3, 1], opacity: [1, 0.8, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                </motion.div>
+              </div>
               
               <motion.h1 
                 initial={{ opacity: 0, y: 30 }}
