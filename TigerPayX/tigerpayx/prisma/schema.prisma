@@ -99,3 +99,17 @@ model Transaction {
   @@index([createdAt])
   @@index([type])
 }
+
+model WaitingList {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  company       String?
+  role          String?  // "merchant", "individual", "both"
+  useCase       String?  // What they plan to use TigerPayX for
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([email])
+  @@index([createdAt])
+}

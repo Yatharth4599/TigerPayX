@@ -1,135 +1,297 @@
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
+import { useRef } from "react";
+import { ParticleBackground } from "./ParticleBackground";
+import { TiltCard } from "./TiltCard";
+import { LogoDecoration } from "./LogoDecoration";
+import { FloatingElements } from "./FloatingElements";
+import { HeroVisual } from "./HeroVisual";
 
 export function Hero() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  });
+
+  const y = useTransform(scrollYProgress, [0, 1], [0, 200]);
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+
   return (
-    <section className="section-padding pt-10 pb-20 lg:pt-16 lg:pb-28 bg-gradient-to-b from-orange-950/60 via-orange-900/40 to-orange-950/50">
-      <div className="max-width grid gap-12 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-center">
-        <div className="space-y-8">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs text-zinc-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#ff6b00] shadow-[0_0_12px_rgba(255,107,0,0.9)]" />
-            Borderless. Programmable. Tiger-fast.
-          </div>
-          <div className="space-y-4">
-            <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              DeFi Payments
-              <span className="block bg-gradient-to-r from-[#ff6b00] via-amber-300 to-orange-500 bg-clip-text text-transparent">
-                Powered by TigerPayX.
-              </span>
-            </h1>
-            <p className="max-w-xl text-balance text-base text-zinc-300 sm:text-lg">
-              Non-custodial wallet, instant swaps, and global crypto payments. 
-              Send, swap, earn yield, and accept payments — all on TigerPayX.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-4">
-            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-              <Link
-                href="/signup"
-                className="inline-flex items-center justify-center rounded-full bg-[#ff6b00] px-6 py-3 text-sm font-semibold text-black tiger-glow"
+    <section 
+      ref={sectionRef}
+      className="section-padding pt-20 pb-24 lg:pt-32 lg:pb-40 bg-gradient-to-b from-orange-50 via-amber-50/30 to-orange-50/50 relative overflow-hidden min-h-screen flex items-center"
+    >
+      <ParticleBackground />
+      
+      {/* Enhanced decorative background elements with parallax */}
+      <motion.div 
+        className="absolute top-0 right-0 w-96 h-96 bg-orange-200 rounded-full opacity-20 blur-3xl floating"
+        style={{ y, opacity }}
+      />
+      <motion.div 
+        className="absolute bottom-0 left-0 w-80 h-80 bg-amber-200 rounded-full opacity-15 blur-3xl floating" 
+        style={{ animationDelay: "1s", y: useTransform(scrollYProgress, [0, 1], [0, -150]), opacity }}
+      />
+      <motion.div 
+        className="absolute top-1/2 left-1/2 w-64 h-64 bg-orange-300 rounded-full opacity-10 blur-3xl floating" 
+        style={{ animationDelay: "2s", y: useTransform(scrollYProgress, [0, 1], [0, 100]), opacity }}
+      />
+      
+      {/* Animated gradient orbs */}
+      <motion.div
+        className="absolute top-1/4 right-1/4 w-72 h-72 bg-gradient-to-r from-orange-400/30 to-amber-400/30 rounded-full blur-3xl"
+        animate={{
+          scale: [1, 1.2, 1],
+          x: [0, 30, 0],
+          y: [0, -30, 0],
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
+      <motion.div
+        className="absolute bottom-1/4 left-1/4 w-64 h-64 bg-gradient-to-r from-amber-400/25 to-orange-400/25 rounded-full blur-3xl"
+        animate={{
+          scale: [1, 1.3, 1],
+          x: [0, -20, 0],
+          y: [0, 20, 0],
+        }}
+        transition={{
+          duration: 10,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 1,
+        }}
+      />
+      
+      {/* Floating elements */}
+      <FloatingElements />
+      
+      {/* Logo decorations with enhanced animations */}
+      <LogoDecoration size={150} opacity={0.08} className="top-20 left-10" />
+      <LogoDecoration size={100} opacity={0.06} className="bottom-32 right-20" />
+      <LogoDecoration size={80} opacity={0.05} className="top-1/3 right-1/4" />
+      <div className="max-width relative z-10 w-full">
+        <div className="mx-auto max-w-6xl">
+          {/* Top content */}
+          <div className="text-center space-y-8 mb-12 lg:mb-16">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="space-y-6"
+            >
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.8, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
+                whileHover={{ scale: 1.05, y: -2 }}
+                className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50/80 backdrop-blur-md px-4 py-1.5 text-xs text-orange-700 shadow-lg shadow-orange-500/10"
               >
-                Create Account
-              </Link>
-            </motion.div>
-            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center justify-center rounded-full border border-white/18 bg-white/5 px-6 py-3 text-sm font-medium text-white hover:bg-white/10"
+                <motion.span 
+                  className="h-1.5 w-1.5 rounded-full bg-[#ff6b00] shadow-[0_0_8px_rgba(255,107,0,0.6)]"
+                  animate={{ scale: [1, 1.4, 1], opacity: [1, 0.7, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                />
+                <motion.span
+                  animate={{ x: [0, 2, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                >
+                  Powered by Solana
+                </motion.span>
+              </motion.div>
+              
+              <motion.h1 
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+                className="text-balance text-5xl font-bold tracking-tight text-gray-900 sm:text-6xl lg:text-7xl xl:text-8xl leading-tight"
               >
-                Launch Wallet
-              </Link>
+                <motion.span
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                  className="block"
+                >
+                  The neo bank that'll
+                </motion.span>
+                <motion.span 
+                  className="block mt-3 gradient-text"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.5 }}
+                  whileHover={{ scale: 1.05 }}
+                >
+                  take you places
+                </motion.span>
+              </motion.h1>
+              
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.7 }}
+                className="mx-auto max-w-2xl text-lg text-gray-700 sm:text-xl leading-relaxed"
+              >
+                Low-fee payments for merchants and individuals.{" "}
+                <motion.span 
+                  className="text-gray-900 font-medium"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.9, duration: 0.6 }}
+                >
+                  Lending powered by Jupiter.
+                </motion.span>{" "}
+                <motion.span 
+                  className="block mt-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 1.1, duration: 0.6 }}
+                >
+                  Introducing RoaR Score — your gateway to decentralized credit.
+                </motion.span>
+              </motion.p>
             </motion.div>
-            <span className="text-xs text-zinc-400">
-              Built on Solana. Self-custody. Open source.
-            </span>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="flex flex-wrap items-center justify-center gap-4"
+            >
+              <motion.div 
+                whileHover={{ scale: 1.08, y: -2 }} 
+                whileTap={{ scale: 0.95, y: 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              >
+                <Link
+                  href="/waiting-list"
+                  className="btn-3d inline-flex items-center justify-center rounded-full bg-[#ff6b00] px-10 py-5 text-base font-bold text-white hover:bg-[#e55a00] transition-all relative overflow-hidden group"
+                >
+                  <motion.span
+                    className="relative z-10"
+                    animate={{ x: [0, 3, 0] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    Join Waitlist
+                  </motion.span>
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                    animate={{ x: ["-100%", "100%"] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  />
+                </Link>
+              </motion.div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+              className="pt-4"
+            >
+              <p className="text-sm text-gray-600">
+                Trusted by merchants and individuals worldwide
+              </p>
+            </motion.div>
           </div>
-        </div>
 
-        <div className="relative">
-          <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-[#ff6b00]/30 blur-3xl" />
-          <div className="pointer-events-none absolute -right-6 bottom-0 h-32 w-56 rotate-12 rounded-[999px] bg-gradient-to-tr from-orange-900/30 via-[#ff6b00]/35 to-transparent" />
+          {/* Hero Visual Preview */}
+          <HeroVisual />
 
+          {/* Feature Cards */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: "easeOut" }}
-            className="glass-panel tiger-stripes relative overflow-hidden p-6"
+            transition={{ duration: 0.8, delay: 0.8 }}
+            className="mt-16 lg:mt-24 grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0,rgba(255,107,0,0.32),transparent_55%),radial-gradient(circle_at_80%_120%,rgba(255,255,255,0.22),transparent_55%)]" />
-            <div className="relative flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
-                    TigerPayX Wallet
-                  </p>
-                  <p className="mt-1 text-sm text-zinc-200">
-                    Non-custodial · DeFi
-                  </p>
-                </div>
-                <div className="h-10 w-10 rounded-full bg-black/60 flex items-center justify-center border border-white/10">
-                  <span className="h-2 w-5 rounded-full bg-gradient-to-r from-[#ff6b00] to-amber-300 shadow-[0_0_18px_rgba(255,107,0,0.8)]" />
-                </div>
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-3 text-xs text-zinc-200">
-                <div className="rounded-2xl bg-black/40 p-3 tiger-stripes-soft">
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-                    SOL
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-white">Solana</p>
-                  <p className="mt-1 text-[11px] text-zinc-400">
-                    Native blockchain
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-black/40 p-3 tiger-stripes-soft">
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-                    USDC
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-white">
-                    Stablecoin
-                  </p>
-                  <p className="mt-1 text-[11px] text-zinc-400">
-                    Global payments
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-black/40 p-3 tiger-stripes-soft">
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-                    USDT
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-white">
-                    Stablecoin
-                  </p>
-                  <p className="mt-1 text-[11px] text-zinc-400">
-                    Cross-chain ready
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-black/40 p-3 tiger-stripes-soft">
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-400">
-                    TT
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-white">Tiger Token</p>
-                  <p className="mt-1 text-[11px] text-zinc-400">
-                    Platform token
-                  </p>
-                </div>
-              </div>
+          <TiltCard>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="colorful-card p-6 space-y-3 cursor-pointer"
+            >
+            <motion.div
+              whileHover={{ scale: 1.2, rotate: [0, -10, 10, -10, 0] }}
+              transition={{ duration: 0.5, type: "spring", stiffness: 300 }}
+              className="h-12 w-12 rounded-xl bg-gradient-to-br from-orange-200 to-orange-100 flex items-center justify-center shadow-lg icon-bounce"
+            >
+              <motion.span 
+                className="text-2xl"
+                animate={{ y: [0, -5, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                💳
+              </motion.span>
+            </motion.div>
+            <h3 className="text-lg font-semibold text-gray-900">Low Transaction Fees</h3>
+            <p className="text-sm text-gray-700">
+              Pay less with Solana's ultra-low fees. Perfect for merchants and individuals making frequent payments.
+            </p>
+            </motion.div>
+          </TiltCard>
 
-              <div className="mt-3 flex items-center justify-between rounded-2xl bg-black/40 px-4 py-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                    Non-Custodial
-                  </p>
-                  <p className="text-sm text-zinc-200">
-                    You control your keys.
-                  </p>
-                </div>
-                <div className="relative h-14 w-14 rounded-full bg-gradient-to-tr from-[#ff6b00] via-amber-300 to-white/80 flex items-center justify-center tiger-glow">
-                  <div className="h-9 w-9 rounded-full bg-black/80 flex items-center justify-center text-xs text-white">
-                    🔐
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+          <TiltCard>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="colorful-card p-6 space-y-3 cursor-pointer"
+            >
+            <motion.div
+              whileHover={{ scale: 1.2, rotate: [0, -10, 10, -10, 0] }}
+              transition={{ duration: 0.5, type: "spring", stiffness: 300 }}
+              className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-200 to-blue-100 flex items-center justify-center shadow-lg icon-bounce"
+            >
+              <motion.span 
+                className="text-2xl"
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+              >
+                🚀
+              </motion.span>
+            </motion.div>
+            <h3 className="text-lg font-semibold text-gray-900">Jupiter Lending</h3>
+            <p className="text-sm text-gray-700">
+              Access decentralized lending powered by Jupiter. Borrow and lend with competitive rates.
+            </p>
+            </motion.div>
+          </TiltCard>
+
+          <TiltCard>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="colorful-card p-6 space-y-3 sm:col-span-2 lg:col-span-1 cursor-pointer"
+            >
+            <motion.div
+              whileHover={{ scale: 1.2, rotate: [0, -10, 10, -10, 0] }}
+              transition={{ duration: 0.5, type: "spring", stiffness: 300 }}
+              className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-200 to-purple-100 flex items-center justify-center shadow-lg icon-bounce"
+            >
+              <motion.span 
+                className="text-2xl"
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                📊
+              </motion.span>
+            </motion.div>
+            <h3 className="text-lg font-semibold text-gray-900">RoaR Score</h3>
+            <p className="text-sm text-gray-700">
+              Your decentralized credit score. Unlock better rates and access to financial services.
+            </p>
+            </motion.div>
+          </TiltCard>
+        </motion.div>
         </div>
       </div>
     </section>
