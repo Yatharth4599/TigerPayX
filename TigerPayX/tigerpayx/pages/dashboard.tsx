@@ -780,8 +780,8 @@ export default function DashboardPage() {
               {transactions.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="text-5xl mb-4">📭</div>
-                  <p className="text-lg text-zinc-300 mb-2 font-medium">No transactions yet</p>
-                  <p className="text-sm text-zinc-500">Start by sending a payment or swapping tokens</p>
+                  <p className="text-lg text-gray-700 mb-2 font-medium">No transactions yet</p>
+                  <p className="text-sm text-gray-600">Start by sending a payment or swapping tokens</p>
                       </div>
               ) : (
                 <div className="space-y-3">
@@ -790,7 +790,7 @@ export default function DashboardPage() {
                       key={tx.id}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-4 glass-panel tiger-stripes-soft rounded-lg hover:border-white/20 transition-colors group"
+                      className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-4 colorful-card rounded-lg hover:border-orange-300 transition-colors group"
                     >
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
@@ -803,11 +803,11 @@ export default function DashboardPage() {
                         </div>
                           <div>
                             <p className="text-gray-900 font-semibold capitalize">{tx.type}</p>
-                    <p className="text-sm text-zinc-400">
+                    <p className="text-sm text-gray-600">
                               {formatTokenAmount(tx.amount, tx.token)} {tx.token}
                     </p>
                             {tx.description && (
-                              <p className="text-xs text-zinc-500 mt-1">{tx.description}</p>
+                              <p className="text-xs text-gray-500 mt-1">{tx.description}</p>
                             )}
                   </div>
                   </div>
@@ -821,7 +821,7 @@ export default function DashboardPage() {
                           }`}>
                             {tx.status}
                           </p>
-                          <p className="text-xs text-zinc-500">
+                          <p className="text-xs text-gray-500">
                             {new Date(tx.createdAt).toLocaleDateString()}
                     </p>
                   </div>
@@ -833,7 +833,7 @@ export default function DashboardPage() {
                             className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
                             title="View on Solana Explorer"
                           >
-                            <svg className="w-5 h-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                             </svg>
                           </a>
@@ -852,9 +852,9 @@ export default function DashboardPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-            className="bg-[#161A1E] border border-white/5 rounded-xl p-6 max-w-md mx-auto"
+            className="colorful-card rounded-xl p-6 max-w-md mx-auto"
           >
-            <h2 className="text-2xl font-bold text-white mb-6">Send Payment</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Send Payment</h2>
             
             {/* Solana Chain Warning */}
             <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
@@ -1085,12 +1085,12 @@ export default function DashboardPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-[#161A1E] border border-white/5 rounded-xl p-6 max-w-md mx-auto"
+            className="colorful-card rounded-xl p-6 max-w-md mx-auto"
           >
-            <h2 className="text-2xl font-bold text-white mb-6">Swap Tokens</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Swap Tokens</h2>
                     <div className="space-y-4">
                             <div>
-                <label className="block text-sm text-zinc-400 mb-2">From</label>
+                <label className="block text-sm text-gray-700 mb-2">From</label>
                 <select
                   value={swapFrom}
                   onChange={(e) => {
@@ -1166,7 +1166,7 @@ export default function DashboardPage() {
                   className="bg-[#0a0d0f] border border-white/10 rounded-lg p-4"
                 >
                   <div className="flex justify-between items-center mb-2">
-                    <p className="text-sm text-zinc-400">You will receive</p>
+                    <p className="text-sm text-gray-600">You will receive</p>
                     <span className={`text-xs px-2 py-1 rounded ${
                       swapPreview.priceImpact > 5 ? "bg-red-500/20 text-red-400" :
                       swapPreview.priceImpact > 1 ? "bg-yellow-500/20 text-yellow-400" :
@@ -1230,7 +1230,7 @@ export default function DashboardPage() {
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-1">Jito Staking</h3>
-                      <p className="text-sm text-zinc-400">Stake SOL with Jito validators</p>
+                      <p className="text-sm text-gray-600">Stake SOL with Jito validators</p>
                         </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-[#ff6b00]">~6%</p>
@@ -1245,7 +1245,7 @@ export default function DashboardPage() {
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <h3 className="text-lg font-semibold text-white mb-1">Marinade Staking</h3>
-                      <p className="text-sm text-zinc-400">Liquid staking with Marinade Finance</p>
+                      <p className="text-sm text-gray-600">Liquid staking with Marinade Finance</p>
               </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-[#ff6b00]">~7%</p>
