@@ -657,10 +657,10 @@ export default function DashboardPage() {
           </div>
 
               {!walletAddress && (
-                <div className="text-center py-12 mb-6 glass-panel tiger-stripes-soft">
+                <div className="text-center py-12 mb-6 colorful-card">
                   <div className="text-6xl mb-4">👛</div>
-                  <p className="text-lg text-zinc-300 mb-2 font-medium">No wallet connected</p>
-                  <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">Connect an existing wallet or import one to get started with TigerPayX</p>
+                  <p className="text-lg text-gray-700 mb-2 font-medium">No wallet connected</p>
+                  <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto">Connect an existing wallet or import one to get started with TigerPayX</p>
                   <button
                     onClick={() => setShowWalletConnection(true)}
                     className="bg-[#ff6b00] text-black font-semibold px-8 py-3 rounded-lg hover:bg-orange-500 transition-colors shadow-lg shadow-[#ff6b00]/20"
@@ -672,10 +672,10 @@ export default function DashboardPage() {
 
               {walletAddress && (
                 <>
-                  <div className="mb-6 p-4 lg:p-6 glass-panel tiger-stripes-soft">
+                  <div className="mb-6 p-4 lg:p-6 colorful-card">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs uppercase tracking-wider text-zinc-400 mb-2">Wallet Address</p>
+                        <p className="text-xs uppercase tracking-wider text-gray-600 mb-2">Wallet Address</p>
                         <p className="text-gray-900 font-mono text-sm break-all select-all bg-white px-2 py-1 rounded border border-gray-200">
                           {showWalletAddress && walletAddress ? walletAddress : "•".repeat(44)}
                         </p>
@@ -873,11 +873,11 @@ export default function DashboardPage() {
             
             {/* Show user's wallet address */}
             {walletAddress && (
-              <div className="mb-6 p-4 glass-panel tiger-stripes-soft border border-white/10 rounded-lg">
+              <div className="mb-6 p-4 colorful-card border border-gray-200 rounded-lg">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs uppercase tracking-wider text-zinc-400 mb-2">Your Wallet Address</p>
-                    <p className="text-white font-mono text-sm break-all select-all bg-black/20 px-2 py-1 rounded border border-white/5">
+                    <p className="text-xs uppercase tracking-wider text-gray-600 mb-2">Your Wallet Address</p>
+                    <p className="text-gray-900 font-mono text-sm break-all select-all bg-white px-2 py-1 rounded border border-gray-200">
                       {showWalletAddress && walletAddress ? walletAddress : "•".repeat(44)}
                     </p>
                   </div>
