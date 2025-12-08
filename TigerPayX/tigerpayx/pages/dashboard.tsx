@@ -18,6 +18,7 @@ import { CopyButton } from "@/components/CopyButton";
 import { QRScanner } from "@/components/QRScanner";
 import { MerchantFormModal } from "@/components/MerchantFormModal";
 import { PayLinkFormModal } from "@/components/PayLinkFormModal";
+import { MerchantDashboard } from "@/components/MerchantDashboard";
 import { WalletConnectionModal } from "@/components/WalletConnectionModal";
 import { FundWalletModal } from "@/components/FundWalletModal";
 import { SeedPhraseModal } from "@/components/SeedPhraseModal";
@@ -1201,127 +1202,112 @@ export default function DashboardPage() {
 
         {/* Merchant Tab */}
         {activeTab === "merchant" && (
+          <>
+            {merchants.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-6"
               >
                 <div className="bg-[#161A1E] border border-white/5 rounded-xl p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">Merchant Dashboard</h2>
-                <button
-                  onClick={() => setShowMerchantForm(true)}
-                  className="bg-[#ff6b00] text-black font-semibold px-6 py-3 rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Register Merchant
-                </button>
-                  </div>
-
-              {merchants.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-5xl mb-4">🏪</div>
-                  <p className="text-zinc-400 mb-2">No merchants registered</p>
-                  <p className="text-sm text-zinc-500 mb-6">Register a merchant to start accepting crypto payments</p>
-                  <button
-                    onClick={() => setShowMerchantForm(true)}
-                    className="bg-[#ff6b00] text-black font-semibold px-6 py-3 rounded-lg hover:bg-orange-500 transition-colors"
-                  >
-                    Get Started
-                  </button>
-                  </div>
-              ) : (
-                <div className="space-y-4">
-                  {merchants.map((merchant) => (
-                    <div
-                      key={merchant.id}
-                      className="bg-[#0a0d0f] border border-white/10 rounded-lg p-6 hover:border-[#ff6b00]/30 transition-colors"
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-white">Merchant Dashboard</h2>
+                    <button
+                      onClick={() => setShowMerchantForm(true)}
+                      className="bg-[#ff6b00] text-black font-semibold px-6 py-3 rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2"
                     >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <h3 className="text-xl font-semibold text-white mb-2">{merchant.name}</h3>
-                          <div className="space-y-1 text-sm">
-                            <p className="text-zinc-400">
-                              <span className="text-zinc-500">ID:</span> {merchant.merchantId}
-                            </p>
-                            <p className="text-zinc-400">
-                              <span className="text-zinc-500">Settlement:</span> {formatAddress(merchant.settlementAddress)}
-                            </p>
-                            <p className="text-zinc-400">
-                              <span className="text-zinc-500">Token:</span> {merchant.preferredToken}
-                      </p>
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Register Merchant
+                    </button>
+                  </div>
+                  <div className="text-center py-12">
+                    <div className="text-5xl mb-4">🏪</div>
+                    <p className="text-zinc-400 mb-2">No merchants registered</p>
+                    <p className="text-sm text-zinc-500 mb-6">Register a merchant to start accepting crypto payments</p>
+                    <button
+                      onClick={() => setShowMerchantForm(true)}
+                      className="bg-[#ff6b00] text-black font-semibold px-6 py-3 rounded-lg hover:bg-orange-500 transition-colors"
+                    >
+                      Get Started
+                    </button>
+                  </div>
                 </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={async () => {
-                              setSelectedMerchant(merchant);
-                              await loadPayLinks(merchant.merchantId);
-                            }}
-                            className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-zinc-300 hover:text-white transition-colors"
-                          >
-                            View PayLinks
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedMerchant(merchant);
-                              setShowPayLinkForm(true);
-                            }}
-                            className="px-4 py-2 bg-[#ff6b00] hover:bg-orange-500 rounded-lg text-sm text-black font-semibold transition-colors"
-                          >
-                            Create PayLink
-                          </button>
-                          </div>
+              </motion.div>
+            ) : selectedMerchant ? (
+              // Show new Merchant Dashboard when merchant is selected
+              <MerchantDashboard
+                merchant={selectedMerchant}
+                walletAddress={walletAddress || ""}
+                balances={balances}
+                transactions={transactions}
+                onRefresh={async () => {
+                  await loadBalances();
+                  await loadTransactions();
+                  if (selectedMerchant) {
+                    await loadPayLinks(selectedMerchant.merchantId);
+                  }
+                }}
+              />
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6"
+              >
+                <div className="bg-[#161A1E] border border-white/5 rounded-xl p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-white">Select a Merchant</h2>
+                    <button
+                      onClick={() => setShowMerchantForm(true)}
+                      className="bg-[#ff6b00] text-black font-semibold px-6 py-3 rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Register Merchant
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    {merchants.map((merchant) => (
+                      <motion.div
+                        key={merchant.id}
+                        whileHover={{ scale: 1.02 }}
+                        onClick={async () => {
+                          setSelectedMerchant(merchant);
+                          await loadPayLinks(merchant.merchantId);
+                        }}
+                        className="bg-[#0a0d0f] border border-white/10 rounded-lg p-6 hover:border-[#ff6b00]/30 transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h3 className="text-xl font-semibold text-white mb-2">{merchant.name}</h3>
+                            <div className="space-y-1 text-sm">
+                              <p className="text-zinc-400">
+                                <span className="text-zinc-500">ID:</span> {merchant.merchantId}
+                              </p>
+                              <p className="text-zinc-400">
+                                <span className="text-zinc-500">Settlement:</span> {formatAddress(merchant.settlementAddress)}
+                              </p>
+                              <p className="text-zinc-400">
+                                <span className="text-zinc-500">Token:</span> {merchant.preferredToken}
+                              </p>
                             </div>
-
-                      {selectedMerchant?.id === merchant.id && payLinks.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-white/10">
-                          <h4 className="text-sm font-semibold text-white mb-3">PayLinks</h4>
-                          <div className="space-y-2">
-                            {payLinks.map((payLink) => (
-                              <div
-                                key={payLink.id}
-                                className="bg-[#161A1E] border border-white/5 rounded-lg p-3 flex items-center justify-between"
-                              >
-                                <div>
-                                  <p className="text-white font-medium">
-                                    {formatTokenAmount(payLink.amount, payLink.token)} {payLink.token}
-                                  </p>
-                                  <p className="text-xs text-zinc-400">{payLink.description || "No description"}</p>
-                                  <p className="text-xs text-zinc-500 mt-1">
-                                    Status: <span className={`${
-                                      payLink.status === "paid" ? "text-green-400" :
-                                      payLink.status === "expired" ? "text-red-400" :
-                                      "text-yellow-400"
-                                    }`}>{payLink.status}</span>
-                                  </p>
-                                </div>
-                                {payLink.solanaTxHash && (
-                                  <a
-                                    href={getSolanaExplorerUrl(payLink.solanaTxHash, network)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
-                                  >
-                                    <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                    </svg>
-                                  </a>
-                                )}
-          </div>
-                            ))}
-            </div>
-              </div>
-                      )}
-                    </div>
-                  ))}
-              </div>
+                          </div>
+                          <button className="px-4 py-2 bg-[#ff6b00] hover:bg-orange-500 rounded-lg text-sm text-black font-semibold transition-colors">
+                            Open Dashboard
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
             )}
-            </div>
-          </motion.div>
-          )}
+          </>
+        )}
+
 
         {/* QR Scanner Modal */}
         {showQRScanner && (
