@@ -159,6 +159,60 @@ export function Hero() {
                   Introducing RoaR Score — your gateway to decentralized credit.
                 </motion.span>
               </motion.p>
+
+              {/* Country Flags - Available Now */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.9 }}
+                className="flex items-center justify-center gap-4 mt-8"
+              >
+                <span className="text-sm font-medium text-gray-600">Available in:</span>
+                <div className="flex items-center gap-3">
+                  {/* UAE Flag */}
+                  <motion.div
+                    whileHover={{ scale: 1.1, y: -2 }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/80 backdrop-blur-sm border border-orange-200 shadow-sm"
+                  >
+                    <span className="text-2xl">🇦🇪</span>
+                    <span className="text-xs font-semibold text-gray-700">UAE</span>
+                  </motion.div>
+                  
+                  {/* India Flag */}
+                  <motion.div
+                    whileHover={{ scale: 1.1, y: -2 }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/80 backdrop-blur-sm border border-orange-200 shadow-sm"
+                  >
+                    <span className="text-2xl">🇮🇳</span>
+                    <span className="text-xs font-semibold text-gray-700">India</span>
+                  </motion.div>
+                  
+                  {/* Philippines Flag */}
+                  <motion.div
+                    whileHover={{ scale: 1.1, y: -2 }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/80 backdrop-blur-sm border border-orange-200 shadow-sm"
+                  >
+                    <span className="text-2xl">🇵🇭</span>
+                    <span className="text-xs font-semibold text-gray-700">Philippines</span>
+                  </motion.div>
+                </div>
+              </motion.div>
+
+              {/* Coming Soon Regions */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 1.1 }}
+                className="mt-4"
+              >
+                <p className="text-sm text-gray-500">
+                  Coming soon:{" "}
+                  <span className="font-medium text-gray-600">USA</span>,{" "}
+                  <span className="font-medium text-gray-600">UK</span>,{" "}
+                  <span className="font-medium text-gray-600">EU</span>,{" "}
+                  <span className="font-medium text-gray-600">Latin America</span>
+                </p>
+              </motion.div>
             </motion.div>
             
             <motion.div
@@ -209,7 +263,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.8 }}
-            className="mt-16 lg:mt-24 grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+            className="mt-16 lg:mt-24 grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
           >
           <TiltCard>
             <motion.div
@@ -250,6 +304,34 @@ export function Hero() {
             <motion.div
               whileHover={{ scale: 1.2, rotate: [0, -10, 10, -10, 0] }}
               transition={{ duration: 0.5, type: "spring", stiffness: 300 }}
+              className="h-12 w-12 rounded-xl bg-gradient-to-br from-green-200 to-green-100 flex items-center justify-center shadow-lg icon-bounce"
+            >
+              <motion.span 
+                className="text-2xl"
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                💰
+              </motion.span>
+            </motion.div>
+            <h3 className="text-lg font-semibold text-gray-900">On/Off Ramp</h3>
+            <p className="text-sm text-gray-700">
+              Easy money transfers via bank accounts, UPI (India), GCash (Philippines), and Aani (UAE). Add and withdraw funds seamlessly.
+            </p>
+            </motion.div>
+          </TiltCard>
+
+          <TiltCard>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="colorful-card p-6 space-y-3 cursor-pointer"
+            >
+            <motion.div
+              whileHover={{ scale: 1.2, rotate: [0, -10, 10, -10, 0] }}
+              transition={{ duration: 0.5, type: "spring", stiffness: 300 }}
               className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-200 to-blue-100 flex items-center justify-center shadow-lg icon-bounce"
             >
               <motion.span 
@@ -272,8 +354,8 @@ export function Hero() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="colorful-card p-6 space-y-3 sm:col-span-2 lg:col-span-1 cursor-pointer"
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="colorful-card p-6 space-y-3 cursor-pointer"
             >
             <motion.div
               whileHover={{ scale: 1.2, rotate: [0, -10, 10, -10, 0] }}
