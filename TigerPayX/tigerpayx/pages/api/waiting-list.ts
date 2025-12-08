@@ -56,6 +56,11 @@ export default async function handler(
     });
   } catch (error: any) {
     console.error("Waiting list error:", error);
+    console.error("Error details:", {
+      code: error.code,
+      message: error.message,
+      meta: error.meta,
+    });
     
     // Handle Prisma-specific errors
     if (error.code === "P2002") {
@@ -65,15 +70,32 @@ export default async function handler(
     }
 
     // Handle database connection errors
-    if (error.code === "P1001" || error.message?.includes("connect")) {
+    if (
+      error.code === "P1001" || 
+      error.code === "P1000" ||
+      error.message?.includes("connect") ||
+      error.message?.includes("Can't reach database") ||
+      error.message?.includes("Environment variable not found")
+    ) {
       console.error("Database connection error:", error);
       return res.status(503).json({
-        error: "Database connection failed. Please try again later.",
+        error: "Database connection failed. Please configure DATABASE_URL in Vercel environment variables.",
+        details: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+
+    // Handle schema/migration errors
+    if (error.code === "P2021" || error.message?.includes("does not exist")) {
+      console.error("Database schema error:", error);
+      return res.status(503).json({
+        error: "Database table not found. Please run migrations.",
+        details: process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
 
     return res.status(500).json({
       error: "Failed to join waiting list. Please try again.",
+      details: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 }

@@ -32,8 +32,11 @@ export default function WaitingListPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Failed to join waiting list");
+        // Show more detailed error message
+        const errorMessage = data.error || data.details || "Failed to join waiting list";
+        setError(errorMessage);
         setLoading(false);
+        console.error("Waiting list API error:", data);
         return;
       }
 
