@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/router";
 import { motion } from "framer-motion";
 import { isAuthenticated, clearAuth } from "@/utils/auth";
@@ -14,14 +13,13 @@ type NavItem = {
 // Logo component - uses SVG like Phantom
 function LogoImage() {
   return (
-    <Image
+    <img
       src="/assets/logo copy.svg"
       alt="TigerPayX Logo"
       width={32}
       height={32}
       className="object-contain transition-all duration-300 group-hover:scale-105"
-      priority
-      unoptimized
+      style={{ display: 'block' }}
     />
   );
 }

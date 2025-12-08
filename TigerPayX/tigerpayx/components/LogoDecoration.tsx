@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import Image from "next/image";
 
 type LogoDecorationProps = {
   size?: number;
@@ -33,13 +32,13 @@ export function LogoDecoration({
         y: { duration: 3, repeat: Infinity, ease: "easeInOut" },
       }}
     >
-      <Image
+      <img
         src="/assets/logo copy.svg"
         alt="TigerPayX Decoration"
         width={size}
         height={size}
         className="object-contain"
-        unoptimized
+        style={{ display: 'block' }}
       />
     </motion.div>
   );
