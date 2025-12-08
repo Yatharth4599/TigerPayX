@@ -104,22 +104,25 @@ export default function DashboardPage() {
         
         // Initialize with demo data if not authenticated
         if (!isAuthenticated()) {
-          // Set demo wallet address
-          setWalletAddress("DemoWallet1234567890123456789012345678901234567890");
-          // Set demo balances
+          // Use a valid Solana address format for demo (but skip actual balance loading)
+          // This is a valid format: 44 characters base58
+          const demoAddress = "11111111111111111111111111111111"; // Valid Solana address format
+          setWalletAddress(demoAddress);
+          // Set demo balances directly (skip API calls)
           setBalances({
             sol: "10.5",
             usdc: "5000",
             usdt: "2500",
             tt: "0",
           } as WalletBalance);
+          setSolBalance(10.5);
           // Set demo transactions
           setTransactions([
             {
               id: "1",
               type: "pay",
-              fromAddress: "DemoWallet1234567890123456789012345678901234567890",
-              toAddress: "DemoWallet1234567890123456789012345678901234567890",
+              fromAddress: demoAddress,
+              toAddress: demoAddress,
               amount: "100",
               token: "USDC",
               txHash: "demo-tx-hash-123",
@@ -134,7 +137,7 @@ export default function DashboardPage() {
               id: "demo-merchant-1",
               merchantId: "MERCHANT_DEMO_001",
               name: "Demo Store",
-              settlementAddress: "DemoWallet1234567890123456789012345678901234567890",
+              settlementAddress: demoAddress,
               preferredToken: "USDC",
             },
           ]);
@@ -142,9 +145,10 @@ export default function DashboardPage() {
             id: "demo-merchant-1",
             merchantId: "MERCHANT_DEMO_001",
             name: "Demo Store",
-            settlementAddress: "DemoWallet1234567890123456789012345678901234567890",
+            settlementAddress: demoAddress,
             preferredToken: "USDC",
           });
+          setLoading(false);
         } else {
           await initializeWallet();
         }
@@ -304,6 +308,11 @@ export default function DashboardPage() {
   // Load balances
   const loadBalances = async () => {
     if (!walletAddress) return;
+    // Skip balance loading for demo mode (address starts with all 1s)
+    if (walletAddress === "11111111111111111111111111111111") {
+      console.log("[loadBalances] Skipping balance load for demo mode");
+      return;
+    }
     try {
       setRefreshing(true);
       console.log(`[loadBalances] Loading balances for ${walletAddress.substring(0, 8)}...`);
@@ -517,10 +526,10 @@ export default function DashboardPage() {
 
   if (!authChecked || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-950 via-[#1a0a00] to-orange-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-orange-50 via-amber-50/30 to-orange-50/50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <LoadingSpinner size="lg" />
-          <p className="text-white text-lg">Loading TigerPayX...</p>
+          <p className="text-gray-900 text-lg">Loading TigerPayX...</p>
         </div>
       </div>
     );
@@ -530,7 +539,7 @@ export default function DashboardPage() {
   const isDevnet = network === "devnet";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-950 via-[#1a0a00] to-orange-900 text-white">
+    <div className="min-h-screen bg-gradient-to-b from-orange-50 via-amber-50/30 to-orange-50/50 text-gray-900">
       <Navbar />
       {isAdmin && (
         <div className="section-padding pt-4">
@@ -583,7 +592,7 @@ export default function DashboardPage() {
           )}
 
           {/* Tabs */}
-          <div className="flex gap-2 mb-8 border-b border-white/10 overflow-x-auto pb-2">
+          <div className="flex gap-2 mb-8 border-b border-gray-200 overflow-x-auto pb-2">
           {(["home", "send", "swap", "earn", "merchant"] as ActiveTab[]).map((tab) => (
               <button
               key={tab}
@@ -591,7 +600,7 @@ export default function DashboardPage() {
               className={`px-6 py-3 font-semibold capitalize transition-colors whitespace-nowrap ${
                 activeTab === tab
                   ? "text-[#ff6b00] border-b-2 border-[#ff6b00]"
-                    : "text-zinc-400 hover:text-white"
+                    : "text-gray-600 hover:text-gray-900"
                 }`}
               >
               {tab}
@@ -607,18 +616,18 @@ export default function DashboardPage() {
             className="space-y-6"
           >
             {/* Wallet Card */}
-            <div className="glass-panel tiger-stripes-soft p-6 lg:p-8">
+            <div className="colorful-card p-6 lg:p-8">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
             <div>
-                  <h2 className="text-2xl lg:text-3xl font-bold text-white">TigerPayX Wallet</h2>
-                  <p className="text-sm text-zinc-400 mt-1">Manage your crypto assets</p>
+                  <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">TigerPayX Wallet</h2>
+                  <p className="text-sm text-gray-600 mt-1">Manage your crypto assets</p>
             </div>
                 <div className="flex flex-wrap gap-2">
                   {walletAddress && (
                     <button
                       onClick={loadBalances}
                       disabled={refreshing}
-                      className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm text-zinc-300 hover:text-white transition-colors disabled:opacity-50 flex items-center gap-2 border border-white/10"
+                      className="px-4 py-2 bg-white border border-gray-200 hover:bg-orange-50 rounded-lg text-sm text-gray-700 hover:text-gray-900 transition-colors disabled:opacity-50 flex items-center gap-2"
                     >
                       {refreshing ? (
                         <>
@@ -667,7 +676,7 @@ export default function DashboardPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs uppercase tracking-wider text-zinc-400 mb-2">Wallet Address</p>
-                        <p className="text-white font-mono text-sm break-all select-all bg-black/20 px-2 py-1 rounded border border-white/5">
+                        <p className="text-gray-900 font-mono text-sm break-all select-all bg-white px-2 py-1 rounded border border-gray-200">
                           {showWalletAddress && walletAddress ? walletAddress : "•".repeat(44)}
                         </p>
                       </div>
@@ -678,12 +687,12 @@ export default function DashboardPage() {
                           title={showWalletAddress ? "Hide address" : "Show address"}
                         >
                           {showWalletAddress ? (
-                            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
                           ) : (
-                            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                             </svg>
                           )}
@@ -714,13 +723,13 @@ export default function DashboardPage() {
                   ].map(({ token, balance, icon, color }) => (
                     <div
                       key={token}
-                      className={`glass-panel tiger-stripes-soft p-4 lg:p-5 rounded-xl bg-gradient-to-br ${color} border border-white/10 hover:border-white/20 transition-all`}
+                      className={`colorful-card p-4 lg:p-5 rounded-xl bg-gradient-to-br ${color} border border-gray-200 hover:border-orange-300 transition-all`}
                     >
                       <div className="flex items-center gap-2 mb-3">
                         <span className="text-2xl">{icon}</span>
-                        <p className="text-sm font-medium text-zinc-300 uppercase tracking-wider">{token}</p>
+                        <p className="text-sm font-medium text-gray-600 uppercase tracking-wider">{token}</p>
                   </div>
-                      <p className="text-2xl lg:text-3xl font-bold text-white">{formatTokenAmount(balance, token)}</p>
+                      <p className="text-2xl lg:text-3xl font-bold text-gray-900">{formatTokenAmount(balance, token)}</p>
                     </div>
                   ))}
                     </div>
@@ -740,21 +749,21 @@ export default function DashboardPage() {
                   onClick={() => setActiveTab(tab)}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
-                  className="glass-panel tiger-stripes-soft rounded-xl p-5 lg:p-6 hover:border-[#ff6b00]/50 transition-all text-left group"
+                  className="colorful-card rounded-xl p-5 lg:p-6 hover:border-[#ff6b00] transition-all text-left group"
                 >
                   <div className="text-3xl mb-3">{icon}</div>
-                  <p className="text-white font-semibold group-hover:text-[#ff6b00] transition-colors mb-1">{label}</p>
-                  <p className="text-xs text-zinc-400">{desc}</p>
+                  <p className="text-gray-900 font-semibold group-hover:text-[#ff6b00] transition-colors mb-1">{label}</p>
+                  <p className="text-xs text-gray-600">{desc}</p>
                   </motion.button>
               ))}
                 </div>
 
             {/* Recent Transactions */}
-            <div className="glass-panel tiger-stripes-soft rounded-xl p-6 lg:p-8">
+            <div className="colorful-card rounded-xl p-6 lg:p-8">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
                     <div>
-                  <h3 className="text-xl lg:text-2xl font-bold text-white">Recent Transactions</h3>
-                  <p className="text-sm text-zinc-400 mt-1">Your latest activity</p>
+                  <h3 className="text-xl lg:text-2xl font-bold text-gray-900">Recent Transactions</h3>
+                  <p className="text-sm text-gray-600 mt-1">Your latest activity</p>
                     </div>
                 {transactions.length > 0 && (
                   <button
@@ -793,7 +802,7 @@ export default function DashboardPage() {
                             {tx.type === "send" ? "📤" : tx.type === "swap" ? "🔄" : "💰"}
                         </div>
                           <div>
-                            <p className="text-white font-semibold capitalize">{tx.type}</p>
+                            <p className="text-gray-900 font-semibold capitalize">{tx.type}</p>
                     <p className="text-sm text-zinc-400">
                               {formatTokenAmount(tx.amount, tx.token)} {tx.token}
                     </p>
@@ -911,7 +920,7 @@ export default function DashboardPage() {
                     type="text"
                     value={sendToAddress}
                     onChange={(e) => setSendToAddress(e.target.value)}
-                    className="flex-1 glass-panel tiger-stripes-soft border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-sm placeholder:text-zinc-500 focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00] outline-none transition-all"
+                    className="flex-1 bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-900 font-mono text-sm placeholder:text-gray-400 focus:border-[#ff6b00] focus:ring-2 focus:ring-orange-200 outline-none transition-all"
                     placeholder="Any Solana wallet address"
                   />
                   <button
@@ -941,7 +950,7 @@ export default function DashboardPage() {
                   <select
                     value={sendToken}
                     onChange={(e) => setSendToken(e.target.value as Token)}
-                    className="w-full glass-panel tiger-stripes-soft border border-white/10 rounded-lg px-4 py-3 text-white focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00] outline-none transition-all"
+                    className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-900 focus:border-[#ff6b00] focus:ring-2 focus:ring-orange-200 outline-none transition-all"
                   >
                     <option value="SOL">SOL</option>
                     <option value="USDC">USDC</option>
@@ -950,7 +959,7 @@ export default function DashboardPage() {
                   </select>
                   {balances && (
                     <p className="text-xs text-zinc-400 mt-2">
-                      Balance: <span className="text-white font-medium">{formatTokenAmount(balances[sendToken.toLowerCase() as keyof WalletBalance] || "0", sendToken)} {sendToken}</span>
+                      Balance: <span className="text-gray-900 font-medium">{formatTokenAmount(balances[sendToken.toLowerCase() as keyof WalletBalance] || "0", sendToken)} {sendToken}</span>
                     </p>
                   )}
               </div>
@@ -962,7 +971,7 @@ export default function DashboardPage() {
                     step="0.000001"
                     value={sendAmount}
                     onChange={(e) => setSendAmount(e.target.value)}
-                    className="w-full glass-panel tiger-stripes-soft border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-zinc-500 focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00] outline-none transition-all"
+                    className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:border-[#ff6b00] focus:ring-2 focus:ring-orange-200 outline-none transition-all"
                     placeholder="0.00"
                   />
                 {sendAmount && balances && (
@@ -1015,7 +1024,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-zinc-400">Required SOL</span>
-                    <span className="text-sm font-medium text-white">0.001 SOL (minimum)</span>
+                    <span className="text-sm font-medium text-gray-700">0.001 SOL (minimum)</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-zinc-400">Your SOL Balance</span>
@@ -1088,7 +1097,7 @@ export default function DashboardPage() {
                     setSwapFrom(e.target.value as Token);
                     setSwapPreview(null);
                   }}
-                  className="w-full bg-[#0a0d0f] border border-white/10 rounded-lg px-4 py-3 text-white"
+                  className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
                 >
                   <option value="SOL">SOL</option>
                   <option value="USDC">USDC</option>
@@ -1126,7 +1135,7 @@ export default function DashboardPage() {
                     setSwapTo(e.target.value as Token);
                     setSwapPreview(null);
                   }}
-                  className="w-full bg-[#0a0d0f] border border-white/10 rounded-lg px-4 py-3 text-white"
+                  className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
                 >
                   <option value="SOL">SOL</option>
                             <option value="USDC">USDC</option>
@@ -1145,7 +1154,7 @@ export default function DashboardPage() {
                     setSwapAmount(e.target.value);
                     setSwapPreview(null);
                   }}
-                  className="w-full bg-[#0a0d0f] border border-white/10 rounded-lg px-4 py-3 text-white"
+                  className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-900"
                             placeholder="0.00"
                           />
                         </div>
@@ -1166,7 +1175,7 @@ export default function DashboardPage() {
                       {swapPreview.priceImpact.toFixed(2)}% impact
                     </span>
                       </div>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-2xl font-bold text-gray-900">
                     {formatTokenAmount(swapPreview.outputAmount.toString(), swapTo)} {swapTo}
                   </p>
                 </motion.div>
@@ -1176,7 +1185,7 @@ export default function DashboardPage() {
                 <button
                   onClick={handleSwapPreview}
                   disabled={!swapAmount || previewLoading || swapFrom === swapTo}
-                  className="flex-1 bg-zinc-700 text-white font-semibold py-3 rounded-lg hover:bg-zinc-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 bg-gray-200 text-gray-900 font-semibold py-3 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {previewLoading ? (
                     <>
@@ -1213,14 +1222,14 @@ export default function DashboardPage() {
               animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            <div className="bg-[#161A1E] border border-white/5 rounded-xl p-6">
-              <h2 className="text-2xl font-bold text-white mb-2">Earn Yield</h2>
+                <div className="colorful-card rounded-xl p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Earn Yield</h2>
               <p className="text-zinc-400 mb-6">Stake SOL to earn passive yield</p>
               <div className="space-y-4">
                 <div className="bg-[#0a0d0f] border border-white/10 rounded-lg p-6 hover:border-[#ff6b00]/30 transition-colors">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-white mb-1">Jito Staking</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">Jito Staking</h3>
                       <p className="text-sm text-zinc-400">Stake SOL with Jito validators</p>
                         </div>
                     <div className="text-right">
@@ -1261,9 +1270,9 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-6"
               >
-                <div className="bg-[#161A1E] border border-white/5 rounded-xl p-6">
+                <div className="colorful-card rounded-xl p-6">
                   <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-white">Merchant Dashboard</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">Merchant Dashboard</h2>
                     <button
                       onClick={() => setShowMerchantForm(true)}
                       className="bg-[#ff6b00] text-black font-semibold px-6 py-3 rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2"
@@ -1308,9 +1317,9 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-6"
               >
-                <div className="bg-[#161A1E] border border-white/5 rounded-xl p-6">
+                <div className="colorful-card rounded-xl p-6">
                   <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-white">Select a Merchant</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">Select a Merchant</h2>
                     <button
                       onClick={() => setShowMerchantForm(true)}
                       className="bg-[#ff6b00] text-black font-semibold px-6 py-3 rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2"
@@ -1330,20 +1339,20 @@ export default function DashboardPage() {
                           setSelectedMerchant(merchant);
                           await loadPayLinks(merchant.merchantId);
                         }}
-                        className="bg-[#0a0d0f] border border-white/10 rounded-lg p-6 hover:border-[#ff6b00]/30 transition-colors cursor-pointer"
+                        className="bg-white border border-gray-200 rounded-lg p-6 hover:border-[#ff6b00] transition-colors cursor-pointer"
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h3 className="text-xl font-semibold text-white mb-2">{merchant.name}</h3>
+                            <h3 className="text-xl font-semibold text-gray-900 mb-2">{merchant.name}</h3>
                             <div className="space-y-1 text-sm">
-                              <p className="text-zinc-400">
-                                <span className="text-zinc-500">ID:</span> {merchant.merchantId}
+                              <p className="text-gray-600">
+                                <span className="text-gray-500">ID:</span> {merchant.merchantId}
                               </p>
-                              <p className="text-zinc-400">
-                                <span className="text-zinc-500">Settlement:</span> {formatAddress(merchant.settlementAddress)}
+                              <p className="text-gray-600">
+                                <span className="text-gray-500">Settlement:</span> {formatAddress(merchant.settlementAddress)}
                               </p>
-                              <p className="text-zinc-400">
-                                <span className="text-zinc-500">Token:</span> {merchant.preferredToken}
+                              <p className="text-gray-600">
+                                <span className="text-gray-500">Token:</span> {merchant.preferredToken}
                               </p>
                             </div>
                           </div>
