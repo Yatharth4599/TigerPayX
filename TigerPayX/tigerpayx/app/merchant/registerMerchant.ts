@@ -15,11 +15,13 @@ export async function registerMerchant(data: {
   preferredToken: "SOL" | "USDC" | "USDT" | "TT";
 }): Promise<{ success: boolean; merchant?: Merchant; error?: string }> {
   try {
+    // For demo purposes, auth is optional - include it if available
+    const authHeader = getAuthHeader();
     const response = await fetch(`${API_BASE}/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...getAuthHeader(),
+        ...authHeader,
       },
       body: JSON.stringify(data),
     });

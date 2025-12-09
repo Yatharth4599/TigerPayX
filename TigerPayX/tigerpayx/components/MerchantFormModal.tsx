@@ -6,7 +6,6 @@ import { LoadingSpinner } from "./LoadingSpinner";
 import { showToast } from "./Toast";
 import { registerMerchant } from "@/app/merchant/registerMerchant";
 import { isValidSolanaAddress } from "@/app/wallet/solanaUtils";
-import { isAuthenticated } from "@/utils/auth";
 import { getStoredWalletAddress } from "@/app/wallet/createWallet";
 
 interface MerchantFormModalProps {
@@ -53,12 +52,6 @@ export function MerchantFormModal({ isOpen, onClose, onSuccess, defaultSettlemen
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Check authentication first
-    if (!isAuthenticated()) {
-      showToast("Please log in to register as a merchant", "error");
-      return;
-    }
-    
     if (!formData.name.trim()) {
       showToast("Merchant name is required", "error");
       return;
@@ -94,22 +87,11 @@ export function MerchantFormModal({ isOpen, onClose, onSuccess, defaultSettlemen
           onSuccess();
         }, 100);
       } else {
-        // Better error handling
-        const errorMsg = result.error || "Failed to register merchant";
-        if (errorMsg.toLowerCase().includes("auth") || errorMsg.toLowerCase().includes("unauthorized")) {
-          showToast("Authentication required. Please log in and try again.", "error");
-        } else {
-          showToast(errorMsg, "error");
-        }
+        showToast(result.error || "Failed to register merchant", "error");
       }
     } catch (error: any) {
       console.error("Merchant registration error:", error);
-      const errorMsg = error.message || "An error occurred";
-      if (errorMsg.toLowerCase().includes("auth") || errorMsg.toLowerCase().includes("unauthorized")) {
-        showToast("Authentication required. Please log in and try again.", "error");
-      } else {
-        showToast(errorMsg, "error");
-      }
+      showToast(error.message || "An error occurred", "error");
     } finally {
       setLoading(false);
     }
@@ -144,14 +126,6 @@ export function MerchantFormModal({ isOpen, onClose, onSuccess, defaultSettlemen
                   </svg>
                 </button>
               </div>
-
-              {!isAuthenticated() && (
-                <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                  <p className="text-yellow-400 text-sm">
-                    ⚠️ You need to be logged in to register as a merchant. Please log in first.
-                  </p>
-                </div>
-              )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
