@@ -152,7 +152,7 @@ export function Hero() {
                   transition={{ duration: 0.6, delay: 0.3 }}
                   className="block"
                 >
-                  The neo bank that'll
+                  The stablecoin neobank that makes
                 </motion.span>
                 <motion.span 
                   className="block mt-3 gradient-text"
@@ -161,7 +161,7 @@ export function Hero() {
                   transition={{ duration: 0.8, delay: 0.5 }}
                   whileHover={{ scale: 1.05 }}
                 >
-                  take you places
+                  Borders Disappear
                 </motion.span>
               </motion.h1>
               
