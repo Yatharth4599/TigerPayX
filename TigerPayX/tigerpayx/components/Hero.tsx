@@ -161,7 +161,7 @@ export function Hero() {
                   transition={{ duration: 0.8, delay: 0.5 }}
                   whileHover={{ scale: 1.05 }}
                 >
-                  Borders Disappear
+                  borders disappear
                 </motion.span>
               </motion.h1>
               
