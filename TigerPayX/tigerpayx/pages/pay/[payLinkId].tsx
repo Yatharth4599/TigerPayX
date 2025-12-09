@@ -28,6 +28,7 @@ export default function PayPage() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [solBalance, setSolBalance] = useState<number>(0);
   const [showWalletPrompt, setShowWalletPrompt] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"stablecoin" | "upi" | "gcash" | "bank">("stablecoin");
 
   // Load paylink details
   useEffect(() => {
@@ -81,7 +82,25 @@ export default function PayPage() {
   }, []);
 
   const handlePay = async () => {
-    if (!payLink || !walletAddress) {
+    if (!payLink) {
+      showToast("Payment link not loaded", "error");
+      return;
+    }
+
+    // Handle different payment methods
+    if (paymentMethod === "stablecoin") {
+      await handleStablecoinPayment();
+    } else if (paymentMethod === "upi") {
+      await handleUPIPayment();
+    } else if (paymentMethod === "gcash") {
+      await handleGCashPayment();
+    } else if (paymentMethod === "bank") {
+      await handleBankTransfer();
+    }
+  };
+
+  const handleStablecoinPayment = async () => {
+    if (!walletAddress) {
       showToast("Please connect your wallet first", "error");
       return;
     }
@@ -95,9 +114,9 @@ export default function PayPage() {
     try {
       // Send payment
       const result = await sendP2PPayment(
-        payLink.settlementAddress,
-        payLink.token,
-        parseFloat(payLink.amount)
+        payLink!.settlementAddress,
+        payLink!.token,
+        parseFloat(payLink!.amount)
       );
 
       if (!result.success || !result.signature) {
@@ -113,6 +132,7 @@ export default function PayPage() {
         body: JSON.stringify({
           txHash: result.signature,
           fromAddress: walletAddress,
+          paymentMethod: "stablecoin",
         }),
       });
 
@@ -132,6 +152,112 @@ export default function PayPage() {
       console.error("Payment error:", err);
       showToast(err.message || "Payment failed", "error");
     } finally {
+      setPaying(false);
+    }
+  };
+
+  const handleUPIPayment = async () => {
+    setPaying(true);
+    try {
+      // Create UPI payment request
+      const response = await fetch(`/api/paylink/${payLinkId}/pay`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          paymentMethod: "upi",
+          amount: payLink!.amount,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to initiate UPI payment");
+      }
+
+      if (data.upiUrl) {
+        // Open UPI payment URL
+        window.location.href = data.upiUrl;
+      } else if (data.upiDetails) {
+        // Show UPI details for manual payment
+        showToast("UPI payment details generated. Please complete the payment.", "info");
+        // You can show a modal with UPI details here
+      }
+    } catch (err: any) {
+      console.error("UPI payment error:", err);
+      showToast(err.message || "UPI payment failed", "error");
+      setPaying(false);
+    }
+  };
+
+  const handleGCashPayment = async () => {
+    setPaying(true);
+    try {
+      // Create GCash payment request
+      const response = await fetch(`/api/paylink/${payLinkId}/pay`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          paymentMethod: "gcash",
+          amount: payLink!.amount,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to initiate GCash payment");
+      }
+
+      if (data.gcashUrl) {
+        // Open GCash payment URL
+        window.location.href = data.gcashUrl;
+      } else if (data.gcashDetails) {
+        // Show GCash details for manual payment
+        showToast("GCash payment details generated. Please complete the payment.", "info");
+        // You can show a modal with GCash details here
+      }
+    } catch (err: any) {
+      console.error("GCash payment error:", err);
+      showToast(err.message || "GCash payment failed", "error");
+      setPaying(false);
+    }
+  };
+
+  const handleBankTransfer = async () => {
+    setPaying(true);
+    try {
+      // Get bank transfer details
+      const response = await fetch(`/api/paylink/${payLinkId}/pay`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          paymentMethod: "bank",
+          amount: payLink!.amount,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to get bank transfer details");
+      }
+
+      if (data.bankDetails) {
+        // Show bank transfer details
+        showToast("Bank transfer details generated. Please complete the transfer.", "info");
+        // You can show a modal with bank details here
+        setPaying(false);
+      }
+    } catch (err: any) {
+      console.error("Bank transfer error:", err);
+      showToast(err.message || "Failed to get bank transfer details", "error");
       setPaying(false);
     }
   };
@@ -223,65 +349,213 @@ export default function PayPage() {
               )}
             </div>
 
-            {/* Wallet Status */}
-            {showWalletPrompt && (
-              <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                <p className="text-yellow-400 text-sm mb-3">
-                  You need a wallet to make this payment
-                </p>
+            {/* Payment Method Selection */}
+            {!isPaid && !isExpired && (
+              <div className="mb-6">
+                <p className="text-sm text-zinc-400 mb-3">Choose Payment Method</p>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <button
+                    onClick={() => setPaymentMethod("stablecoin")}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      paymentMethod === "stablecoin"
+                        ? "border-[#ff6b00] bg-[#ff6b00]/10"
+                        : "border-white/10 bg-[#0a0d0f] hover:border-white/20"
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-2xl mb-1">💎</div>
+                      <p className="text-xs font-medium text-white">Stablecoins</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod("upi")}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      paymentMethod === "upi"
+                        ? "border-[#ff6b00] bg-[#ff6b00]/10"
+                        : "border-white/10 bg-[#0a0d0f] hover:border-white/20"
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-2xl mb-1">📱</div>
+                      <p className="text-xs font-medium text-white">UPI</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod("gcash")}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      paymentMethod === "gcash"
+                        ? "border-[#ff6b00] bg-[#ff6b00]/10"
+                        : "border-white/10 bg-[#0a0d0f] hover:border-white/20"
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-2xl mb-1">💳</div>
+                      <p className="text-xs font-medium text-white">GCash</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod("bank")}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      paymentMethod === "bank"
+                        ? "border-[#ff6b00] bg-[#ff6b00]/10"
+                        : "border-white/10 bg-[#0a0d0f] hover:border-white/20"
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-2xl mb-1">🏦</div>
+                      <p className="text-xs font-medium text-white">Bank</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Stablecoin Payment UI */}
+            {!isPaid && !isExpired && paymentMethod === "stablecoin" && (
+              <>
+                {/* Wallet Status */}
+                {showWalletPrompt && (
+                  <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                    <p className="text-yellow-400 text-sm mb-3">
+                      You need a wallet to make this payment
+                    </p>
+                    <button
+                      onClick={handleCreateWallet}
+                      className="w-full bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 font-medium py-2 rounded-lg transition-colors"
+                    >
+                      Create Wallet
+                    </button>
+                  </div>
+                )}
+
+                {walletAddress && (
+                  <div className="mb-6 space-y-2">
+                    <div className="bg-[#0a0d0f] border border-white/10 rounded-lg p-3">
+                      <p className="text-xs text-zinc-400 mb-1">Your Wallet</p>
+                      <p className="text-sm text-white font-mono">{formatAddress(walletAddress)}</p>
+                    </div>
+                    
+                    {/* SOL Balance */}
+                    <div className="bg-[#0a0d0f] border border-white/10 rounded-lg p-3">
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs text-zinc-400">SOL Balance</p>
+                        <p className={`text-sm font-medium ${solBalance >= 0.001 ? 'text-green-400' : 'text-red-400'}`}>
+                          {solBalance.toFixed(9)} SOL
+                        </p>
+                      </div>
+                      {solBalance < 0.001 && (
+                        <p className="text-xs text-red-400 mt-1">
+                          ⚠️ You need at least 0.001 SOL for transaction fees
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Pay Button */}
                 <button
-                  onClick={handleCreateWallet}
-                  className="w-full bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 font-medium py-2 rounded-lg transition-colors"
+                  onClick={handlePay}
+                  disabled={paying || !walletAddress || solBalance < 0.001}
+                  className="w-full bg-[#ff6b00] text-black font-semibold py-3 rounded-lg hover:bg-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Create Wallet
+                  {paying ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      Processing Payment...
+                    </>
+                  ) : !walletAddress ? (
+                    "Connect Wallet"
+                  ) : solBalance < 0.001 ? (
+                    "Insufficient SOL for Fees"
+                  ) : (
+                    `Pay ${formatTokenAmount(payLink.amount, payLink.token)} ${payLink.token}`
+                  )}
+                </button>
+              </>
+            )}
+
+            {/* UPI Payment UI */}
+            {!isPaid && !isExpired && paymentMethod === "upi" && (
+              <div className="space-y-4">
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                  <p className="text-blue-400 text-sm mb-2">
+                    💡 Pay using UPI (India) - Unified Payments Interface
+                  </p>
+                  <p className="text-zinc-400 text-xs">
+                    You'll be redirected to complete the UPI payment
+                  </p>
+                </div>
+                <button
+                  onClick={handlePay}
+                  disabled={paying}
+                  className="w-full bg-[#ff6b00] text-black font-semibold py-3 rounded-lg hover:bg-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {paying ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      Initiating UPI Payment...
+                    </>
+                  ) : (
+                    `Pay ₹${parseFloat(payLink.amount).toFixed(2)} via UPI`
+                  )}
                 </button>
               </div>
             )}
 
-            {walletAddress && (
-              <div className="mb-6 space-y-2">
-                <div className="bg-[#0a0d0f] border border-white/10 rounded-lg p-3">
-                  <p className="text-xs text-zinc-400 mb-1">Your Wallet</p>
-                  <p className="text-sm text-white font-mono">{formatAddress(walletAddress)}</p>
+            {/* GCash Payment UI */}
+            {!isPaid && !isExpired && paymentMethod === "gcash" && (
+              <div className="space-y-4">
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                  <p className="text-green-400 text-sm mb-2">
+                    💡 Pay using GCash (Philippines)
+                  </p>
+                  <p className="text-zinc-400 text-xs">
+                    You'll be redirected to complete the GCash payment
+                  </p>
                 </div>
-                
-                {/* SOL Balance */}
-                <div className="bg-[#0a0d0f] border border-white/10 rounded-lg p-3">
-                  <div className="flex justify-between items-center">
-                    <p className="text-xs text-zinc-400">SOL Balance</p>
-                    <p className={`text-sm font-medium ${solBalance >= 0.001 ? 'text-green-400' : 'text-red-400'}`}>
-                      {solBalance.toFixed(9)} SOL
-                    </p>
-                  </div>
-                  {solBalance < 0.001 && (
-                    <p className="text-xs text-red-400 mt-1">
-                      ⚠️ You need at least 0.001 SOL for transaction fees
-                    </p>
+                <button
+                  onClick={handlePay}
+                  disabled={paying}
+                  className="w-full bg-[#ff6b00] text-black font-semibold py-3 rounded-lg hover:bg-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {paying ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      Initiating GCash Payment...
+                    </>
+                  ) : (
+                    `Pay ₱${parseFloat(payLink.amount).toFixed(2)} via GCash`
                   )}
-                </div>
+                </button>
               </div>
             )}
 
-            {/* Pay Button */}
-            {!isPaid && !isExpired && (
-              <button
-                onClick={handlePay}
-                disabled={paying || !walletAddress || solBalance < 0.001}
-                className="w-full bg-[#ff6b00] text-black font-semibold py-3 rounded-lg hover:bg-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {paying ? (
-                  <>
-                    <LoadingSpinner size="sm" />
-                    Processing Payment...
-                  </>
-                ) : !walletAddress ? (
-                  "Connect Wallet"
-                ) : solBalance < 0.001 ? (
-                  "Insufficient SOL for Fees"
-                ) : (
-                  `Pay ${formatTokenAmount(payLink.amount, payLink.token)} ${payLink.token}`
-                )}
-              </button>
+            {/* Bank Transfer UI */}
+            {!isPaid && !isExpired && paymentMethod === "bank" && (
+              <div className="space-y-4">
+                <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+                  <p className="text-purple-400 text-sm mb-2">
+                    💡 Bank Transfer Details
+                  </p>
+                  <p className="text-zinc-400 text-xs">
+                    Complete the bank transfer using the details below
+                  </p>
+                </div>
+                <button
+                  onClick={handlePay}
+                  disabled={paying}
+                  className="w-full bg-[#ff6b00] text-black font-semibold py-3 rounded-lg hover:bg-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {paying ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      Loading Bank Details...
+                    </>
+                  ) : (
+                    "Get Bank Transfer Details"
+                  )}
+                </button>
+              </div>
             )}
 
             {/* Transaction Info */}
