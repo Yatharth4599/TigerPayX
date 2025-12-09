@@ -6,6 +6,8 @@ import { LoadingSpinner } from "./LoadingSpinner";
 import { showToast } from "./Toast";
 import { registerMerchant } from "@/app/merchant/registerMerchant";
 import { isValidSolanaAddress } from "@/app/wallet/solanaUtils";
+import { isAuthenticated } from "@/utils/auth";
+import { getStoredWalletAddress } from "@/app/wallet/createWallet";
 
 interface MerchantFormModalProps {
   isOpen: boolean;
@@ -16,25 +18,46 @@ interface MerchantFormModalProps {
 
 export function MerchantFormModal({ isOpen, onClose, onSuccess, defaultSettlementAddress }: MerchantFormModalProps) {
   const [loading, setLoading] = useState(false);
+  
+  // Get wallet address from storage if available
+  const getWalletAddress = () => {
+    if (typeof window === "undefined") return defaultSettlementAddress || "";
+    try {
+      const stored = getStoredWalletAddress();
+      return stored || defaultSettlementAddress || "";
+    } catch {
+      return defaultSettlementAddress || "";
+    }
+  };
+
   const [formData, setFormData] = useState({
     name: "",
     logoUrl: "",
-    settlementAddress: defaultSettlementAddress || "",
+    settlementAddress: getWalletAddress(),
     preferredToken: "USDC" as "SOL" | "USDC" | "USDT" | "TT",
   });
 
-  // Update settlement address when default changes
+  // Update settlement address when default changes or modal opens
   useEffect(() => {
-    if (defaultSettlementAddress && isOpen) {
-      setFormData(prev => ({
-        ...prev,
-        settlementAddress: defaultSettlementAddress,
-      }));
+    if (isOpen) {
+      const walletAddr = getWalletAddress();
+      if (walletAddr) {
+        setFormData(prev => ({
+          ...prev,
+          settlementAddress: walletAddr,
+        }));
+      }
     }
   }, [defaultSettlementAddress, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check authentication first
+    if (!isAuthenticated()) {
+      showToast("Please log in to register as a merchant", "error");
+      return;
+    }
     
     if (!formData.name.trim()) {
       showToast("Merchant name is required", "error");
@@ -42,7 +65,7 @@ export function MerchantFormModal({ isOpen, onClose, onSuccess, defaultSettlemen
     }
 
     if (!isValidSolanaAddress(formData.settlementAddress)) {
-      showToast("Invalid Solana address", "error");
+      showToast("Invalid Solana address. Please enter a valid wallet address.", "error");
       return;
     }
 
@@ -61,7 +84,7 @@ export function MerchantFormModal({ isOpen, onClose, onSuccess, defaultSettlemen
         setFormData({
           name: "",
           logoUrl: "",
-          settlementAddress: "",
+          settlementAddress: getWalletAddress(),
           preferredToken: "USDC",
         });
         // Close modal
@@ -71,11 +94,22 @@ export function MerchantFormModal({ isOpen, onClose, onSuccess, defaultSettlemen
           onSuccess();
         }, 100);
       } else {
-        showToast(result.error || "Failed to register merchant", "error");
+        // Better error handling
+        const errorMsg = result.error || "Failed to register merchant";
+        if (errorMsg.toLowerCase().includes("auth") || errorMsg.toLowerCase().includes("unauthorized")) {
+          showToast("Authentication required. Please log in and try again.", "error");
+        } else {
+          showToast(errorMsg, "error");
+        }
       }
     } catch (error: any) {
       console.error("Merchant registration error:", error);
-      showToast(error.message || "An error occurred", "error");
+      const errorMsg = error.message || "An error occurred";
+      if (errorMsg.toLowerCase().includes("auth") || errorMsg.toLowerCase().includes("unauthorized")) {
+        showToast("Authentication required. Please log in and try again.", "error");
+      } else {
+        showToast(errorMsg, "error");
+      }
     } finally {
       setLoading(false);
     }
@@ -111,6 +145,14 @@ export function MerchantFormModal({ isOpen, onClose, onSuccess, defaultSettlemen
                 </button>
               </div>
 
+              {!isAuthenticated() && (
+                <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <p className="text-yellow-400 text-sm">
+                    ⚠️ You need to be logged in to register as a merchant. Please log in first.
+                  </p>
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm text-zinc-400 mb-2">Merchant Name *</label>
@@ -136,16 +178,20 @@ export function MerchantFormModal({ isOpen, onClose, onSuccess, defaultSettlemen
                 </div>
 
                 <div>
-                  <label className="block text-sm text-zinc-400 mb-2">Settlement Address *</label>
+                  <label className="block text-sm text-zinc-400 mb-2">Settlement Address (Wallet) *</label>
                   <input
                     type="text"
                     value={formData.settlementAddress}
                     onChange={(e) => setFormData({ ...formData, settlementAddress: e.target.value })}
                     className="w-full bg-[#0a0d0f] border border-white/10 rounded-lg px-4 py-3 text-white font-mono text-sm"
-                    placeholder="Solana address to receive payments"
+                    placeholder="Your Solana wallet address"
                     required
                   />
-                  <p className="text-xs text-zinc-500 mt-1">Address where payments will be sent</p>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    {formData.settlementAddress 
+                      ? "✓ Wallet address entered" 
+                      : "Enter your Solana wallet address where payments will be received"}
+                  </p>
                 </div>
 
                 <div>
