@@ -37,16 +37,65 @@ export default function PayPage() {
     const loadPayLink = async () => {
       try {
         setLoading(true);
+        
+        // First check localStorage for demo pay links
+        if (payLinkId.startsWith("demo-") && typeof window !== "undefined") {
+          const storedLinks = JSON.parse(localStorage.getItem("demo_paylinks") || "[]");
+          const demoLink = storedLinks.find((link: any) => link.payLinkId === payLinkId);
+          if (demoLink) {
+            setPayLink({
+              ...demoLink,
+              merchantName: demoLink.merchantName || "Demo Merchant",
+              settlementAddress: demoLink.settlementAddress || "11111111111111111111111111111111",
+            });
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // Try API for regular pay links
         const response = await fetch(`/api/paylink/${payLinkId}`);
         const data = await response.json();
 
         if (!response.ok || !data.success) {
+          // If API fails and it's a demo link, check localStorage again
+          if (payLinkId.startsWith("demo-") && typeof window !== "undefined") {
+            const storedLinks = JSON.parse(localStorage.getItem("demo_paylinks") || "[]");
+            const demoLink = storedLinks.find((link: any) => link.payLinkId === payLinkId);
+            if (demoLink) {
+              setPayLink({
+                ...demoLink,
+                merchantName: demoLink.merchantName || "Demo Merchant",
+                settlementAddress: demoLink.settlementAddress || "11111111111111111111111111111111",
+              });
+              setLoading(false);
+              return;
+            }
+          }
           setError(data.error || "Failed to load payment link");
           return;
         }
 
         setPayLink(data.payLink);
       } catch (err: any) {
+        // On error, check localStorage for demo links
+        if (payLinkId.startsWith("demo-") && typeof window !== "undefined") {
+          try {
+            const storedLinks = JSON.parse(localStorage.getItem("demo_paylinks") || "[]");
+            const demoLink = storedLinks.find((link: any) => link.payLinkId === payLinkId);
+            if (demoLink) {
+              setPayLink({
+                ...demoLink,
+                merchantName: demoLink.merchantName || "Demo Merchant",
+                settlementAddress: demoLink.settlementAddress || "11111111111111111111111111111111",
+              });
+              setLoading(false);
+              return;
+            }
+          } catch (e) {
+            // Ignore localStorage errors
+          }
+        }
         setError(err.message || "Failed to load payment link");
       } finally {
         setLoading(false);
