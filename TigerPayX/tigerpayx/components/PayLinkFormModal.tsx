@@ -5,13 +5,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { showToast } from "./Toast";
 import { createPayLink } from "@/app/merchant/createPayLink";
+import { registerMerchant } from "@/app/merchant/registerMerchant";
 import { QRCodeDisplay } from "./QRCodeDisplay";
 import { generatePaymentQR } from "@/app/payments/qrScanner";
+import { getStoredWalletAddress } from "@/app/wallet/createWallet";
 
 interface PayLinkFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  merchantId: string;
+  merchantId?: string;
   onSuccess: () => void;
 }
 
@@ -25,6 +27,26 @@ export function PayLinkFormModal({ isOpen, onClose, merchantId, onSuccess }: Pay
     expiresInHours: 24,
   });
 
+  // Auto-create a demo merchant if none provided
+  const getOrCreateMerchantId = async (): Promise<string> => {
+    if (merchantId) return merchantId;
+    
+    // Create a demo merchant automatically
+    const walletAddress = getStoredWalletAddress() || "11111111111111111111111111111111";
+    const result = await registerMerchant({
+      name: "Demo Merchant",
+      settlementAddress: walletAddress,
+      preferredToken: "USDC",
+    });
+    
+    if (result.success && result.merchant) {
+      return result.merchant.merchantId;
+    }
+    
+    // If registration fails, use a demo merchant ID
+    return "demo-merchant-001";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -35,8 +57,11 @@ export function PayLinkFormModal({ isOpen, onClose, merchantId, onSuccess }: Pay
 
     setLoading(true);
     try {
+      // Get or create merchant ID
+      const finalMerchantId = await getOrCreateMerchantId();
+      
       const result = await createPayLink({
-        merchantId,
+        merchantId: finalMerchantId,
         amount: formData.amount,
         token: formData.token,
         description: formData.description || undefined,

@@ -609,21 +609,8 @@ export default function DashboardPage() {
                     await loadPayLinks(selectedMerchant.merchantId);
                   }
                 }}
-                onCreatePayLink={async () => {
-                  // If no merchants, try to load them first
-                  if (merchants.length === 0) {
-                    await loadMerchants();
-                    // If still no merchants after loading, show merchant form
-                    if (merchants.length === 0) {
-                      setPendingPayLinkForm(true);
-                      setShowMerchantForm(true);
-                      return;
-                    }
-                  }
-                  // Use first merchant if none selected
-                  if (!selectedMerchant && merchants.length > 0) {
-                    setSelectedMerchant(merchants[0]);
-                  }
+                onCreatePayLink={() => {
+                  // Directly open pay link form - no merchant required
                   setShowPayLinkForm(true);
                 }}
               />
@@ -1389,21 +1376,8 @@ export default function DashboardPage() {
                       await loadPayLinks(selectedMerchant.merchantId);
                     }
                   }}
-                  onCreatePayLink={async () => {
-                    // If no merchants, try to load them first
-                    if (merchants.length === 0) {
-                      await loadMerchants();
-                      // If still no merchants after loading, show merchant form
-                      if (merchants.length === 0) {
-                        setPendingPayLinkForm(true);
-                        setShowMerchantForm(true);
-                        return;
-                      }
-                    }
-                    // Use first merchant if none selected
-                    if (!selectedMerchant && merchants.length > 0) {
-                      setSelectedMerchant(merchants[0]);
-                    }
+                  onCreatePayLink={() => {
+                    // Directly open pay link form - no merchant required
                     setShowPayLinkForm(true);
                   }}
                 />
@@ -1504,18 +1478,20 @@ export default function DashboardPage() {
         )}
 
         {/* PayLink Form Modal */}
-        {showPayLinkForm && (selectedMerchant || (merchants.length > 0 && merchants[0]?.merchantId)) && (
+        {showPayLinkForm && (
           <PayLinkFormModal
             isOpen={showPayLinkForm}
             onClose={() => {
               setShowPayLinkForm(false);
             }}
-            merchantId={selectedMerchant?.merchantId || merchants[0]?.merchantId || ""}
+            merchantId={selectedMerchant?.merchantId || merchants[0]?.merchantId}
             onSuccess={() => {
               const merchant = selectedMerchant || merchants[0];
               if (merchant) {
                 loadPayLinks(merchant.merchantId);
               }
+              // Reload merchants in case a new one was created
+              loadMerchants();
             }}
           />
         )}
