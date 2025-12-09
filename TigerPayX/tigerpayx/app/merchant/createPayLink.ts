@@ -77,8 +77,15 @@ function createDemoPayLink(data: {
   expiresInHours?: number;
 }): { success: boolean; payLink?: any; error?: string } {
   try {
-    // Generate a unique pay link ID
-    const payLinkId = `demo-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    // Encode amount and token in the payLinkId for easy retrieval
+    const encodedData = btoa(JSON.stringify({
+      a: data.amount,
+      t: data.token,
+      d: data.description || "",
+    })).replace(/[+/=]/g, (m) => ({ '+': '-', '/': '_', '=': '' }[m] || ''));
+    
+    // Generate a unique pay link ID with encoded data
+    const payLinkId = `demo-${Date.now()}-${encodedData.substring(0, 12)}-${Math.random().toString(36).substring(2, 9)}`;
     
     // Calculate expiration date
     const expiresAt = new Date();

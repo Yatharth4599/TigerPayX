@@ -62,8 +62,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
       
-      // If demo link not found in DB, return a generic demo response
-      // This allows demo links to work even if not in database
+      // If demo link not found in DB, try to decode data from payLinkId
+      // Demo links have format: demo-timestamp-encodedData-random
+      const parts = payLinkId.split("-");
+      if (parts.length >= 3) {
+        try {
+          const encodedData = parts[2];
+          // Decode the data
+          const decoded = JSON.parse(atob(encodedData.replace(/-/g, '+').replace(/_/g, '/')));
+          return res.status(200).json({
+            success: true,
+            payLink: {
+              id: payLinkId,
+              payLinkId: payLinkId,
+              merchantId: "demo-merchant-001",
+              merchantName: "Demo Merchant",
+              settlementAddress: "11111111111111111111111111111111",
+              amount: decoded.a || "10",
+              token: decoded.t || "USDC",
+              description: decoded.d || "Demo payment link",
+              status: "pending",
+              createdAt: new Date().toISOString(),
+              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            },
+          });
+        } catch (e) {
+          // If decoding fails, return generic demo
+        }
+      }
+      
+      // Return generic demo response if decoding fails
       return res.status(200).json({
         success: true,
         payLink: {
