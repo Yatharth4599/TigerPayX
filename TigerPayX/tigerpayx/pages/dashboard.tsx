@@ -754,7 +754,7 @@ export default function DashboardPage() {
                             </svg>
                           )}
                         </button>
-                        <CopyButton text={walletAddress} />
+                        <CopyButton text={walletAddress!} />
                       </div>
                       </div>
                     </div>
@@ -773,10 +773,10 @@ export default function DashboardPage() {
               {balances && (
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
-                    { token: "SOL", balance: balances.sol, icon: "🟡", color: "from-yellow-500/20 to-orange-500/20" },
-                    { token: "USDC", balance: balances.usdc, icon: "🔵", color: "from-blue-500/20 to-cyan-500/20" },
-                    { token: "USDT", balance: balances.usdt, icon: "🟢", color: "from-green-500/20 to-emerald-500/20" },
-                    { token: "TT", balance: balances.tt, icon: "🟠", color: "from-orange-500/20 to-amber-500/20" },
+                    { token: "SOL", balance: balances!.sol, icon: "🟡", color: "from-yellow-500/20 to-orange-500/20" },
+                    { token: "USDC", balance: balances!.usdc, icon: "🔵", color: "from-blue-500/20 to-cyan-500/20" },
+                    { token: "USDT", balance: balances!.usdt, icon: "🟢", color: "from-green-500/20 to-emerald-500/20" },
+                    { token: "TT", balance: balances!.tt, icon: "🟠", color: "from-orange-500/20 to-amber-500/20" },
                   ].map(({ token, balance, icon, color }) => (
                     <div
                       key={token}
@@ -955,7 +955,7 @@ export default function DashboardPage() {
                         </svg>
                       )}
                     </button>
-                    <CopyButton text={walletAddress} />
+                    <CopyButton text={walletAddress!} />
                   </div>
                 </div>
               </div>
@@ -1016,7 +1016,7 @@ export default function DashboardPage() {
                   </select>
                   {balances && (
                     <p className="text-xs text-zinc-400 mt-2">
-                      Balance: <span className="text-gray-900 font-medium">{formatTokenAmount(balances[sendToken.toLowerCase() as keyof WalletBalance] || "0", sendToken)} {sendToken}</span>
+                      Balance: <span className="text-gray-900 font-medium">{formatTokenAmount(balances![sendToken.toLowerCase() as keyof WalletBalance] || "0", sendToken)} {sendToken}</span>
                     </p>
                   )}
               </div>
@@ -1035,6 +1035,7 @@ export default function DashboardPage() {
                   <div className="flex gap-2 mt-2">
                     <button
                     onClick={() => {
+                        if (!balances) return;
                         const balance = parseFloat(balances[sendToken.toLowerCase() as keyof WalletBalance] || "0");
                         setSendAmount((balance * 0.25).toFixed(6));
                       }}
@@ -1044,6 +1045,7 @@ export default function DashboardPage() {
                     </button>
                     <button
                     onClick={() => {
+                        if (!balances) return;
                         const balance = parseFloat(balances[sendToken.toLowerCase() as keyof WalletBalance] || "0");
                         setSendAmount((balance * 0.5).toFixed(6));
                       }}
@@ -1053,6 +1055,7 @@ export default function DashboardPage() {
                     </button>
                     <button
                       onClick={() => {
+                        if (!balances) return;
                         const balance = parseFloat(balances[sendToken.toLowerCase() as keyof WalletBalance] || "0");
                         setSendAmount((balance * 0.75).toFixed(6));
                       }}
@@ -1062,6 +1065,7 @@ export default function DashboardPage() {
                     </button>
                     <button
                           onClick={() => {
+                        if (!balances) return;
                         const balance = parseFloat(balances[sendToken.toLowerCase() as keyof WalletBalance] || "0");
                         setSendAmount(balance.toFixed(6));
                       }}
@@ -1163,7 +1167,7 @@ export default function DashboardPage() {
                 </select>
                 {balances && (
                   <p className="text-xs text-zinc-500 mt-1">
-                    Balance: {formatTokenAmount(balances[swapFrom.toLowerCase() as keyof WalletBalance] || "0", swapFrom)} {swapFrom}
+                    Balance: {formatTokenAmount(balances![swapFrom.toLowerCase() as keyof WalletBalance] || "0", swapFrom)} {swapFrom}
                   </p>
                 )}
                             </div>
