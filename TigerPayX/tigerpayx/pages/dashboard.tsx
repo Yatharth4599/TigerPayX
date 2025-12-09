@@ -48,7 +48,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
-  const [activeTab, setActiveTab] = useState<ActiveTab>("home");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("merchant"); // Default to merchant for demo
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [balances, setBalances] = useState<WalletBalance | null>(null);
   const [transactions, setTransactions] = useState<TxType[]>([]);
@@ -141,13 +141,16 @@ export default function DashboardPage() {
               preferredToken: "USDC",
             },
           ]);
-          setSelectedMerchant({
+          const demoMerchant = {
             id: "demo-merchant-1",
             merchantId: "MERCHANT_DEMO_001",
             name: "Demo Store",
             settlementAddress: demoAddress,
             preferredToken: "USDC",
-          });
+          };
+          setSelectedMerchant(demoMerchant);
+          // Switch to merchant tab in demo mode
+          setActiveTab("merchant");
           setLoading(false);
         } else {
           await initializeWallet();
@@ -518,11 +521,10 @@ export default function DashboardPage() {
     if (authChecked && walletAddress) {
       loadBalances();
       loadTransactions();
-      if (activeTab === "merchant") {
-        loadMerchants();
-      }
+      // Always load merchants for the dashboard
+      loadMerchants();
     }
-  }, [authChecked, walletAddress, activeTab]);
+  }, [authChecked, walletAddress]);
 
   if (!authChecked || loading) {
     return (
@@ -558,8 +560,8 @@ export default function DashboardPage() {
       )}
       <main className="section-padding py-8 lg:py-12">
           <div className="max-width">
-          {/* Network Indicator */}
-          {isDevnet && (
+          {/* Network Indicator - Hidden */}
+          {false && isDevnet && (
             <div className="mb-6 bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-3 flex items-center gap-2">
               <svg className="w-5 h-5 text-yellow-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -568,8 +570,8 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-          {/* RPC Connection Warning - Only show if using default/public RPC */}
-          {!isCustomRpcConfigured() && (
+          {/* RPC Connection Warning - Hidden */}
+          {false && !isCustomRpcConfigured() && (
             <div className="mb-6 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-3 flex items-start gap-3">
               <svg className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -591,25 +593,80 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Tabs */}
-          <div className="flex gap-2 mb-8 border-b border-gray-200 overflow-x-auto pb-2">
-          {(["home", "send", "swap", "earn", "merchant"] as ActiveTab[]).map((tab) => (
+          {/* Direct Merchant Dashboard - No Tabs */}
+          {selectedMerchant ? (
+            <div className="-mx-6 -my-8">
+              <MerchantDashboard
+                merchant={selectedMerchant}
+                walletAddress={walletAddress || ""}
+                balances={balances}
+                transactions={transactions}
+                onRefresh={async () => {
+                  await loadBalances();
+                  await loadTransactions();
+                  if (selectedMerchant) {
+                    await loadPayLinks(selectedMerchant.merchantId);
+                  }
+                }}
+                onCreatePayLink={() => setShowPayLinkForm(true)}
+              />
+            </div>
+          ) : merchants.length > 0 ? (
+            <div className="space-y-6">
+              <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Select a Merchant</h2>
+                  <button
+                    onClick={() => setShowMerchantForm(true)}
+                    className="bg-[#ff6b00] text-white font-semibold px-6 py-3 rounded-lg hover:bg-[#e55a00] transition-colors flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Register Merchant
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {merchants.map((merchant) => (
+                    <motion.div
+                      key={merchant.id}
+                      whileHover={{ scale: 1.02 }}
+                      onClick={async () => {
+                        setSelectedMerchant(merchant);
+                        await loadPayLinks(merchant.merchantId);
+                      }}
+                      className="bg-gray-50 hover:bg-gray-100 rounded-xl p-6 cursor-pointer border border-gray-200 transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{merchant.name}</h3>
+                          <p className="text-sm text-gray-600">ID: {merchant.merchantId}</p>
+                        </div>
+                        <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl p-12 border border-gray-200 shadow-sm text-center">
+              <div className="text-6xl mb-4">🏪</div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No Merchants Yet</h3>
+              <p className="text-gray-600 mb-6">Register as a merchant to start using the dashboard</p>
               <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 font-semibold capitalize transition-colors whitespace-nowrap ${
-                activeTab === tab
-                  ? "text-[#ff6b00] border-b-2 border-[#ff6b00]"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
+                onClick={() => setShowMerchantForm(true)}
+                className="bg-[#ff6b00] text-white font-semibold px-6 py-3 rounded-lg hover:bg-[#e55a00] transition-colors"
               >
-              {tab}
+                Register Merchant
               </button>
-          ))}
-      </div>
+            </div>
+          )}
 
-        {/* Home Tab */}
-        {activeTab === "home" && (
+        {/* OLD TABS - REMOVED */}
+        {false && activeTab === "home" && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -847,8 +904,8 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-        {/* Send Tab */}
-        {activeTab === "send" && (
+        {/* OLD SEND TAB - REMOVED */}
+        {false && activeTab === "send" && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1080,8 +1137,8 @@ export default function DashboardPage() {
           </motion.div>
         )}
 
-        {/* Swap Tab */}
-        {activeTab === "swap" && (
+        {/* OLD SWAP TAB - REMOVED */}
+        {false && activeTab === "swap" && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1215,8 +1272,8 @@ export default function DashboardPage() {
           </motion.div>
                   )}
 
-        {/* Earn Tab */}
-        {activeTab === "earn" && (
+        {/* OLD EARN TAB - REMOVED */}
+        {false && activeTab === "earn" && (
             <motion.div
             initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1261,8 +1318,8 @@ export default function DashboardPage() {
               </motion.div>
             )}
 
-        {/* Merchant Tab */}
-        {activeTab === "merchant" && (
+        {/* OLD MERCHANT TAB - REMOVED */}
+        {false && activeTab === "merchant" && (
           <>
             {merchants.length === 0 ? (
               <motion.div
@@ -1298,19 +1355,22 @@ export default function DashboardPage() {
               </motion.div>
             ) : selectedMerchant ? (
               // Show new Merchant Dashboard when merchant is selected
-              <MerchantDashboard
-                merchant={selectedMerchant}
-                walletAddress={walletAddress || ""}
-                balances={balances}
-                transactions={transactions}
-                onRefresh={async () => {
-                  await loadBalances();
-                  await loadTransactions();
-                  if (selectedMerchant) {
-                    await loadPayLinks(selectedMerchant.merchantId);
-                  }
-                }}
-              />
+              <div className="-mx-6 -my-8">
+                <MerchantDashboard
+                  merchant={selectedMerchant}
+                  walletAddress={walletAddress || ""}
+                  balances={balances}
+                  transactions={transactions}
+                  onRefresh={async () => {
+                    await loadBalances();
+                    await loadTransactions();
+                    if (selectedMerchant) {
+                      await loadPayLinks(selectedMerchant.merchantId);
+                    }
+                  }}
+                  onCreatePayLink={() => setShowPayLinkForm(true)}
+                />
+              </div>
             ) : (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
