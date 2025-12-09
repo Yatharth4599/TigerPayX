@@ -76,6 +76,7 @@ export default function DashboardPage() {
   const [selectedMerchant, setSelectedMerchant] = useState<any>(null);
   const [payLinks, setPayLinks] = useState<any[]>([]);
   const [showPayLinkForm, setShowPayLinkForm] = useState(false);
+  const [pendingPayLinkForm, setPendingPayLinkForm] = useState(false);
   const [showWalletConnection, setShowWalletConnection] = useState(false);
   const [showFundWallet, setShowFundWallet] = useState(false);
   const [showSeedPhrase, setShowSeedPhrase] = useState(false);
@@ -608,7 +609,23 @@ export default function DashboardPage() {
                     await loadPayLinks(selectedMerchant.merchantId);
                   }
                 }}
-                onCreatePayLink={() => setShowPayLinkForm(true)}
+                onCreatePayLink={async () => {
+                  // If no merchants, try to load them first
+                  if (merchants.length === 0) {
+                    await loadMerchants();
+                    // If still no merchants after loading, show merchant form
+                    if (merchants.length === 0) {
+                      setPendingPayLinkForm(true);
+                      setShowMerchantForm(true);
+                      return;
+                    }
+                  }
+                  // Use first merchant if none selected
+                  if (!selectedMerchant && merchants.length > 0) {
+                    setSelectedMerchant(merchants[0]);
+                  }
+                  setShowPayLinkForm(true);
+                }}
               />
             </div>
           ) : merchants.length > 0 ? (
@@ -1372,7 +1389,23 @@ export default function DashboardPage() {
                       await loadPayLinks(selectedMerchant.merchantId);
                     }
                   }}
-                  onCreatePayLink={() => setShowPayLinkForm(true)}
+                  onCreatePayLink={async () => {
+                    // If no merchants, try to load them first
+                    if (merchants.length === 0) {
+                      await loadMerchants();
+                      // If still no merchants after loading, show merchant form
+                      if (merchants.length === 0) {
+                        setPendingPayLinkForm(true);
+                        setShowMerchantForm(true);
+                        return;
+                      }
+                    }
+                    // Use first merchant if none selected
+                    if (!selectedMerchant && merchants.length > 0) {
+                      setSelectedMerchant(merchants[0]);
+                    }
+                    setShowPayLinkForm(true);
+                  }}
                 />
               </div>
             ) : (
@@ -1446,24 +1479,42 @@ export default function DashboardPage() {
         {showMerchantForm && (
           <MerchantFormModal
             isOpen={showMerchantForm}
-            onClose={() => setShowMerchantForm(false)}
-            onSuccess={loadMerchants}
+            onClose={() => {
+              setShowMerchantForm(false);
+              setPendingPayLinkForm(false);
+            }}
+            onSuccess={async () => {
+              await loadMerchants();
+              setShowMerchantForm(false);
+              // If pay link form was pending, open it now
+              if (pendingPayLinkForm) {
+                setPendingPayLinkForm(false);
+                // Wait a bit for merchants to load
+                setTimeout(async () => {
+                  await loadMerchants();
+                  if (merchants.length > 0) {
+                    setSelectedMerchant(merchants[0]);
+                    setShowPayLinkForm(true);
+                  }
+                }, 300);
+              }
+            }}
             defaultSettlementAddress={walletAddress || undefined}
           />
         )}
 
         {/* PayLink Form Modal */}
-        {showPayLinkForm && selectedMerchant && (
+        {showPayLinkForm && (selectedMerchant || (merchants.length > 0 && merchants[0]?.merchantId)) && (
           <PayLinkFormModal
             isOpen={showPayLinkForm}
             onClose={() => {
               setShowPayLinkForm(false);
-              setSelectedMerchant(null);
             }}
-            merchantId={selectedMerchant.merchantId}
+            merchantId={selectedMerchant?.merchantId || merchants[0]?.merchantId || ""}
             onSuccess={() => {
-              if (selectedMerchant) {
-                loadPayLinks(selectedMerchant.merchantId);
+              const merchant = selectedMerchant || merchants[0];
+              if (merchant) {
+                loadPayLinks(merchant.merchantId);
               }
             }}
           />
