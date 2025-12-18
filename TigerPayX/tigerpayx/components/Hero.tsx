@@ -274,6 +274,43 @@ export function Hero() {
             </motion.div>
 
             <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.55 }}
+              className="flex flex-wrap items-center justify-center gap-3"
+            >
+              <a
+                href="https://jup.ag/tokens/tMQ2SvQ9EW2X9zQ9vTZQxsrLmSumZy24vqQ17Pacyai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/80 backdrop-blur-sm px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-white transition-colors shadow-sm"
+              >
+                <span className="h-2 w-2 rounded-full bg-[#ff6b00]" />
+                TPAYX Token
+                <span className="text-xs font-mono text-gray-600 hidden sm:inline">
+                  tMQ2…cyai
+                </span>
+              </a>
+
+              <Link
+                href="/whitepaper"
+                className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/70 backdrop-blur-sm px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-white transition-colors shadow-sm"
+              >
+                Whitepaper
+              </Link>
+
+              <a
+                href="https://x.com/tigerpayx"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/70 backdrop-blur-sm px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-white transition-colors shadow-sm"
+              >
+                X
+                <span className="text-xs font-medium text-gray-600">@tigerpayx</span>
+              </a>
+            </motion.div>
+
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.6 }}
