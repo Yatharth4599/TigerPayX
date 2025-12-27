@@ -4,13 +4,7 @@ import { useRouter } from "next/router";
 import { motion } from "framer-motion";
 import { isAuthenticated, clearAuth } from "@/utils/auth";
 
-type NavItem = {
-  label: string;
-  href: string;
-  hasDropdown?: boolean;
-};
-
-// Logo component - uses SVG like Phantom
+// Logo component
 function LogoImage() {
   return (
     <img
@@ -27,6 +21,8 @@ function LogoImage() {
 export function Navbar() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -42,135 +38,154 @@ export function Navbar() {
     router.push("/");
   }
 
-  const navItems: NavItem[] = [
-    { label: "Features", href: "#features", hasDropdown: true },
-    { label: "Learn", href: "#how", hasDropdown: true },
-    { label: "Explore", href: "#wallet" },
-    { label: "Company", href: "#", hasDropdown: true },
-    { label: "Support", href: "#faq" },
+  const navItems = [
+    { label: "Home", href: "/" },
+    { label: "Features", href: "/#features" },
+    { label: "Liquidity Provider", href: "/#liquidity" },
+    { label: "FAQ", href: "/#faq" },
+    { label: "Contact", href: "/#contact" },
   ];
 
   return (
-    <header className="sticky top-0 z-30 bg-[#fff5f0] border-b border-orange-100/50">
-      <div className="section-padding">
-        <div className="max-width flex items-center justify-between py-4">
+    <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <motion.div
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                className="relative flex items-center justify-center shrink-0"
-              >
-                <LogoImage />
-              </motion.div>
-              <span className="text-lg font-semibold text-[#7c2d12] lowercase">TigerPayX</span>
-            </Link>
-          </motion.div>
+          <Link href="/" className="flex items-center gap-2.5">
+            <LogoImage />
+            <span className="text-xl font-bold text-gray-900">TigerPayX</span>
+          </Link>
 
-          {/* Navigation Menu in Rounded Container */}
-          <nav className="hidden lg:flex items-center gap-0 bg-gray-100/80 rounded-full px-2 py-1.5 backdrop-blur-sm">
-            {navItems.map((item, index) => (
-              <motion.div
-                key={item.label}
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05, duration: 0.3 }}
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-1">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-[#ff6b00] transition-colors"
               >
-                <Link
-                  href={item.href}
-                  className="flex items-center gap-1 px-4 py-2 text-sm font-medium text-[#7c2d12] hover:text-[#ff6b00] transition-colors rounded-full hover:bg-white/60"
-                >
-                  {item.label}
-                  {item.hasDropdown && (
-                    <svg
-                      className="w-3 h-3 ml-0.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  )}
-                </Link>
-              </motion.div>
+                {item.label}
+              </Link>
             ))}
           </nav>
 
           {/* Right Side Actions */}
           <div className="flex items-center gap-3">
-            {isLoggedIn ? (
-              <>
-                <Link
-                  href="/dashboard"
-                  className="hidden text-sm text-[#7c2d12] hover:text-[#ff6b00] md:inline transition-colors"
+            {/* Language Selector - Desktop */}
+            <div className="hidden md:block relative">
+              <button
+                onClick={() => setLangMenuOpen(!langMenuOpen)}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-[#ff6b00] transition-colors"
+              >
+                <span className="text-lg">🇺🇸</span>
+                <span>English</span>
+                <svg
+                  className={`w-4 h-4 transition-transform ${langMenuOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
-                  Dashboard
-                </Link>
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleLogout}
-                  className="rounded-full border border-orange-200 bg-white px-4 py-2 text-sm font-medium text-[#7c2d12] hover:bg-orange-50 transition-colors"
-                >
-                  Logout
-                </motion.button>
-              </>
-            ) : (
-              <>
-                {/* Search Button */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="hidden md:flex items-center justify-center w-10 h-10 rounded-full bg-white border border-orange-200 text-[#7c2d12] hover:bg-orange-50 transition-colors"
-                  aria-label="Search"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </motion.button>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {langMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
+                  <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                    <span>🇺🇸</span>
+                    <span>English</span>
+                    <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                  <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                    <span>🇧🇷</span>
+                    <span>Português</span>
+                  </button>
+                  <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                    <span>🇮🇩</span>
+                    <span>Bahasa Indonesia</span>
+                  </button>
+                  <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                    <span>🇮🇳</span>
+                    <span>हिन्दी</span>
+                  </button>
+                  <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2">
+                    <span>🇪🇸</span>
+                    <span>Español</span>
+                  </button>
+                </div>
+              )}
+            </div>
 
-                {/* Join Waitlist Button */}
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                >
-                  <Link
-                    href="/waiting-list"
-                    className="rounded-full bg-[#ffedd5] px-5 py-2.5 text-sm font-semibold text-[#7c2d12] hover:bg-[#fed7aa] transition-colors"
-                    style={{ pointerEvents: 'auto' }}
-                  >
-                    Join Waitlist
-                  </Link>
-                </motion.div>
-              </>
-            )}
+            {/* Open App Button */}
+            <Link
+              href="/dashboard"
+              className="hidden md:inline-flex items-center gap-2 bg-[#ff6b00] text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-[#e55a00] transition-colors"
+            >
+              Open App
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </Link>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 text-gray-700"
+              aria-label="Toggle menu"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden border-t border-gray-200 py-4"
+          >
+            <div className="flex flex-col space-y-1">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-4 py-2 text-base font-medium text-gray-700 hover:text-[#ff6b00] hover:bg-gray-50 transition-colors"
+                >
+                  {item.label}
+                </Link>
+              ))}
+              <div className="px-4 py-2">
+                <button className="flex items-center gap-2 text-base font-medium text-gray-700">
+                  <span className="text-lg">🇺🇸</span>
+                  <span>English</span>
+                </button>
+              </div>
+              <div className="px-4 pt-2">
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="inline-flex items-center gap-2 bg-[#ff6b00] text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-[#e55a00] transition-colors w-full justify-center"
+                >
+                  Open App
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
     </header>
   );
 }
-
-
