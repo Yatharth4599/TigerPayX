@@ -39,12 +39,27 @@ html {
 @media (max-width: 640px) {
   body {
     font-size: 14px;
+    overflow-x: hidden !important;
   }
   
-  /* Reduce animation complexity on mobile */
+  /* Reduce animation complexity on mobile to prevent performance issues */
   * {
     animation-duration: 0.3s !important;
     transition-duration: 0.3s !important;
+  }
+  
+  /* Disable backdrop-blur on mobile for better performance */
+  .backdrop-blur-sm,
+  .backdrop-blur-md,
+  .backdrop-blur-lg {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  
+  /* Reduce blur effects on mobile */
+  .blur-2xl,
+  .blur-3xl {
+    display: none !important;
   }
 }
 
@@ -52,6 +67,22 @@ html {
 img {
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
+}
+
+/* Input autofill styles - ensure text is visible */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.1) inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+input[type="email"]:-webkit-autofill,
+input[type="password"]:-webkit-autofill,
+input[type="text"]:-webkit-autofill {
+  -webkit-text-fill-color: #ffffff !important;
 }
 
 /* Reduce motion for users who prefer it */

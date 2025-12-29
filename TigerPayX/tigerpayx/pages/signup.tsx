@@ -268,6 +268,7 @@ export default function SignupPage() {
                           required
                           placeholder="John Doe"
                           className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/50 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
+                          style={{ color: '#ffffff' }}
                         />
                       </motion.div>
 
@@ -289,6 +290,7 @@ export default function SignupPage() {
                             placeholder="johndoe"
                             pattern="[a-z0-9._]+"
                             className="flex-1 rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/50 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
+                            style={{ color: '#ffffff' }}
                           />
                         </div>
                         <p className="text-xs text-white/50">Leave empty to auto-generate</p>
@@ -310,6 +312,7 @@ export default function SignupPage() {
                           required
                           placeholder="you@example.com"
                           className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/50 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
+                          style={{ color: '#ffffff' }}
                         />
                       </motion.div>
 
@@ -330,6 +333,7 @@ export default function SignupPage() {
                           placeholder="Create a strong password"
                           minLength={8}
                           className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/50 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
+                          style={{ color: '#ffffff' }}
                         />
                         <p className="text-xs text-white/50">Must be at least 8 characters</p>
                       </motion.div>
@@ -404,6 +408,7 @@ export default function SignupPage() {
                           onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                           placeholder="000000"
                           className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-center text-2xl font-mono tracking-widest text-white placeholder:text-white/30 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
+                          style={{ color: '#ffffff' }}
                         />
                       </motion.div>
 

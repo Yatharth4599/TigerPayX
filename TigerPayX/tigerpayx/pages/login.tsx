@@ -233,6 +233,7 @@ export default function LoginPage() {
                           required
                           placeholder="you@example.com"
                           className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/50 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
+                          style={{ color: '#ffffff' }}
                         />
                       </motion.div>
 
@@ -252,6 +253,7 @@ export default function LoginPage() {
                           required
                           placeholder="••••••••"
                           className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/50 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
+                          style={{ color: '#ffffff' }}
                         />
                       </motion.div>
 
@@ -325,6 +327,7 @@ export default function LoginPage() {
                           onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                           placeholder="000000"
                           className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-center text-2xl font-mono tracking-widest text-white placeholder:text-white/30 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
+                          style={{ color: '#ffffff' }}
                         />
                       </motion.div>
 
