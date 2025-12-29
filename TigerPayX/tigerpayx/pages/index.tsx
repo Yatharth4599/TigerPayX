@@ -95,27 +95,22 @@ export default function LandingPage() {
                 </Link>
               </motion.div>
             </div>
-            <div className="relative">
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="relative"
+            >
               {/* Hero Visualization - Globe with locations */}
-              <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-12 aspect-square flex items-center justify-center overflow-hidden">
-                {/* Simplified globe visualization */}
-                <div className="absolute inset-0 opacity-20">
-                  <svg viewBox="0 0 200 200" className="w-full h-full">
-                    {/* Grid lines */}
-                    <circle cx="100" cy="100" r="80" fill="none" stroke="currentColor" strokeWidth="1" />
-                    <circle cx="100" cy="100" r="60" fill="none" stroke="currentColor" strokeWidth="1" />
-                    <line x1="100" y1="20" x2="100" y2="180" stroke="currentColor" strokeWidth="1" />
-                    <line x1="20" y1="100" x2="180" y2="100" stroke="currentColor" strokeWidth="1" />
-                  </svg>
-                </div>
-                {/* Location pins */}
-                <div className="relative z-10 text-center">
-                  <div className="text-6xl mb-4">🌐</div>
-                  <p className="text-gray-700 font-semibold">Global Payments</p>
-                  <p className="text-gray-500 text-sm mt-2">Borderless transactions</p>
-                </div>
+              {/* Replace 'hero-globe.png' with your image filename */}
+              <div className="relative rounded-2xl overflow-hidden">
+                <img
+                  src="/assets/hero-globe.png"
+                  alt="Global Payments - Borderless Transactions"
+                  className="w-full h-auto rounded-2xl shadow-lg"
+                />
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
