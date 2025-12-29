@@ -117,16 +117,28 @@ export function Navbar() {
               )}
             </div>
 
-            {/* Open App Button */}
-            <Link
-              href="/login"
-              className="hidden md:inline-flex items-center gap-2 bg-[#ff6b00] text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-[#e55a00] transition-colors"
-            >
-              Open App
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </Link>
+            {/* Open App / Logout Button */}
+            {router.pathname === "/dashboard" ? (
+              <button
+                onClick={handleLogout}
+                className="hidden md:inline-flex items-center gap-2 bg-red-500 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-red-600 transition-colors"
+              >
+                Logout
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                className="hidden md:inline-flex items-center gap-2 bg-[#ff6b00] text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-[#e55a00] transition-colors"
+              >
+                Open App
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </Link>
+            )}
 
             {/* Mobile Menu Button */}
             <button
@@ -171,16 +183,31 @@ export function Navbar() {
                 </button>
               </div>
               <div className="px-4 pt-2">
-                <Link
-                  href="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="inline-flex items-center gap-2 bg-[#ff6b00] text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-[#e55a00] transition-colors w-full justify-center"
-                >
-                  Open App
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </Link>
+                {router.pathname === "/dashboard" ? (
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className="inline-flex items-center gap-2 bg-red-500 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-red-600 transition-colors w-full justify-center"
+                  >
+                    Logout
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                  </button>
+                ) : (
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="inline-flex items-center gap-2 bg-[#ff6b00] text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-[#e55a00] transition-colors w-full justify-center"
+                  >
+                    Open App
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </Link>
+                )}
               </div>
             </div>
           </motion.div>

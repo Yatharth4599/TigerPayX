@@ -1,4 +1,5 @@
 // P2P.me style landing page for TigerPayX
+import Head from "next/head";
 import { Navbar } from "@/components/Navbar";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -83,8 +84,29 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
-      <Navbar />
+    <>
+      <Head>
+        <title>TigerPayX - The Stablecoin Neobank | Borderless Global Payments</title>
+        <meta
+          name="description"
+          content="The stablecoin neobank that makes borders disappear. Global payments with ultra-low fees. Pay with stablecoins at any QR code without bank freeze worries."
+        />
+        <meta property="og:title" content="TigerPayX - The Stablecoin Neobank" />
+        <meta
+          property="og:description"
+          content="The stablecoin neobank that makes borders disappear. Global payments with ultra-low fees. Pay with stablecoins at any QR code without bank freeze worries."
+        />
+        <meta property="og:image" content="https://tigerpayx.com/assets/logo.svg" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="TigerPayX - The Stablecoin Neobank" />
+        <meta
+          name="twitter:description"
+          content="The stablecoin neobank that makes borders disappear. Global payments with ultra-low fees. Pay with stablecoins at any QR code without bank freeze worries."
+        />
+        <link rel="icon" href="/assets/logo.svg" type="image/svg+xml" />
+      </Head>
+      <div className="min-h-screen bg-white overflow-x-hidden">
+        <Navbar />
       
       {/* Hero Section */}
       <section className="relative pt-20 pb-32 overflow-hidden bg-white">
@@ -1099,11 +1121,13 @@ export default function LandingPage() {
                 >
                   X
                 </a>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                <a
+                  href="https://t.me/tigerpayx"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
                   Telegram
-                </a>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Medium
                 </a>
               </div>
             </div>
@@ -1118,6 +1142,7 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   );
 }
