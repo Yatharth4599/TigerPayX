@@ -34,7 +34,6 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Check if email verification is required
         if (data.requiresVerification) {
           setUserEmail(email);
           setShowVerification(true);
@@ -46,10 +45,8 @@ export default function LoginPage() {
         return;
       }
 
-      // Store auth state with JWT token
       if (data.token && data.user) {
         setAuth(data.token, data.user.email);
-        // Redirect to dashboard
         router.push("/dashboard");
       } else {
         setError("Invalid response from server");
@@ -81,10 +78,8 @@ export default function LoginPage() {
         return;
       }
 
-      // Store auth state with JWT token
       if (data.token && data.user) {
         setAuth(data.token, data.user.email);
-        // Redirect to dashboard
         router.push("/dashboard");
       } else {
         setError("Invalid response from server");
@@ -123,153 +118,250 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-950 via-[#1a0a00] to-orange-900 text-white flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-[#ff6b00] via-[#ff8c42] to-[#ff6b00] relative overflow-hidden">
+      {/* Animated background elements */}
+      <motion.div
+        className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl opacity-20"
+        animate={{
+          scale: [1, 1.3, 1],
+          x: [0, 50, 0],
+          y: [0, 30, 0],
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
+      <motion.div
+        className="absolute bottom-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl opacity-20"
+        animate={{
+          scale: [1, 1.3, 1],
+          x: [0, -50, 0],
+          y: [0, -30, 0],
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 2,
+        }}
+      />
+
       <Navbar />
-      <main className="flex-1 section-padding flex items-center justify-center py-10">
-        <div className="max-width grid w-full gap-10 lg:grid-cols-2 items-center">
-          <div className="hidden lg:block space-y-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
-              Welcome back
-            </p>
-            <h1 className="text-3xl font-semibold sm:text-4xl">
-              Log back into your Tiger Wallet.
-            </h1>
-            <p className="text-sm text-zinc-300 max-w-md">
-              Continue where you left off. Send, spend, and track your Roar
-              Score — all from a single, minimal surface.
-            </p>
-          </div>
+      
+      <main className="relative z-10 flex items-center justify-center min-h-[calc(100vh-80px)] py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl w-full grid lg:grid-cols-2 gap-12 items-center">
+          {/* Left side - Welcome message */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="w-full max-w-md mx-auto glass-panel tiger-stripes relative overflow-hidden p-6 sm:p-8"
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            className="hidden lg:block text-white"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_0_0,rgba(255,107,0,0.25),transparent_55%)]" />
-            <div className="relative space-y-6">
-              {!showVerification ? (
-                <>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
-                      Login
-                    </p>
-                    <h2 className="mt-2 text-xl font-semibold">
-                      Enter your TigerPayX account.
-                    </h2>
-                  </div>
-                  <form
-                    className="space-y-4"
-                    onSubmit={handleSubmit}
-                  >
-                <div className="space-y-2 text-sm">
-                  <label htmlFor="email" className="text-zinc-300">
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    placeholder="you@jungle.studio"
-                    className="w-full rounded-2xl border border-white/12 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00]"
-                  />
-                </div>
-                <div className="space-y-2 text-sm">
-                  <label htmlFor="password" className="text-zinc-300">
-                    Password
-                  </label>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    className="w-full rounded-2xl border border-white/12 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00]"
-                  />
-                </div>
-                {error && (
-                  <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2">
-                    <p className="text-xs text-red-400">{error}</p>
-                  </div>
-                )}
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="mt-2 w-full rounded-full bg-[#ff6b00] py-2.5 text-sm font-semibold text-black tiger-glow hover:bg-orange-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? "Logging in..." : "Continue"}
-                </button>
-              </form>
-                  <p className="text-xs text-zinc-400">
-                    New to TigerPayX?{" "}
-                    <Link
-                      href="/signup"
-                      className="text-amber-300 hover:text-amber-200"
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="mb-6"
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full text-sm mb-6">
+                <span className="h-2 w-2 bg-white rounded-full"></span>
+                <span>Welcome Back</span>
+              </div>
+            </motion.div>
+            <h1 className="text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+              Log back into your{" "}
+              <span className="text-yellow-300">TigerPayX</span> account
+            </h1>
+            <p className="text-xl text-white/90 mb-8 leading-relaxed max-w-md">
+              Continue where you left off. Send, spend, and track your Roar Score — all from a single, powerful platform.
+            </p>
+            <div className="flex items-center gap-4 text-white/80">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Secure & Fast</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Global Payments</span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Right side - Login form */}
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            className="w-full max-w-md mx-auto"
+          >
+            <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 md:p-10 border border-white/20 shadow-2xl relative overflow-hidden">
+              {/* Subtle glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none rounded-3xl"></div>
+              
+              <div className="relative z-10">
+                {!showVerification ? (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5 }}
                     >
-                      Create an account
-                    </Link>
-                    .
-                  </p>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
-                      Verify Email
-                    </p>
-                    <h2 className="mt-2 text-xl font-semibold">
-                      Verify your email
-                    </h2>
-                    <p className="mt-2 text-sm text-zinc-400">
-                      Please verify your email address to continue. We've sent a 6-digit code to <strong className="text-white">{userEmail}</strong>
-                    </p>
-                  </div>
-                  <form
-                    className="space-y-4"
-                    onSubmit={handleVerifyOTP}
-                  >
-                    <div className="space-y-2 text-sm">
-                      <label htmlFor="otp" className="text-zinc-300">
-                        Verification Code <span className="text-red-400">*</span>
-                      </label>
-                      <input
-                        id="otp"
-                        name="otp"
-                        type="text"
-                        required
-                        maxLength={6}
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                        placeholder="000000"
-                        className="w-full rounded-2xl border border-white/12 bg-white/5 px-3 py-2 text-center text-2xl font-mono tracking-widest text-white placeholder:text-zinc-500 outline-none focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00]"
-                      />
-                      <p className="text-xs text-zinc-500">Enter the 6-digit code from your email</p>
-                    </div>
-                    {error && (
-                      <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2">
-                        <p className="text-xs text-red-400">{error}</p>
-                      </div>
-                    )}
-                    <button
-                      type="submit"
-                      disabled={verifying || otp.length !== 6}
-                      className="mt-2 w-full rounded-full bg-[#ff6b00] py-2.5 text-sm font-semibold text-black tiger-glow hover:bg-orange-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {verifying ? "Verifying..." : "Verify Email"}
-                    </button>
-                    <div className="text-center">
-                      <button
-                        type="button"
-                        onClick={handleResendOTP}
-                        disabled={resending}
-                        className="text-xs text-amber-300 hover:text-amber-200 disabled:opacity-50"
+                      <h2 className="text-3xl font-bold text-white mb-2">Welcome Back</h2>
+                      <p className="text-white/70 mb-8">Sign in to your account</p>
+                    </motion.div>
+
+                    <form className="space-y-6" onSubmit={handleSubmit}>
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.1 }}
+                        className="space-y-2"
                       >
-                        {resending ? "Sending..." : "Resend Code"}
-                      </button>
-                    </div>
-                  </form>
-                </>
-              )}
+                        <label htmlFor="email" className="block text-sm font-medium text-white">
+                          Email
+                        </label>
+                        <input
+                          id="email"
+                          name="email"
+                          type="email"
+                          required
+                          placeholder="you@example.com"
+                          className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/50 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
+                        />
+                      </motion.div>
+
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.2 }}
+                        className="space-y-2"
+                      >
+                        <label htmlFor="password" className="block text-sm font-medium text-white">
+                          Password
+                        </label>
+                        <input
+                          id="password"
+                          name="password"
+                          type="password"
+                          required
+                          placeholder="••••••••"
+                          className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/50 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
+                        />
+                      </motion.div>
+
+                      {error && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="rounded-xl bg-red-500/20 border border-red-500/40 px-4 py-3"
+                        >
+                          <p className="text-sm text-red-200">{error}</p>
+                        </motion.div>
+                      )}
+
+                      <motion.button
+                        type="submit"
+                        disabled={loading}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full bg-white text-[#ff6b00] py-4 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {loading ? "Logging in..." : "Continue"}
+                      </motion.button>
+                    </form>
+
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5, delay: 0.4 }}
+                      className="mt-6 text-center text-sm text-white/70"
+                    >
+                      Don't have an account?{" "}
+                      <Link
+                        href="/signup"
+                        className="text-white font-semibold hover:text-yellow-300 transition-colors"
+                      >
+                        Sign up
+                      </Link>
+                    </motion.p>
+                  </>
+                ) : (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <h2 className="text-3xl font-bold text-white mb-2">Verify Your Email</h2>
+                      <p className="text-white/70 mb-2">
+                        We've sent a 6-digit code to{" "}
+                        <span className="font-semibold text-white">{userEmail}</span>
+                      </p>
+                    </motion.div>
+
+                    <form className="space-y-6 mt-8" onSubmit={handleVerifyOTP}>
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.1 }}
+                        className="space-y-2"
+                      >
+                        <label htmlFor="otp" className="block text-sm font-medium text-white">
+                          Verification Code
+                        </label>
+                        <input
+                          id="otp"
+                          name="otp"
+                          type="text"
+                          required
+                          maxLength={6}
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                          placeholder="000000"
+                          className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-center text-2xl font-mono tracking-widest text-white placeholder:text-white/30 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
+                        />
+                      </motion.div>
+
+                      {error && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="rounded-xl bg-red-500/20 border border-red-500/40 px-4 py-3"
+                        >
+                          <p className="text-sm text-red-200">{error}</p>
+                        </motion.div>
+                      )}
+
+                      <motion.button
+                        type="submit"
+                        disabled={verifying || otp.length !== 6}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full bg-white text-[#ff6b00] py-4 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {verifying ? "Verifying..." : "Verify Email"}
+                      </motion.button>
+
+                      <div className="text-center">
+                        <button
+                          type="button"
+                          onClick={handleResendOTP}
+                          disabled={resending}
+                          className="text-sm text-white/70 hover:text-white transition-colors disabled:opacity-50"
+                        >
+                          {resending ? "Sending..." : "Resend Code"}
+                        </button>
+                      </div>
+                    </form>
+                  </>
+                )}
+              </div>
             </div>
           </motion.div>
         </div>
@@ -277,5 +369,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-

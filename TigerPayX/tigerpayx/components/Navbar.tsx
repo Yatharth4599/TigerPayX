@@ -119,7 +119,7 @@ export function Navbar() {
 
             {/* Open App Button */}
             <Link
-              href="/dashboard"
+              href="/login"
               className="hidden md:inline-flex items-center gap-2 bg-[#ff6b00] text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-[#e55a00] transition-colors"
             >
               Open App
@@ -172,7 +172,7 @@ export function Navbar() {
               </div>
               <div className="px-4 pt-2">
                 <Link
-                  href="/dashboard"
+                  href="/login"
                   onClick={() => setMobileMenuOpen(false)}
                   className="inline-flex items-center gap-2 bg-[#ff6b00] text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-[#e55a00] transition-colors w-full justify-center"
                 >
