@@ -68,8 +68,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (parts.length >= 3) {
         try {
           const encodedData = parts[2];
-          // Decode the data
-          const decoded = JSON.parse(atob(encodedData.replace(/-/g, '+').replace(/_/g, '/')));
+          // Decode the data (Node.js Buffer for base64)
+          const base64Data = encodedData.replace(/-/g, '+').replace(/_/g, '/');
+          const decoded = JSON.parse(Buffer.from(base64Data, 'base64').toString('utf-8'));
           return res.status(200).json({
             success: true,
             payLink: {
@@ -88,6 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
         } catch (e) {
           // If decoding fails, return generic demo
+          console.log("Failed to decode demo pay link data:", e);
         }
       }
       

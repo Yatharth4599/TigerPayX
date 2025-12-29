@@ -87,75 +87,21 @@ export default function DashboardPage() {
   const [existingWalletAddress, setExistingWalletAddress] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Check authentication (disabled for demo mode)
+  // Check authentication
   useEffect(() => {
     if (typeof window !== "undefined") {
       const checkAuth = async () => {
-        // Demo mode: Allow access without authentication
-        const urlParams = new URLSearchParams(window.location.search);
-        const demoMode = urlParams.get('demo') === 'true' || !isAuthenticated();
-        
-        if (!isAuthenticated() && !demoMode) {
-          // Only redirect if not in demo mode
-          // await router.push("/login");
+        // Redirect to login if not authenticated
+        if (!isAuthenticated()) {
+          await router.push("/login");
+          return;
         }
         
-        // Set auth checked to allow demo access
+        // Set auth checked
         setAuthChecked(true);
         
-        // Initialize with demo data if not authenticated
-        if (!isAuthenticated()) {
-          // Use a valid Solana address format for demo (but skip actual balance loading)
-          // This is a valid format: 44 characters base58
-          const demoAddress = "11111111111111111111111111111111"; // Valid Solana address format
-          setWalletAddress(demoAddress);
-          // Set demo balances directly (skip API calls)
-          setBalances({
-            sol: "10.5",
-            usdc: "5000",
-            usdt: "2500",
-            tt: "0",
-          } as WalletBalance);
-          setSolBalance(10.5);
-          // Set demo transactions
-          setTransactions([
-            {
-              id: "1",
-              type: "pay",
-              fromAddress: demoAddress,
-              toAddress: demoAddress,
-              amount: "100",
-              token: "USDC",
-              txHash: "demo-tx-hash-123",
-              status: "confirmed",
-              description: "Payment received",
-              createdAt: new Date().toISOString(),
-            } as TxType,
-          ]);
-          // Set demo merchants
-          setMerchants([
-            {
-              id: "demo-merchant-1",
-              merchantId: "MERCHANT_DEMO_001",
-              name: "Demo Store",
-              settlementAddress: demoAddress,
-              preferredToken: "USDC",
-            },
-          ]);
-          const demoMerchant = {
-            id: "demo-merchant-1",
-            merchantId: "MERCHANT_DEMO_001",
-            name: "Demo Store",
-            settlementAddress: demoAddress,
-            preferredToken: "USDC",
-          };
-          setSelectedMerchant(demoMerchant);
-          // Switch to merchant tab in demo mode
-          setActiveTab("merchant");
-          setLoading(false);
-        } else {
-          await initializeWallet();
-        }
+        // Initialize wallet for authenticated users
+        await initializeWallet();
       };
       checkAuth();
     }
