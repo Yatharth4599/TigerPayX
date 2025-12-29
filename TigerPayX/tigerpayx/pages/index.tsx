@@ -380,39 +380,39 @@ export default function LandingPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.5 }}
-                className="flex items-center justify-center gap-6 md:gap-8 flex-wrap"
+                className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8"
               >
                 {/* From Currency */}
                 <motion.div
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
+                  initial={{ x: -20, y: 0, opacity: 0 }}
+                  animate={{ x: 0, y: 0, opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.1 }}
-                  className="bg-white/95 backdrop-blur-sm rounded-2xl px-8 py-6 shadow-xl border border-white/20"
+                  className="bg-white/95 backdrop-blur-sm rounded-2xl px-6 py-5 md:px-8 md:py-6 shadow-xl border border-white/20 w-full md:w-auto"
                 >
-                  <div className="text-sm text-gray-500 mb-2 uppercase tracking-wider">From</div>
-                  <div className="text-3xl md:text-4xl font-bold text-gray-900">{currencyPair.from}</div>
+                  <div className="text-sm text-gray-500 mb-2 uppercase tracking-wider text-center md:text-left">From</div>
+                  <div className="text-3xl md:text-4xl font-bold text-gray-900 text-center md:text-left">{currencyPair.from}</div>
                 </motion.div>
 
                 {/* Exchange Icon */}
                 <motion.div
                   animate={{ rotate: [0, 180, 360] }}
                   transition={{ duration: 1, repeat: Infinity, repeatDelay: 1.5 }}
-                  className="bg-white rounded-full p-4 md:p-5 shadow-xl"
+                  className="bg-white rounded-full p-3 md:p-4 lg:p-5 shadow-xl flex-shrink-0"
                 >
-                  <svg className="w-8 h-8 md:w-10 md:h-10 text-[#ff6b00]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-6 h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 text-[#ff6b00] rotate-90 md:rotate-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                   </svg>
                 </motion.div>
 
                 {/* To Currency */}
                 <motion.div
-                  initial={{ x: 20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
+                  initial={{ x: 20, y: 0, opacity: 0 }}
+                  animate={{ x: 0, y: 0, opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.2 }}
-                  className="bg-white/95 backdrop-blur-sm rounded-2xl px-8 py-6 shadow-xl border border-white/20"
+                  className="bg-white/95 backdrop-blur-sm rounded-2xl px-6 py-5 md:px-8 md:py-6 shadow-xl border border-white/20 w-full md:w-auto"
                 >
-                  <div className="text-sm text-gray-500 mb-2 uppercase tracking-wider">To</div>
-                  <div className="text-3xl md:text-4xl font-bold text-gray-900">{currencyPair.to}</div>
+                  <div className="text-sm text-gray-500 mb-2 uppercase tracking-wider text-center md:text-left">To</div>
+                  <div className="text-3xl md:text-4xl font-bold text-gray-900 text-center md:text-left">{currencyPair.to}</div>
                 </motion.div>
               </motion.div>
 
