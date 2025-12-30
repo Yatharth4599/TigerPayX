@@ -106,24 +106,24 @@ export default function LandingPage() {
         <link rel="icon" href="/assets/logo.svg" type="image/svg+xml" />
       </Head>
       <div className="min-h-screen bg-white overflow-x-hidden">
-        <Navbar />
+      <Navbar />
       
       {/* Hero Section */}
       <section className="relative pt-20 pb-32 overflow-hidden bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <motion.div
+            <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
                 className="mb-6"
-              >
+            >
                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 rounded-full text-sm text-purple-700 mb-6">
                   <span className="h-2 w-2 bg-purple-500 rounded-full"></span>
                   <span>USDC • FIAT Swap</span>
                 </div>
-              </motion.div>
+            </motion.div>
               <motion.h1 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -141,7 +141,7 @@ export default function LandingPage() {
               >
                 Pay with stablecoins at any QR. Low-fee payments for merchants and individuals without bank freeze worries.
               </motion.p>
-              <motion.div
+            <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3 }}
@@ -157,14 +157,14 @@ export default function LandingPage() {
                 </Link>
               </motion.div>
             </div>
-            <motion.div
+                <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
               className="relative"
-            >
+                >
               {/* Hero Visualization - Globe with locations */}
-              <motion.div
+                  <motion.div 
                 className="relative rounded-2xl overflow-hidden"
                 animate={{
                   y: [0, -20, 0],
@@ -206,8 +206,8 @@ export default function LandingPage() {
                     ease: "easeInOut",
                   }}
                 />
-              </motion.div>
             </motion.div>
+              </motion.div>
           </div>
         </div>
       </section>
@@ -241,7 +241,7 @@ export default function LandingPage() {
       {/* Stats Section */}
       <section className="py-24 bg-gradient-to-br from-[#ff6b00] via-[#ff8c42] to-[#ff6b00] relative overflow-hidden">
         {/* Animated background elements */}
-        <motion.div
+                <motion.div
           className="absolute top-0 left-0 w-72 h-72 bg-white rounded-full blur-3xl opacity-20"
           animate={{
             scale: [1, 1.2, 1],
@@ -279,7 +279,7 @@ export default function LandingPage() {
               whileHover={{ scale: 1.05, y: -5 }}
             >
               <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 hover:bg-white/15 transition-all duration-300 shadow-xl hover:shadow-2xl">
-                <motion.div
+                  <motion.div 
                   initial={{ scale: 0 }}
                   whileInView={{ scale: 1 }}
                   viewport={{ once: true }}
@@ -303,11 +303,11 @@ export default function LandingPage() {
                     transition={{ duration: 1, delay: 0.7 }}
                     className="h-full bg-gradient-to-r from-yellow-300 to-white rounded-full"
                   />
-                </motion.div>
+              </motion.div>
               </div>
-            </motion.div>
+              </motion.div>
             
-            <motion.div
+                <motion.div
               initial={{ opacity: 0, y: 30, scale: 0.9 }}
               whileInView={{ opacity: 1, y: 0, scale: 1 }}
               viewport={{ once: true }}
@@ -315,7 +315,7 @@ export default function LandingPage() {
               whileHover={{ scale: 1.05, y: -5 }}
             >
               <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 hover:bg-white/15 transition-all duration-300 shadow-xl hover:shadow-2xl">
-                <motion.div
+                  <motion.div 
                   initial={{ scale: 0 }}
                   whileInView={{ scale: 1 }}
                   viewport={{ once: true }}
@@ -339,10 +339,10 @@ export default function LandingPage() {
                     transition={{ duration: 1, delay: 0.8 }}
                     className="h-full bg-gradient-to-r from-yellow-300 to-white rounded-full"
                   />
-                </motion.div>
-              </div>
             </motion.div>
-            
+          </div>
+            </motion.div>
+
             <motion.div
               initial={{ opacity: 0, y: 30, scale: 0.9 }}
               whileInView={{ opacity: 1, y: 0, scale: 1 }}
@@ -351,7 +351,7 @@ export default function LandingPage() {
               whileHover={{ scale: 1.05, y: -5 }}
             >
               <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 hover:bg-white/15 transition-all duration-300 shadow-xl hover:shadow-2xl">
-                <motion.div
+            <motion.div
                   initial={{ scale: 0 }}
                   whileInView={{ scale: 1 }}
                   viewport={{ once: true }}
@@ -359,16 +359,16 @@ export default function LandingPage() {
                   className="text-5xl md:text-6xl font-bold text-white mb-3"
                 >
                   140K
-                </motion.div>
+            </motion.div>
                 <div className="text-base md:text-lg text-white/90 font-medium uppercase tracking-wider">Total Transactions</div>
-                <motion.div
+            <motion.div
                   initial={{ width: 0 }}
                   whileInView={{ width: "100%" }}
                   viewport={{ once: true }}
                   transition={{ duration: 1, delay: 0.7 }}
                   className="mt-4 h-1 bg-white/30 rounded-full overflow-hidden"
-                >
-                  <motion.div
+            >
+                <motion.div
                     initial={{ width: 0 }}
                     whileInView={{ width: "95%" }}
                     viewport={{ once: true }}
@@ -376,16 +376,16 @@ export default function LandingPage() {
                     className="h-full bg-gradient-to-r from-yellow-300 to-white rounded-full"
                   />
                 </motion.div>
-              </div>
+                  </div>
             </motion.div>
-          </div>
-        </div>
+                    </div>
+                  </div>
       </section>
 
       {/* Currency Exchange Animation Section */}
       <section className="py-24 bg-white border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
+                <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -396,14 +396,14 @@ export default function LandingPage() {
               {/* Subtle light overlay for depth */}
               <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none rounded-3xl"></div>
               <div className="relative z-10">
-              <motion.div
+                    <motion.div
                 key={`${currencyPair.from}-${currencyPair.to}`}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.5 }}
                 className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8"
-              >
+                    >
                 {/* From Currency */}
                 <motion.div
                   initial={{ x: -20, y: 0, opacity: 0 }}
@@ -413,7 +413,7 @@ export default function LandingPage() {
                 >
                   <div className="text-sm text-gray-500 mb-2 uppercase tracking-wider text-center md:text-left">From</div>
                   <div className="text-3xl md:text-4xl font-bold text-gray-900 text-center md:text-left">{currencyPair.from}</div>
-                </motion.div>
+                    </motion.div>
 
                 {/* Exchange Icon */}
                 <motion.div
@@ -427,7 +427,7 @@ export default function LandingPage() {
                 </motion.div>
 
                 {/* To Currency */}
-                <motion.div
+                    <motion.div
                   initial={{ x: 20, y: 0, opacity: 0 }}
                   animate={{ x: 0, y: 0, opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.2 }}
@@ -435,7 +435,7 @@ export default function LandingPage() {
                 >
                   <div className="text-sm text-gray-500 mb-2 uppercase tracking-wider text-center md:text-left">To</div>
                   <div className="text-3xl md:text-4xl font-bold text-gray-900 text-center md:text-left">{currencyPair.to}</div>
-                </motion.div>
+                  </motion.div>
               </motion.div>
 
               <motion.p
@@ -447,16 +447,16 @@ export default function LandingPage() {
                 Seamlessly exchange between cryptocurrencies and fiat currencies across multiple chains. 
                 Fast, secure, and truly peer-to-peer.
               </motion.p>
-              </div>
-            </div>
-          </motion.div>
-        </div>
+                    </div>
+                  </div>
+                </motion.div>
+                </div>
       </section>
 
       {/* How It Works Section */}
       <section className="py-24 bg-white border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
+                <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -471,7 +471,7 @@ export default function LandingPage() {
             </p>
           </motion.div>
 
-          <motion.div
+                <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
@@ -483,13 +483,13 @@ export default function LandingPage() {
               <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none rounded-3xl"></div>
               
               <div className="relative z-10">
-                <motion.div
+                    <motion.div 
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.8, delay: 0.4 }}
                   className="bg-white rounded-2xl p-6 md:p-8 shadow-xl"
-                >
+                    >
                   <motion.img
                     src="/assets/how-it-works.png"
                     alt="How TigerPayX Works - Merchant to Customer Payment Flow"
@@ -499,7 +499,7 @@ export default function LandingPage() {
                     viewport={{ once: true }}
                     transition={{ duration: 1, delay: 0.6 }}
                   />
-                </motion.div>
+                    </motion.div>
               </div>
 
               {/* Decorative elements */}
@@ -528,8 +528,8 @@ export default function LandingPage() {
                   delay: 2,
                 }}
               />
-            </div>
-          </motion.div>
+                    </div>
+                  </motion.div>
         </div>
       </section>
 
@@ -543,7 +543,7 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            <motion.div
+                  <motion.div 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -556,7 +556,7 @@ export default function LandingPage() {
                 Pay with transaction fees as low as $0.00025. Perfect for merchants and individuals making frequent payments.
               </p>
             </motion.div>
-            <motion.div
+                    <motion.div 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -581,8 +581,8 @@ export default function LandingPage() {
               <p className="text-gray-600 leading-relaxed">
                 Borderless payments worldwide. No geographical restrictions, no bank freezes.
               </p>
-            </motion.div>
-          </div>
+                    </motion.div>
+                  </div>
         </div>
       </section>
 
@@ -611,12 +611,12 @@ export default function LandingPage() {
           >
             Discover how we make every transaction secure, private, and fraud-proof. Everything you need to know in one place.
           </motion.p>
-          <motion.div
+                    <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2 }}
-          >
+                    >
             <Link
               href="/whitepaper"
               className="inline-flex items-center gap-2 bg-white text-[#ff6b00] px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition-colors shadow-lg"
@@ -626,8 +626,8 @@ export default function LandingPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </Link>
-          </motion.div>
-        </div>
+                  </motion.div>
+                  </div>
       </section>
 
       {/* Liquidity Provider Section */}
@@ -653,12 +653,12 @@ export default function LandingPage() {
               >
                 Provide stablecoin liquidity and earn 2% on every swap transaction processed through your account. Strengthen the network while you generate consistent returns on each trade.
               </motion.p>
-              <motion.div
+                    <motion.div 
                 initial={{ opacity: 0, x: -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: 0.2 }}
-              >
+                    >
                 <Link
                   href="/login"
                   className="inline-flex items-center gap-2 bg-[#ff6b00] text-white px-8 py-4 rounded-lg font-semibold hover:bg-[#e55a00] transition-colors shadow-lg shadow-[#ff6b00]/20"
@@ -668,9 +668,9 @@ export default function LandingPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </Link>
-              </motion.div>
-            </div>
-            <motion.div
+                    </motion.div>
+                  </div>
+                <motion.div
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
@@ -691,7 +691,7 @@ export default function LandingPage() {
                   scale: 1.03,
                   transition: { duration: 0.4 }
                 }}
-              >
+                >
                 <motion.img
                   src="/assets/lp-image.png"
                   alt="Earn 2% on Every Swap as a Liquidity Provider"
@@ -720,11 +720,11 @@ export default function LandingPage() {
                     ease: "easeInOut",
                   }}
                 />
-              </motion.div>
+                </motion.div>
             </motion.div>
           </div>
-        </div>
-      </section>
+          </div>
+        </section>
 
       {/* Lending Section */}
       <section className="py-24 bg-gradient-to-br from-[#ff6b00] via-[#ff8c42] to-[#ff6b00] relative overflow-hidden">
@@ -758,7 +758,7 @@ export default function LandingPage() {
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <motion.div
+            <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -778,17 +778,17 @@ export default function LandingPage() {
             </motion.div>
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
               Build Your <span className="text-yellow-300">Roar Score</span>
-            </h2>
+              </h2>
             <p className="text-xl text-white/90 max-w-3xl mx-auto leading-relaxed">
               Connect your wallet, transact on TigerPayX, and unlock lending opportunities with or without collateral
-            </p>
-          </motion.div>
-
+              </p>
+            </motion.div>
+            
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left Side - Features */}
             <div className="space-y-8">
               {/* Feature 1 - Connect Wallet */}
-              <motion.div
+            <motion.div
                 initial={{ opacity: 0, x: -30 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
@@ -796,7 +796,7 @@ export default function LandingPage() {
                 className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300"
               >
                 <div className="flex items-start gap-4">
-                  <motion.div
+            <motion.div
                     animate={{ rotate: [0, 10, -10, 0] }}
                     transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
                     className="bg-white rounded-xl p-4 flex-shrink-0"
@@ -804,13 +804,13 @@ export default function LandingPage() {
                     <svg className="w-8 h-8 text-[#ff6b00]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                     </svg>
-                  </motion.div>
+            </motion.div>
                   <div>
                     <h3 className="text-2xl font-bold text-white mb-2">Connect Your Wallet</h3>
                     <p className="text-white/80 leading-relaxed">
                       Simply connect your Solana wallet to TigerPayX and start building your creditworthiness
                     </p>
-                  </div>
+          </div>
                 </div>
               </motion.div>
 
@@ -836,9 +836,9 @@ export default function LandingPage() {
                     <h3 className="text-2xl font-bold text-white mb-2">Grow Through Transactions</h3>
                     <p className="text-white/80 leading-relaxed">
                       Every payment, swap, and transaction on TigerPayX builds your Roar Score automatically
-                    </p>
+              </p>
+            </div>
                   </div>
-                </div>
               </motion.div>
 
               {/* Feature 3 - Lending Options */}
@@ -867,7 +867,7 @@ export default function LandingPage() {
                   </div>
                 </div>
               </motion.div>
-            </div>
+                  </div>
 
             {/* Right Side - Visual Score Card */}
             <motion.div
@@ -882,7 +882,7 @@ export default function LandingPage() {
                 <div className="absolute inset-0 opacity-10">
                   <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full blur-2xl"></div>
                   <div className="absolute bottom-0 right-0 w-32 h-32 bg-white rounded-full blur-2xl"></div>
-                </div>
+                  </div>
 
                 <div className="relative z-10 text-center">
                   <motion.div
@@ -892,10 +892,10 @@ export default function LandingPage() {
                   >
                     <div className="text-6xl md:text-7xl font-bold text-yellow-300 mb-2">
                       🦁
-                    </div>
+                </div>
                     <div className="text-5xl md:text-6xl font-bold text-white mb-4">
                       Roar Score
-                    </div>
+              </div>
                   </motion.div>
 
                   {/* Score Display */}
@@ -909,16 +909,16 @@ export default function LandingPage() {
                     <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6 border border-white/30">
                       <div className="text-4xl md:text-5xl font-bold text-white mb-2">850</div>
                       <div className="text-white/70 text-sm uppercase tracking-wider">Excellent</div>
-                    </div>
+                      </div>
                   </motion.div>
 
                   {/* Score Progress Bars */}
                   <div className="space-y-4 mb-8">
-                    <div>
+                      <div>
                       <div className="flex justify-between text-white/80 text-sm mb-2">
                         <span>Wallet Activity</span>
                         <span>90%</span>
-                      </div>
+                  </div>
                       <motion.div
                         initial={{ width: 0 }}
                         whileInView={{ width: "100%" }}
@@ -934,12 +934,12 @@ export default function LandingPage() {
                           className="h-full bg-gradient-to-r from-yellow-300 to-yellow-400 rounded-full"
                         />
                       </motion.div>
-                    </div>
-                    <div>
+                  </div>
+                  <div>
                       <div className="flex justify-between text-white/80 text-sm mb-2">
                         <span>Transaction History</span>
                         <span>85%</span>
-                      </div>
+                  </div>
                       <motion.div
                         initial={{ width: 0 }}
                         whileInView={{ width: "100%" }}
@@ -955,8 +955,8 @@ export default function LandingPage() {
                           className="h-full bg-gradient-to-r from-yellow-300 to-yellow-400 rounded-full"
                         />
                       </motion.div>
-                    </div>
-                    <div>
+                  </div>
+                  <div>
                       <div className="flex justify-between text-white/80 text-sm mb-2">
                         <span>Payment Frequency</span>
                         <span>95%</span>
@@ -997,11 +997,11 @@ export default function LandingPage() {
                       <div className="text-white font-semibold text-sm">Collateral-Free</div>
                       <div className="text-white/70 text-xs">Based on Score</div>
                     </motion.div>
-                  </div>
+                </div>
                 </div>
               </div>
             </motion.div>
-          </div>
+            </div>
 
           {/* CTA Button */}
           <motion.div
@@ -1021,8 +1021,8 @@ export default function LandingPage() {
               </svg>
             </Link>
           </motion.div>
-        </div>
-      </section>
+          </div>
+        </section>
 
       {/* FAQ Section */}
       <section id="faq" className="py-24 bg-gray-50">
@@ -1033,7 +1033,7 @@ export default function LandingPage() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
             className="text-4xl sm:text-5xl font-bold text-center text-gray-900 mb-12"
-          >
+        >
             Frequently Asked Questions
           </motion.h2>
           <div className="space-y-4">
@@ -1065,12 +1065,12 @@ export default function LandingPage() {
                 {openFaq === index && (
                   <div className="px-6 pb-6">
                     <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
-                  </div>
+            </div>
                 )}
               </motion.div>
             ))}
-          </div>
-        </div>
+                      </div>
+                      </div>
       </section>
 
       {/* Final CTA */}
@@ -1086,7 +1086,7 @@ export default function LandingPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
           </Link>
-        </div>
+                    </div>
       </section>
 
       {/* Footer */}
@@ -1101,16 +1101,16 @@ export default function LandingPage() {
                   compliance@tigerpayx.com
                 </a>
               </p>
-            </div>
-            <div>
+                      </div>
+                      <div>
               <h4 className="font-semibold mb-4">Contact Us</h4>
               <div className="space-y-2 text-sm text-gray-400">
                 <div>India</div>
                 <div>Brazil</div>
                 <div>Indonesia</div>
-              </div>
-            </div>
-            <div>
+                      </div>
+                      </div>
+                      <div>
               <h4 className="font-semibold mb-4">Follow Us</h4>
               <div className="flex gap-4">
                 <a
@@ -1129,20 +1129,20 @@ export default function LandingPage() {
                 >
                   Telegram
                 </a>
-              </div>
-            </div>
-          </div>
+                      </div>
+                    </div>
+                  </div>
           <div className="border-t border-gray-800 pt-8">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <p className="text-sm text-gray-400">© 2025 TigerPayX. All rights reserved.</p>
               <Link href="#" className="text-sm text-gray-400 hover:text-white transition-colors">
                 Terms & Conditions
               </Link>
-            </div>
-          </div>
-        </div>
+                </div>
+                </div>
+              </div>
       </footer>
-      </div>
+                    </div>
     </>
   );
 }

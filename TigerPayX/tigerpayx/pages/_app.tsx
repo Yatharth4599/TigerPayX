@@ -18,9 +18,9 @@ export default function TigerPayXApp({ Component, pageProps }: AppProps) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
       </Head>
       <div className={`${poppins.variable} font-sans overflow-x-hidden`}>
-        <Component {...pageProps} />
-        <ToastContainer />
-      </div>
+      <Component {...pageProps} />
+      <ToastContainer />
+    </div>
     </>
   );
 }

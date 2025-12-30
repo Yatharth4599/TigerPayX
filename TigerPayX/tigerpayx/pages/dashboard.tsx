@@ -35,11 +35,86 @@ export default function DashboardPage() {
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositAmount, setDepositAmount] = useState<string>("");
   const [depositWalletAddress, setDepositWalletAddress] = useState<string>("");
+  
+  // OnMeta authentication state
+  const [onMetaAccessToken, setOnMetaAccessToken] = useState<string | null>(null);
+  const [onMetaRefreshToken, setOnMetaRefreshToken] = useState<string | null>(null);
+  const [onMetaBankStatus, setOnMetaBankStatus] = useState<string | null>(null);
+  const [onMetaUPIStatus, setOnMetaUPIStatus] = useState<string | null>(null);
+  const [showLinkBankModal, setShowLinkBankModal] = useState(false);
+  const [showLinkUPIModal, setShowLinkUPIModal] = useState(false);
+  
+  // Link Bank Account form state
+  const [linkBankName, setLinkBankName] = useState<string>("");
+  const [linkBankPAN, setLinkBankPAN] = useState<string>("");
+  const [linkBankEmail, setLinkBankEmail] = useState<string>("");
+  const [linkBankKYCVerified, setLinkBankKYCVerified] = useState<boolean>(false);
+  const [linkBankAccountNumber, setLinkBankAccountNumber] = useState<string>("");
+  const [linkBankIFSC, setLinkBankIFSC] = useState<string>("");
+  const [linkBankAccountHolder, setLinkBankAccountHolder] = useState<string>("");
+  const [linkBankPhoneCountryCode, setLinkBankPhoneCountryCode] = useState<string>("+91");
+  const [linkBankPhoneNumber, setLinkBankPhoneNumber] = useState<string>("");
+  const [linkBankLoading, setLinkBankLoading] = useState(false);
+  
+  // Link UPI form state
+  const [linkUPIName, setLinkUPIName] = useState<string>("");
+  const [linkUPIEmail, setLinkUPIEmail] = useState<string>("");
+  const [linkUPIId, setLinkUPIId] = useState<string>("");
+  const [linkUPIPhoneCountryCode, setLinkUPIPhoneCountryCode] = useState<string>("+91");
+  const [linkUPIPhoneNumber, setLinkUPIPhoneNumber] = useState<string>("");
+  const [linkUPILoading, setLinkUPILoading] = useState(false);
+  
+  // Supported tokens and limits state
+  const [supportedTokens, setSupportedTokens] = useState<any[]>([]);
+  const [chainLimits, setChainLimits] = useState<any[]>([]);
+  const [tokensLoading, setTokensLoading] = useState(false);
+  const [limitsLoading, setLimitsLoading] = useState(false);
+  
+  // Quotation state
+  const [showQuotationModal, setShowQuotationModal] = useState(false);
+  const [quotationLoading, setQuotationLoading] = useState(false);
+  const [quotation, setQuotation] = useState<any>(null);
+  const [quotationForm, setQuotationForm] = useState({
+    buyTokenSymbol: 'USDC',
+    chainId: 80001, // Polygon testnet default
+    fiatCurrency: 'inr',
+    fiatAmount: '',
+    buyTokenAddress: '',
+  });
+  
+  // Store linked UPI ID and bank details for order creation
+  const [linkedUPIId, setLinkedUPIId] = useState<string | null>(null);
+  const [linkedBankDetails, setLinkedBankDetails] = useState<any>(null);
+  
+  // Order status state
+  const [showOrderStatusModal, setShowOrderStatusModal] = useState(false);
+  const [orderStatusLoading, setOrderStatusLoading] = useState(false);
+  const [orderStatus, setOrderStatus] = useState<any>(null);
+  const [orderStatusInput, setOrderStatusInput] = useState<string>('');
+  
+  // Update UTR state
+  const [showUpdateUTRModal, setShowUpdateUTRModal] = useState(false);
+  const [updateUTRLoading, setUpdateUTRLoading] = useState(false);
+  const [updateUTRForm, setUpdateUTRForm] = useState({
+    orderId: '',
+    utr: '',
+    paymentMode: '',
+  });
+  
+  // Order history state
+  const [orderHistory, setOrderHistory] = useState<any[]>([]);
+  const [orderHistoryLoading, setOrderHistoryLoading] = useState(false);
+  const [orderHistorySkip, setOrderHistorySkip] = useState(0);
+  const [orderHistoryHasMore, setOrderHistoryHasMore] = useState(false);
+
+  // Supported currencies state
+  const [supportedCurrencies, setSupportedCurrencies] = useState<any[]>([]);
+  const [currenciesLoading, setCurrenciesLoading] = useState(false);
 
   // Handle OnMeta callback
   useEffect(() => {
     const handleOnMetaCallback = () => {
-      const urlParams = new URLSearchParams(window.location.search);
+        const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('onmeta_callback') === 'true') {
         // Handle return from OnMeta
         const type = urlParams.get('type') || 'deposit'; // deposit, withdrawal, kyc
@@ -82,6 +157,377 @@ export default function DashboardPage() {
       handleOnMetaCallback();
     }
   }, []);
+
+  // OnMeta Login - Auto-login user with their email
+  useEffect(() => {
+    const onMetaLogin = async () => {
+      const userEmail = getAuthEmail();
+      if (!userEmail) return;
+      
+      // Check if we have a stored refresh token first
+      const storedRefreshToken = localStorage.getItem('onmeta_refresh_token');
+      if (storedRefreshToken && !onMetaAccessToken) {
+        // Try to refresh the token
+        try {
+          const refreshResponse = await fetch('/api/onmeta/auth/refresh', {
+            headers: {
+              'Authorization': `Bearer ${storedRefreshToken}`,
+            },
+          });
+          const refreshData = await refreshResponse.json();
+          
+          if (refreshData.success && refreshData.accessToken) {
+            setOnMetaAccessToken(refreshData.accessToken);
+            if (refreshData.refreshToken) {
+              setOnMetaRefreshToken(refreshData.refreshToken);
+              localStorage.setItem('onmeta_refresh_token', refreshData.refreshToken);
+            }
+            console.log('OnMeta token refreshed successfully');
+            fetchOnMetaAccountStatus(refreshData.accessToken);
+            return;
+          }
+        } catch (error) {
+          console.error('OnMeta token refresh failed, will try login:', error);
+          // Clear invalid refresh token
+          localStorage.removeItem('onmeta_refresh_token');
+        }
+      }
+
+      // If no valid token, login with email
+      if (!onMetaAccessToken) {
+        try {
+          const response = await fetch('/api/onmeta/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email: userEmail }),
+          });
+
+          const data = await response.json();
+          
+          if (data.success && data.accessToken) {
+            setOnMetaAccessToken(data.accessToken);
+            if (data.refreshToken) {
+              setOnMetaRefreshToken(data.refreshToken);
+              // Store refresh token in localStorage for persistence
+              localStorage.setItem('onmeta_refresh_token', data.refreshToken);
+            }
+            console.log('OnMeta login successful');
+            
+            // Fetch bank and UPI status
+            fetchOnMetaAccountStatus(data.accessToken);
+        } else {
+            console.error('OnMeta login failed:', data.error);
+          }
+        } catch (error) {
+          console.error('OnMeta login error:', error);
+        }
+      }
+    };
+
+    if (authChecked) {
+      onMetaLogin();
+    }
+  }, [authChecked]);
+
+  // Fetch OnMeta account status (bank and UPI)
+  const fetchOnMetaAccountStatus = async (accessToken: string) => {
+    try {
+      // Fetch bank status
+      const bankResponse = await fetch('/api/onmeta/account/bank-status', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+      if (bankResponse.ok) {
+        const bankData = await bankResponse.json();
+        if (bankData.success) {
+          setOnMetaBankStatus(bankData.status);
+            }
+      }
+
+      // Fetch UPI status
+      const upiResponse = await fetch('/api/onmeta/account/upi-status', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      });
+      if (upiResponse.ok) {
+        const upiData = await upiResponse.json();
+        if (upiData.success) {
+          setOnMetaUPIStatus(upiData.status);
+        }
+        }
+    } catch (error) {
+      console.error('Error fetching OnMeta account status:', error);
+    }
+  };
+
+  // Fetch supported tokens
+  const fetchSupportedTokens = async () => {
+    setTokensLoading(true);
+    try {
+      const response = await fetch('/api/onmeta/tokens');
+      const data = await response.json();
+      
+      if (data.success && data.tokens) {
+        setSupportedTokens(data.tokens);
+        console.log('Supported tokens loaded:', data.tokens.length);
+      } else {
+        console.error('Failed to fetch supported tokens:', data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching supported tokens:', error);
+    } finally {
+      setTokensLoading(false);
+          }
+  };
+
+  // Fetch chain-wise limits
+  const fetchChainLimits = async () => {
+    setLimitsLoading(true);
+    try {
+      const response = await fetch('/api/onmeta/chain-limits');
+      const data = await response.json();
+      
+      if (data.success && data.limits) {
+        setChainLimits(data.limits);
+        console.log('Chain limits loaded:', data.limits.length);
+      } else {
+        console.error('Failed to fetch chain limits:', data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching chain limits:', error);
+    } finally {
+      setLimitsLoading(false);
+    }
+  };
+
+  // Fetch supported currencies
+  const fetchSupportedCurrenciesData = async () => {
+    setCurrenciesLoading(true);
+    try {
+      const response = await fetch('/api/onmeta/currencies');
+      const data = await response.json();
+      
+      if (data.success && data.currencies) {
+        setSupportedCurrencies(data.currencies);
+        console.log('Supported currencies loaded:', data.currencies.length);
+      } else {
+        console.error('Failed to fetch supported currencies:', data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching supported currencies:', error);
+    } finally {
+      setCurrenciesLoading(false);
+    }
+  };
+
+  // Fetch tokens and limits on mount
+  useEffect(() => {
+    fetchSupportedTokens();
+    fetchChainLimits();
+    fetchSupportedCurrenciesData();
+  }, []);
+
+  // Fetch order history
+  const fetchOrderHistory = async (skip: number = 0, append: boolean = false) => {
+    if (!onMetaAccessToken) {
+      console.log('OnMeta access token not available yet');
+      return;
+    }
+
+    setOrderHistoryLoading(true);
+    
+    try {
+      const response = await fetch(`/api/onmeta/orders/history?skip=${skip}`, {
+        headers: {
+          'Authorization': `Bearer ${onMetaAccessToken}`,
+        },
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.orders) {
+        if (append) {
+          setOrderHistory(prev => [...prev, ...data.orders]);
+        } else {
+          setOrderHistory(data.orders);
+        }
+        setOrderHistoryHasMore(data.hasMore || data.orders.length === 10);
+        setOrderHistorySkip(skip);
+        console.log('Order history fetched successfully:', data.orders.length, 'orders');
+      } else {
+        console.error('Failed to fetch order history:', data.error);
+        if (!append) {
+          setOrderHistory([]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching order history:', error);
+      if (!append) {
+        setOrderHistory([]);
+    }
+    } finally {
+      setOrderHistoryLoading(false);
+    }
+  };
+
+  // Fetch order history when access token is available
+  useEffect(() => {
+    if (onMetaAccessToken) {
+      fetchOrderHistory(0, false);
+    }
+  }, [onMetaAccessToken]);
+
+  // Update UTR
+  const handleUpdateUTR = async () => {
+    if (!updateUTRForm.orderId || updateUTRForm.orderId.trim() === '') {
+      alert('Please enter an order ID');
+      return;
+    }
+
+    if (!updateUTRForm.utr || updateUTRForm.utr.trim() === '') {
+      alert('Please enter a UTR');
+      return;
+    }
+
+    if (!onMetaAccessToken) {
+      alert('OnMeta authentication required. Please wait for authentication to complete or refresh the page.');
+      return;
+    }
+
+    setUpdateUTRLoading(true);
+    
+      try {
+      const response = await fetch('/api/onmeta/orders/update-utr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${onMetaAccessToken}`,
+        },
+        body: JSON.stringify({
+          orderId: updateUTRForm.orderId.trim(),
+          utr: updateUTRForm.utr.trim(),
+          paymentMode: updateUTRForm.paymentMode || undefined,
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        alert(data.message || 'UTR updated successfully!');
+        setShowUpdateUTRModal(false);
+        setUpdateUTRForm({
+          orderId: '',
+          utr: '',
+          paymentMode: '',
+        });
+      } else {
+        alert(data.error || 'Failed to update UTR. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Error updating UTR:', error);
+      alert(`Error: ${error.message || 'Failed to update UTR. Please try again.'}`);
+    } finally {
+      setUpdateUTRLoading(false);
+    }
+  };
+
+  // Fetch order status
+  const fetchOrderStatus = async () => {
+    if (!orderStatusInput || orderStatusInput.trim() === '') {
+      alert('Please enter an order ID');
+      return;
+    }
+
+    if (!onMetaAccessToken) {
+      alert('OnMeta authentication required. Please wait for authentication to complete or refresh the page.');
+      return;
+    }
+
+    setOrderStatusLoading(true);
+    setOrderStatus(null);
+    
+    try {
+      const response = await fetch('/api/onmeta/orders/status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${onMetaAccessToken}`,
+        },
+        body: JSON.stringify({
+          orderId: orderStatusInput.trim(),
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.status) {
+        setOrderStatus(data);
+        console.log('Order status fetched successfully:', data);
+      } else {
+        alert(data.error || 'Failed to fetch order status. Please check the order ID and try again.');
+        setOrderStatus(null);
+      }
+    } catch (error: any) {
+      console.error('Error fetching order status:', error);
+      alert(`Error: ${error.message || 'Failed to fetch order status. Please try again.'}`);
+      setOrderStatus(null);
+    } finally {
+      setOrderStatusLoading(false);
+    }
+  };
+
+  // Fetch quotation
+  const fetchQuotation = async () => {
+    if (!quotationForm.buyTokenSymbol || !quotationForm.chainId || !quotationForm.fiatCurrency || !quotationForm.fiatAmount || !quotationForm.buyTokenAddress) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    const fiatAmount = parseFloat(quotationForm.fiatAmount);
+    if (isNaN(fiatAmount) || fiatAmount <= 0) {
+      alert('Please enter a valid fiat amount');
+        return;
+      }
+
+    setQuotationLoading(true);
+    setQuotation(null);
+    
+    try {
+      const response = await fetch('/api/onmeta/quotation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          buyTokenSymbol: quotationForm.buyTokenSymbol,
+          chainId: quotationForm.chainId,
+          fiatCurrency: quotationForm.fiatCurrency,
+          fiatAmount: fiatAmount,
+          buyTokenAddress: quotationForm.buyTokenAddress,
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.quotation) {
+        setQuotation(data.quotation);
+        console.log('Quotation fetched successfully:', data.quotation);
+      } else {
+        alert(data.error || 'Failed to fetch quotation. Please try again.');
+        setQuotation(null);
+      }
+    } catch (error: any) {
+      console.error('Error fetching quotation:', error);
+      alert(`Error: ${error.message || 'Failed to fetch quotation. Please try again.'}`);
+      setQuotation(null);
+    } finally {
+      setQuotationLoading(false);
+    }
+  };
 
   // Load user profile
   useEffect(() => {
@@ -137,14 +583,14 @@ export default function DashboardPage() {
           // Skip authentication in development for local testing
           setAuthChecked(true);
           setLoading(false);
-          return;
-        }
-        
+      return;
+    }
+
         // Require authentication in production
         if (!isAuthenticated()) {
           await router.push("/login");
-          return;
-        }
+      return;
+    }
         setAuthChecked(true);
         setLoading(false);
       };
@@ -232,21 +678,21 @@ export default function DashboardPage() {
       // Don't check wallet adapter directly - respect user's explicit disconnect action
       if (storedAddress && storedName) {
         // Optionally verify wallet is still connected to extension (but don't auto-connect if not)
-        try {
+    try {
           const address = getConnectedWalletAddress(storedName);
           if (address && address === storedAddress) {
             // Wallet extension still shows connected, restore state
             setWalletConnected(true);
             setWalletAddress(storedAddress);
             setConnectedWalletName(storedName);
-          } else {
+      } else {
             // Wallet extension shows disconnected or different address, clear localStorage
             localStorage.removeItem("tigerpayx_wallet_address");
             localStorage.removeItem("tigerpayx_wallet_name");
             setWalletConnected(false);
             setWalletAddress(null);
             setConnectedWalletName(null);
-          }
+      }
         } catch (error) {
           // Error checking wallet - clear stored connection
           localStorage.removeItem("tigerpayx_wallet_address");
@@ -260,24 +706,24 @@ export default function DashboardPage() {
         setWalletConnected(false);
         setWalletAddress(null);
         setConnectedWalletName(null);
-      }
+    }
     }
   }, [authChecked]);
 
   // Fetch SOL price in USD
   useEffect(() => {
     const fetchSolPrice = async () => {
-      try {
+    try {
         const response = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd");
         const data = await response.json();
         if (data.solana?.usd) {
           setSolPrice(data.solana.usd);
-        }
-      } catch (error) {
+      }
+    } catch (error) {
         console.error("Failed to fetch SOL price:", error);
         // Keep default price if fetch fails
-      }
-    };
+    }
+  };
     fetchSolPrice();
     // Refresh price every 60 seconds
     const interval = setInterval(fetchSolPrice, 60000);
@@ -347,17 +793,17 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="mb-8 bg-white rounded-2xl p-6 border border-gray-200 shadow-lg"
-        >
+            >
           {profileLoading ? (
             <div className="flex items-center justify-center py-6">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#ff6b00]"></div>
-            </div>
+          </div>
           ) : userProfile ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-[#ff6b00] to-[#ff8c42] rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-md">
                   {userProfile.avatarInitials || (userProfile.name?.charAt(0) || "U")}
-                </div>
+        </div>
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">
                     {userProfile.name || "User"}
@@ -372,8 +818,8 @@ export default function DashboardPage() {
           ) : (
             <div className="text-center py-6 text-gray-500">
               No profile data available
-            </div>
-          )}
+                  </div>
+                )}
         </motion.div>
 
         {/* Balance Section */}
@@ -416,13 +862,13 @@ export default function DashboardPage() {
                         {walletBalance.toFixed(4)} SOL
                       </p>
                     )}
-                  </div>
+              </div>
                   <div className="hidden md:block">
                     <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
                       <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                    </div>
+            </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
@@ -477,20 +923,20 @@ export default function DashboardPage() {
                 <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
-              </div>
+            </div>
               <h2 className="text-3xl font-bold text-white mb-2">Send Money</h2>
               <p className="text-white/90 mb-6">Send payments to anyone, anywhere instantly</p>
-              <button 
+                  <button
                 onClick={() => setShowSendPaymentModal(true)}
                 className="w-full bg-white text-[#ff6b00] py-4 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg"
-              >
+                  >
                 Send Payment
-              </button>
-            </div>
+                  </button>
+                </div>
           </motion.div>
 
           {/* Receive Money / Payment Link */}
-          <motion.div
+                    <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
@@ -523,13 +969,13 @@ export default function DashboardPage() {
               >
                 Receive Payment
               </button>
-            </div>
+                        </div>
           </motion.div>
           </div>
         )}
 
-        {/* Services Section - KYC & Bank Account */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
+        {/* Services Section - KYC, Bank Account & UPI */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
           {/* KYC Verification */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -541,8 +987,8 @@ export default function DashboardPage() {
               <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
+                        </svg>
+                      </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-gray-900">Complete KYC</h3>
                 <p className="text-sm text-gray-600">Verify identity to unlock features</p>
@@ -580,7 +1026,7 @@ export default function DashboardPage() {
             >
               Start KYC
             </button>
-          </motion.div>
+                    </motion.div>
 
           {/* Link Bank Account */}
           <motion.div
@@ -594,17 +1040,494 @@ export default function DashboardPage() {
                 <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                 </svg>
-              </div>
+                </div>
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-gray-900">Link Bank</h3>
+                <h3 className="text-lg font-bold text-gray-900">Link Bank Account</h3>
                 <p className="text-sm text-gray-600">Connect bank for fiat transactions</p>
+                {onMetaBankStatus && (
+                  <p className="text-xs mt-1 font-medium">
+                    Status: <span className={onMetaBankStatus === 'SUCCESS' ? 'text-green-600' : onMetaBankStatus === 'PENDING' ? 'text-yellow-600' : 'text-red-600'}>
+                      {onMetaBankStatus}
+                    </span>
+                  </p>
+                )}
               </div>
             </div>
-            <button className="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors">
-              Link Account
+              <button
+              onClick={() => {
+                if (!onMetaAccessToken) {
+                  alert('Please wait for OnMeta authentication to complete');
+                  return;
+                }
+                // Pre-fill form with user data
+                setLinkBankName(userProfile?.name || '');
+                setLinkBankEmail(getAuthEmail() || '');
+                setLinkBankKYCVerified(false); // User can update this
+                setShowLinkBankModal(true);
+              }}
+              className="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors"
+              >
+              {onMetaBankStatus === 'SUCCESS' ? '✓ Bank Linked' : onMetaBankStatus === 'PENDING' ? 'Bank Linking...' : 'Link Bank Account'}
+              </button>
+          </motion.div>
+          
+          {/* Link UPI ID */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg hover:shadow-xl transition-shadow"
+          >
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+            </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900">Link UPI ID</h3>
+                <p className="text-sm text-gray-600">Connect UPI for instant payments</p>
+                {onMetaUPIStatus && (
+                  <p className="text-xs mt-1 font-medium">
+                    Status: <span className={onMetaUPIStatus === 'SUCCESS' ? 'text-green-600' : onMetaUPIStatus === 'PENDING' ? 'text-yellow-600' : 'text-red-600'}>
+                      {onMetaUPIStatus}
+                    </span>
+                  </p>
+                )}
+              </div>
+            </div>
+            <button 
+              onClick={() => {
+                if (!onMetaAccessToken) {
+                  alert('Please wait for OnMeta authentication to complete');
+                  return;
+                }
+                // Pre-fill form with user data
+                setLinkUPIName(userProfile?.name || '');
+                setLinkUPIEmail(getAuthEmail() || '');
+                setShowLinkUPIModal(true);
+              }}
+              className="w-full bg-green-500 text-white py-3 rounded-xl font-semibold hover:bg-green-600 transition-colors"
+            >
+              {onMetaUPIStatus === 'SUCCESS' ? '✓ UPI Linked' : onMetaUPIStatus === 'PENDING' ? 'UPI Linking...' : 'Link UPI ID'}
             </button>
           </motion.div>
         </div>
+
+        {/* Supported Tokens & Limits Section */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          {/* Supported Tokens */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.35 }}
+            className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg hover:shadow-xl transition-shadow"
+          >
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900">Supported Tokens</h3>
+                <p className="text-sm text-gray-600">Available cryptocurrencies</p>
+              </div>
+            </div>
+            {tokensLoading ? (
+              <div className="text-center py-4">
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[#ff6b00]"></div>
+                <p className="text-sm text-gray-500 mt-2">Loading tokens...</p>
+              </div>
+            ) : supportedTokens.length > 0 ? (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {supportedTokens.slice(0, 10).map((token, index) => (
+                  <div key={token.id || index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      {token.logoUrl && (
+                        <img src={token.logoUrl} alt={token.symbol} className="w-6 h-6 rounded-full" />
+                      )}
+            <div>
+                        <p className="font-semibold text-gray-900">{token.symbol || token.name || 'Unknown'}</p>
+                        {token.chain && (
+                          <p className="text-xs text-gray-500">{token.chain}</p>
+                        )}
+            </div>
+                    </div>
+                    {token.address && (
+                      <p className="text-xs text-gray-400 font-mono truncate max-w-[100px]">
+                        {token.address.slice(0, 6)}...{token.address.slice(-4)}
+                      </p>
+                    )}
+                  </div>
+                ))}
+                {supportedTokens.length > 10 && (
+                  <p className="text-xs text-gray-500 text-center pt-2">
+                    +{supportedTokens.length - 10} more tokens
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-sm text-gray-500">No tokens available</p>
+                    <button
+                  onClick={fetchSupportedTokens}
+                  className="mt-2 text-sm text-[#ff6b00] hover:underline"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Chain-wise Limits */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg hover:shadow-xl transition-shadow"
+          >
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900">Chain Limits</h3>
+                <p className="text-sm text-gray-600">Min/Max fiat limits per chain</p>
+              </div>
+            </div>
+            {limitsLoading ? (
+              <div className="text-center py-4">
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[#ff6b00]"></div>
+                <p className="text-sm text-gray-500 mt-2">Loading limits...</p>
+              </div>
+            ) : chainLimits.length > 0 ? (
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {chainLimits.map((limit, index) => (
+                  <div key={limit.chainId || index} className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-semibold text-gray-900">
+                        {limit.chain || `Chain ${limit.chainId}`}
+                      </p>
+                      {limit.currency && (
+                        <span className="text-xs text-gray-500">{limit.currency}</span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {limit.minFiat !== undefined && (
+                        <div>
+                          <p className="text-gray-500">Min</p>
+                          <p className="font-semibold text-gray-900">
+                            {limit.currency === 'INR' ? '₹' : limit.currency === 'PHP' ? '₱' : limit.currency === 'IDR' ? 'Rp' : '$'}
+                            {limit.minFiat.toLocaleString()}
+                          </p>
+                        </div>
+                  )}
+                      {limit.maxFiat !== undefined && (
+                        <div>
+                          <p className="text-gray-500">Max</p>
+                          <p className="font-semibold text-gray-900">
+                            {limit.currency === 'INR' ? '₹' : limit.currency === 'PHP' ? '₱' : limit.currency === 'IDR' ? 'Rp' : '$'}
+                            {limit.maxFiat.toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-sm text-gray-500">No limits available</p>
+                  <button
+                  onClick={fetchChainLimits}
+                  className="mt-2 text-sm text-[#ff6b00] hover:underline"
+                  >
+                  Retry
+                  </button>
+            </div>
+            )}
+          </motion.div>
+          </div>
+
+        {/* Supported Currencies Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg hover:shadow-xl transition-shadow mb-8"
+        >
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-900">Supported Currencies</h3>
+              <p className="text-sm text-gray-600">Available currencies and payment modes</p>
+            </div>
+          </div>
+          {currenciesLoading ? (
+            <div className="text-center py-4">
+              <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[#ff6b00]"></div>
+              <p className="text-sm text-gray-500 mt-2">Loading currencies...</p>
+            </div>
+          ) : supportedCurrencies.length > 0 ? (
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {supportedCurrencies.map((currency: any, index: number) => (
+                <div key={currency.currency || index} className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-gray-900 text-lg">
+                      {currency.currency || currency.code || 'Unknown'}
+                    </h4>
+                    <span className="text-2xl">
+                      {currency.currency === 'INR' && '🇮🇳'}
+                      {currency.currency === 'PHP' && '🇵🇭'}
+                      {currency.currency === 'IDR' && '🇮🇩'}
+                      {currency.currency === 'USD' && '🇺🇸'}
+                    </span>
+                  </div>
+                  {currency.paymentModes && currency.paymentModes.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-500 mb-1">Payment Modes:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {currency.paymentModes.map((mode: string, modeIndex: number) => (
+                          <span
+                            key={modeIndex}
+                            className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-md font-medium"
+                          >
+                            {mode.replace(/_/g, ' ')}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-sm text-gray-500">No currencies available</p>
+                  <button
+                onClick={fetchSupportedCurrenciesData}
+                className="mt-2 text-sm text-[#ff6b00] hover:underline"
+                  >
+                Retry
+                  </button>
+                  </div>
+              )}
+        </motion.div>
+
+        {/* Token Quotation Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.45 }}
+          className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg hover:shadow-xl transition-shadow mb-8"
+        >
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+                      </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-900">Token Quotation</h3>
+              <p className="text-sm text-gray-600">Get real-time token prices and conversion rates</p>
+            </div>
+          </div>
+                        <button
+            onClick={() => setShowQuotationModal(true)}
+            className="w-full bg-teal-500 text-white py-3 rounded-xl font-semibold hover:bg-teal-600 transition-colors"
+          >
+            Get Quotation
+                        </button>
+        </motion.div>
+
+        {/* Order Status Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg hover:shadow-xl transition-shadow mb-8"
+        >
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+                      </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-900">Order Status</h3>
+              <p className="text-sm text-gray-600">Check the status of your orders</p>
+                      </div>
+                    </div>
+                  <button
+            onClick={() => setShowOrderStatusModal(true)}
+            className="w-full bg-violet-500 text-white py-3 rounded-xl font-semibold hover:bg-violet-600 transition-colors"
+                  >
+            Check Order Status
+                  </button>
+        </motion.div>
+
+        {/* Update UTR Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.55 }}
+          className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg hover:shadow-xl transition-shadow mb-8"
+                    >
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+                  </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-900">Update UTR</h3>
+              <p className="text-sm text-gray-600">Update UTR from payment success screen</p>
+                    </div>
+                    </div>
+          <button
+            onClick={() => setShowUpdateUTRModal(true)}
+            className="w-full bg-pink-500 text-white py-3 rounded-xl font-semibold hover:bg-pink-600 transition-colors"
+          >
+            Update UTR
+          </button>
+        </motion.div>
+
+        {/* Order History Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg hover:shadow-xl transition-shadow mb-8"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-slate-500 to-gray-600 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                </div>
+                    <div>
+                <h3 className="text-lg font-bold text-gray-900">Order History</h3>
+                <p className="text-sm text-gray-600">Your recent transactions</p>
+                    </div>
+            </div>
+                  <button
+              onClick={() => fetchOrderHistory(0, false)}
+              disabled={orderHistoryLoading}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                  >
+              {orderHistoryLoading ? 'Loading...' : 'Refresh'}
+                  </button>
+                        </div>
+
+          {orderHistoryLoading && orderHistory.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#ff6b00]"></div>
+              <p className="text-sm text-gray-500 mt-2">Loading order history...</p>
+                      </div>
+          ) : orderHistory.length > 0 ? (
+            <>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {orderHistory.map((order: any, index: number) => (
+                  <div
+                    key={order.orderId || order.id || index}
+                    className="p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors"
+                    >
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                        <div className={`w-2 h-2 rounded-full ${
+                          order.status === 'completed' || order.status === 'SUCCESS'
+                            ? 'bg-green-500'
+                            : order.status === 'pending' || order.status === 'PENDING'
+                            ? 'bg-yellow-500'
+                            : order.status === 'failed' || order.status === 'FAILED'
+                            ? 'bg-red-500'
+                            : 'bg-gray-400'
+                        }`}></div>
+                        <div>
+                          <p className="font-semibold text-gray-900">
+                            Order #{order.orderId || order.id || 'N/A'}
+                          </p>
+                          <p className="text-xs text-gray-500 font-mono">
+                            {order.orderId || order.id || 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        order.status === 'completed' || order.status === 'SUCCESS'
+                          ? 'bg-green-100 text-green-700'
+                          : order.status === 'pending' || order.status === 'PENDING'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : order.status === 'failed' || order.status === 'FAILED'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}>
+                        {order.status || order.orderStatus || 'Unknown'}
+                      </span>
+                        </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm mt-3">
+                      {order.fiatAmount && (
+                          <div>
+                          <p className="text-gray-500">Amount</p>
+                          <p className="font-semibold text-gray-900">
+                            {order.fiatCurrency === 'INR' ? '₹' : order.fiatCurrency === 'PHP' ? '₱' : order.fiatCurrency === 'IDR' ? 'Rp' : '$'}
+                            {order.fiatAmount?.toLocaleString()}
+                    </p>
+                        </div>
+                      )}
+                      {order.buyTokenSymbol && (
+                        <div>
+                          <p className="text-gray-500">Token</p>
+                          <p className="font-semibold text-gray-900">{order.buyTokenSymbol}</p>
+                  </div>
+                      )}
+                      {order.createdAt && (
+                        <div>
+                          <p className="text-gray-500">Date</p>
+                          <p className="font-semibold text-gray-900">
+                            {new Date(order.createdAt).toLocaleDateString()}
+                          </p>
+                  </div>
+                      )}
+                      {order.paymentMode && (
+                        <div>
+                          <p className="text-gray-500">Payment</p>
+                          <p className="font-semibold text-gray-900">{order.paymentMode}</p>
+                  </div>
+                      )}
+                  </div>
+                  </div>
+                ))}
+              </div>
+              {orderHistoryHasMore && (
+                <button
+                  onClick={() => fetchOrderHistory(orderHistorySkip + 1, true)}
+                  disabled={orderHistoryLoading}
+                  className="w-full mt-4 px-4 py-2 text-sm font-medium text-[#ff6b00] bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50"
+                >
+                  {orderHistoryLoading ? 'Loading...' : 'Load More'}
+                </button>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-sm text-gray-500">No order history found</p>
+              <button
+                onClick={() => fetchOrderHistory(0, false)}
+                className="mt-2 text-sm text-[#ff6b00] hover:underline"
+              >
+                Retry
+              </button>
+                </div>
+          )}
+                    </motion.div>
 
         {/* Wallet & Card Section */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
@@ -651,16 +1574,16 @@ export default function DashboardPage() {
                   </div>
                   {connectedWalletName && (
                     <div className="text-gray-500 text-xs mt-1">{connectedWalletName}</div>
-                  )}
-                </div>
               )}
+              </div>
+          )}
             </div>
           </motion.div>
 
           {/* Tiger Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.35 }}
             className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg hover:shadow-xl transition-shadow relative overflow-hidden"
           >
@@ -676,7 +1599,7 @@ export default function DashboardPage() {
                 <div className="w-12 h-12 bg-gradient-to-br from-[#ff6b00] to-[#ff8c42] rounded-xl flex items-center justify-center">
                   <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                  </svg>
+                </svg>
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-gray-900">Tiger Card</h3>
@@ -781,7 +1704,7 @@ export default function DashboardPage() {
           
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-8">
-              <div>
+                <div>
                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-full text-sm text-white mb-4">
                   <span className="h-2 w-2 bg-white rounded-full"></span>
                   <span>Your Credit Score</span>
@@ -791,10 +1714,10 @@ export default function DashboardPage() {
                 </h2>
                 <p className="text-white/90 text-lg">
                   Build your creditworthiness and unlock better loan terms
-                </p>
-              </div>
+                  </p>
+                </div>
               <div className="text-6xl">🦁</div>
-            </div>
+              </div>
 
             <div className="grid md:grid-cols-2 gap-8">
               {/* Score Display */}
@@ -802,15 +1725,15 @@ export default function DashboardPage() {
                 <div className="text-center mb-6">
                   <div className="text-6xl font-bold text-white mb-2">850</div>
                   <div className="text-white/80 text-sm uppercase tracking-wider">Excellent</div>
-                </div>
-                
+            </div>
+            
                 {/* Score Breakdown */}
                 <div className="space-y-4">
                   <div>
                     <div className="flex justify-between text-white/90 text-sm mb-2">
                       <span>Wallet Activity</span>
                       <span>90%</span>
-                    </div>
+                  </div>
                     <div className="h-2 bg-white/20 rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
@@ -904,15 +1827,15 @@ export default function DashboardPage() {
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-gray-900">Choose Payment Method</h3>
-                <button
+                    <button
                   onClick={() => setShowSendPaymentModal(false)}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+                        </svg>
+                    </button>
+                  </div>
 
               <div className="space-y-6">
                 {/* Fiat Payments Section */}
@@ -928,7 +1851,7 @@ export default function DashboardPage() {
                     >
                       <div className="w-14 h-14 bg-blue-500 rounded-xl flex items-center justify-center mb-3">
                         <span className="text-2xl">🇮🇳</span>
-                      </div>
+                </div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-1">INR (UPI)</h3>
                       <p className="text-gray-600 text-xs">Indian Rupees via UPI</p>
                       <div className="mt-2 text-xs text-blue-600 font-medium">Powered by OnMeta</div>
@@ -943,7 +1866,7 @@ export default function DashboardPage() {
                     >
                       <div className="w-14 h-14 bg-cyan-500 rounded-xl flex items-center justify-center mb-3">
                         <span className="text-2xl">🇵🇭</span>
-                      </div>
+              </div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-1">PHP (GCash)</h3>
                       <p className="text-gray-600 text-xs">Philippine Pesos via GCash</p>
                       <div className="mt-2 text-xs text-cyan-600 font-medium">Powered by OnMeta</div>
@@ -998,9 +1921,9 @@ export default function DashboardPage() {
                         <p className="text-gray-500 text-xs mb-2">Pay with USDC, USDT</p>
                         <p className="text-xs text-gray-600 font-medium mt-3 pt-3 border-t border-gray-300">
                           🔒 Connect your wallet to TigerPayX to unlock this
-                        </p>
-                      </div>
-                    )}
+                    </p>
+                  </div>
+            )}
 
                     {/* Bank Account Transfer */}
                     <motion.button
@@ -1047,7 +1970,7 @@ export default function DashboardPage() {
                   {/* Amount Input for Fiat Deposits */}
                   {['INR', 'PHP', 'IDR'].includes(selectedPaymentMethod) && (
                     <div className="mb-4 space-y-4">
-                      <div>
+              <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Amount to Deposit
                         </label>
@@ -1072,8 +1995,8 @@ export default function DashboardPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Crypto Wallet Address {walletAddress && <span className="text-gray-400 text-xs">(pre-filled from connected wallet)</span>}
                         </label>
-                        <input
-                          type="text"
+                  <input
+                    type="text"
                           placeholder="Enter your crypto wallet address (USDC/USDT)"
                           value={depositWalletAddress || walletAddress || ''}
                           onChange={(e) => setDepositWalletAddress(e.target.value)}
@@ -1098,7 +2021,7 @@ export default function DashboardPage() {
                   </p>
                   
                   <div className="flex gap-3">
-                    <button
+                  <button
                       onClick={() => {
                         setSelectedPaymentMethod(null);
                         setDepositAmount('');
@@ -1133,36 +2056,111 @@ export default function DashboardPage() {
                             return;
                           }
 
-                          // Create deposit order via OnMeta API
+                          // Check if OnMeta access token is available
+                          if (!onMetaAccessToken) {
+                            alert('OnMeta authentication required. Please wait for authentication to complete or refresh the page.');
+                            setDepositLoading(false);
+                            return;
+                          }
+
+                          // Determine payment mode based on currency
+                          let paymentMode = '';
+                          if (selectedPaymentMethod === 'INR') {
+                            // Check if UPI is linked, default to UPI if available
+                            if (onMetaUPIStatus === 'SUCCESS') {
+                              paymentMode = 'INR_UPI';
+                            } else if (onMetaBankStatus === 'SUCCESS') {
+                              paymentMode = 'INR_IMPS'; // Default to IMPS for bank
+                            } else {
+                              alert('Please link your UPI ID or Bank Account first before creating an order.');
+                              setDepositLoading(false);
+                              return;
+                            }
+                          } else if (selectedPaymentMethod === 'PHP') {
+                            paymentMode = 'PHP_EWALLET_GCASH'; // Default to GCash
+                          } else if (selectedPaymentMethod === 'IDR') {
+                            // IDR payment modes - you may need to check what's available
+                            paymentMode = 'IDR_BANK_TRANSFER'; // Adjust based on available modes
+                          }
+
+                          // Get token address - you may want to fetch this from supported tokens
+                          // For now, using a default USDC address for Polygon testnet
+                          const buyTokenAddress = '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889'; // USDC on Polygon testnet
+                          const chainId = 80001; // Polygon testnet
+
+                          // Build request body
+                          const requestBody: any = {
+                            buyTokenSymbol: 'USDC',
+                            chainId: chainId,
+                            fiatCurrency: selectedPaymentMethod.toLowerCase(),
+                            fiatAmount: amount,
+                            buyTokenAddress: buyTokenAddress,
+                            receiverAddress: trimmedAddress,
+                            paymentMode: paymentMode,
+                            redirectUrl: `${window.location.origin}/dashboard?onmeta_callback=true`,
+                            metaData: {
+                              userId: getAuthEmail() || '',
+                              userName: userProfile?.name || '',
+                            },
+                          };
+
+                          // Add UPI ID if payment mode is UPI
+                          if (paymentMode.includes('UPI')) {
+                            if (onMetaUPIStatus === 'SUCCESS' && linkedUPIId) {
+                              requestBody.upiId = { upiId: linkedUPIId };
+                            } else {
+                              // Prompt for UPI ID if not stored
+                              const upiId = prompt('Enter your UPI ID (e.g., yourname@paytm):');
+                              if (!upiId) {
+                                setDepositLoading(false);
+                                return;
+                              }
+                              requestBody.upiId = { upiId: upiId };
+                            }
+                          }
+
+                          // Add bank details if payment mode is IMPS/NEFT
+                          if (paymentMode.includes('IMPS') || paymentMode.includes('NEFT')) {
+                            if (onMetaBankStatus === 'SUCCESS' && linkedBankDetails) {
+                              requestBody.bankDetails = linkedBankDetails;
+                            } else if (linkBankAccountNumber && linkBankIFSC && linkBankAccountHolder) {
+                              // Use form data if available
+                              requestBody.bankDetails = {
+                                accountNumber: linkBankAccountNumber,
+                                ifscCode: linkBankIFSC,
+                                accountHolderName: linkBankAccountHolder,
+                              };
+                            } else {
+                              alert('Bank account details are required. Please link your bank account with complete details.');
+                              setDepositLoading(false);
+                              return;
+                            }
+                          }
+
+                          // Create onramp order via OnMeta API
                           setDepositLoading(true);
                           try {
-                            const response = await fetch('/api/onmeta/deposit', {
+                            const response = await fetch('/api/onmeta/orders/create-onramp', {
                               method: 'POST',
                               headers: {
                                 'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${onMetaAccessToken}`,
                               },
-                              body: JSON.stringify({
-                                fiatCurrency: selectedPaymentMethod,
-                                fiatAmount: amount,
-                                cryptoCurrency: 'USDC',
-                                walletAddress: trimmedAddress,
-                                userId: getAuthEmail() || undefined,
-                                redirectUrl: `${window.location.origin}/dashboard?onmeta_callback=true`,
-                              }),
+                              body: JSON.stringify(requestBody),
                             });
 
                             const data = await response.json();
                             
-                            if (data.success && data.depositUrl) {
-                              // Redirect to OnMeta's deposit page
-                              window.location.href = data.depositUrl;
+                            if (data.success && (data.orderUrl || data.depositUrl)) {
+                              // Redirect to OnMeta's order page
+                              window.location.href = data.orderUrl || data.depositUrl;
                             } else {
-                              alert(data.error || 'Failed to initiate deposit. Please try again.');
+                              alert(data.error || 'Failed to create onramp order. Please try again.');
                               setDepositLoading(false);
                             }
                           } catch (error: any) {
-                            console.error('Deposit error:', error);
-                            alert(`Error: ${error.message || 'Failed to initiate deposit. Please try again.'}`);
+                            console.error('Create onramp order error:', error);
+                            alert(`Error: ${error.message || 'Failed to create onramp order. Please try again.'}`);
                             setDepositLoading(false);
                           }
                         } else {
@@ -1181,7 +2179,7 @@ export default function DashboardPage() {
                       className="flex-1 px-4 py-2 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {depositLoading ? 'Processing...' : 'Continue'}
-                    </button>
+                  </button>
                   </div>
                 </motion.div>
               )}
@@ -1207,7 +2205,7 @@ export default function DashboardPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
-              </div>
+                  </div>
 
               <div className="space-y-6">
                 {/* Currency Selection */}
@@ -1242,7 +2240,7 @@ export default function DashboardPage() {
                           ? 'border-cyan-500 bg-cyan-50'
                           : 'border-gray-200 bg-white hover:border-gray-300'
                       }`}
-                    >
+                  >
                       <div className="text-2xl mb-2">🇵🇭</div>
                       <div className="text-sm font-semibold text-gray-900">PHP</div>
                       <div className="text-xs text-gray-500">Philippines</div>
@@ -1292,8 +2290,8 @@ export default function DashboardPage() {
                     {walletBalance !== null && (
                       <p className="mt-2 text-sm text-gray-500">
                         Available: {walletBalance.toFixed(4)} SOL (~${(walletBalance * solPrice).toFixed(2)})
-                      </p>
-                    )}
+                    </p>
+                  )}
                   </motion.div>
                 )}
 
@@ -1315,13 +2313,13 @@ export default function DashboardPage() {
                         onChange={(e) => setBankAccountNumber(e.target.value)}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
                       />
-                    </div>
+              </div>
 
-                    <div>
+                <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         IFSC Code {selectedWithdrawCurrency === 'PHP' && '(or Routing Number)'} {selectedWithdrawCurrency === 'IDR' && '(or Bank Code)'}
                       </label>
-                      <input
+                    <input
                         type="text"
                         placeholder={
                           selectedWithdrawCurrency === 'INR' ? 'Enter IFSC code' :
@@ -1366,7 +2364,7 @@ export default function DashboardPage() {
 
                 {/* Action Buttons */}
                 <div className="flex gap-3 pt-4">
-                  <button
+                    <button
                     onClick={() => {
                       setShowWithdrawModal(false);
                       setSelectedWithdrawCurrency(null);
@@ -1375,12 +2373,12 @@ export default function DashboardPage() {
                       setBankAccountNumber('');
                       setBankCode('');
                       setAccountHolderName('');
-                    }}
+                      }}
                     className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
-                  >
+                    >
                     Cancel
-                  </button>
-                  <button
+                    </button>
+                    <button
                     onClick={async () => {
                       if (!selectedWithdrawCurrency || !withdrawAmount || !bankAccountNumber || !bankCode || !accountHolderName) {
                         alert('Please fill in all required fields');
@@ -1442,27 +2440,448 @@ export default function DashboardPage() {
                     }}
                     disabled={!selectedWithdrawCurrency || withdrawLoading || !withdrawAmount || !bankAccountNumber || !bankCode || !accountHolderName}
                     className="flex-1 px-4 py-3 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
+                    >
                     {withdrawLoading ? 'Processing...' : 'Withdraw'}
-                  </button>
+                    </button>
                 </div>
               </div>
             </motion.div>
           </div>
         )}
 
-        {/* Receive Payment Modal */}
-        {showReceivePaymentModal && (
+        {/* Link Bank Account Modal */}
+        {showLinkBankModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl"
+              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">Receive Payment</h3>
+                <h3 className="text-2xl font-bold text-gray-900">Link Bank Account</h3>
+                    <button
+                          onClick={() => {
+                    setShowLinkBankModal(false);
+                    // Reset form
+                    setLinkBankName('');
+                    setLinkBankPAN('');
+                    setLinkBankEmail('');
+                    setLinkBankKYCVerified(false);
+                    setLinkBankAccountNumber('');
+                    setLinkBankIFSC('');
+                    setLinkBankAccountHolder('');
+                    setLinkBankPhoneNumber('');
+                      }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                    </button>
+                  </div>
+
+              <div className="space-y-4">
+                {/* Personal Information */}
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Full Name (as per bank records)</label>
+                      <input
+                        type="text"
+                        value={linkBankName}
+                        onChange={(e) => setLinkBankName(e.target.value)}
+                        placeholder="Enter your full name"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">PAN Number</label>
+                      <input
+                        type="text"
+                        value={linkBankPAN}
+                        onChange={(e) => setLinkBankPAN(e.target.value.toUpperCase())}
+                        placeholder="ABCDE1234F"
+                        maxLength={10}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                      <input
+                        type="email"
+                        value={linkBankEmail}
+                        onChange={(e) => setLinkBankEmail(e.target.value)}
+                        placeholder="your@email.com"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={linkBankPhoneCountryCode}
+                          onChange={(e) => setLinkBankPhoneCountryCode(e.target.value)}
+                          className="px-3 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                        >
+                          <option value="+91">+91 (IN)</option>
+                          <option value="+63">+63 (PH)</option>
+                          <option value="+62">+62 (ID)</option>
+                        </select>
+                        <input
+                          type="tel"
+                          value={linkBankPhoneNumber}
+                          onChange={(e) => setLinkBankPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                          placeholder="1234567890"
+                          className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="kycVerified"
+                        checked={linkBankKYCVerified}
+                        onChange={(e) => setLinkBankKYCVerified(e.target.checked)}
+                        className="w-5 h-5 text-[#ff6b00] border-gray-300 rounded focus:ring-[#ff6b00]"
+                      />
+                      <label htmlFor="kycVerified" className="text-sm text-gray-700">
+                        KYC Verified
+                      </label>
+                    </div>
+                  </div>
+          </div>
+
+                {/* Bank Details */}
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Bank Account Details</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Account Number</label>
+                      <input
+                        type="text"
+                        value={linkBankAccountNumber}
+                        onChange={(e) => setLinkBankAccountNumber(e.target.value.replace(/\D/g, ''))}
+                        placeholder="Enter account number"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">IFSC Code</label>
+                      <input
+                        type="text"
+                        value={linkBankIFSC}
+                        onChange={(e) => setLinkBankIFSC(e.target.value.toUpperCase())}
+                        placeholder="ABCD0123456"
+                        maxLength={11}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Account Holder Name</label>
+                      <input
+                        type="text"
+                        value={linkBankAccountHolder}
+                        onChange={(e) => setLinkBankAccountHolder(e.target.value)}
+                        placeholder="As per bank records"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                  </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4">
+                      <button
+                    onClick={() => {
+                      setShowLinkBankModal(false);
+                      // Reset form
+                      setLinkBankName('');
+                      setLinkBankPAN('');
+                      setLinkBankEmail('');
+                      setLinkBankKYCVerified(false);
+                      setLinkBankAccountNumber('');
+                      setLinkBankIFSC('');
+                      setLinkBankAccountHolder('');
+                      setLinkBankPhoneNumber('');
+                    }}
+                    className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!onMetaAccessToken) {
+                        alert('OnMeta authentication required. Please refresh the page.');
+                        return;
+                      }
+
+                      if (!linkBankName || !linkBankPAN || !linkBankEmail || !linkBankAccountNumber || !linkBankIFSC || !linkBankAccountHolder || !linkBankPhoneNumber) {
+                        alert('Please fill in all required fields');
+                        return;
+                      }
+
+                      setLinkBankLoading(true);
+                      try {
+                        const response = await fetch('/api/onmeta/account/link-bank', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${onMetaAccessToken}`,
+                          },
+                          body: JSON.stringify({
+                            name: linkBankName,
+                            panNumber: linkBankPAN,
+                            email: linkBankEmail,
+                            kycVerified: linkBankKYCVerified,
+                            bankDetails: {
+                              accountNumber: linkBankAccountNumber,
+                              ifscCode: linkBankIFSC,
+                              accountHolderName: linkBankAccountHolder,
+                            },
+                            phone: {
+                              countryCode: linkBankPhoneCountryCode,
+                              number: linkBankPhoneNumber,
+                            },
+                          }),
+                        });
+
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                          alert(`Bank account linking ${data.status || 'initiated'}!`);
+                          setOnMetaBankStatus(data.status);
+                          // Store bank details for order creation
+                          if (data.status === 'SUCCESS') {
+                            setLinkedBankDetails({
+                              accountNumber: linkBankAccountNumber,
+                              ifscCode: linkBankIFSC,
+                              accountHolderName: linkBankAccountHolder,
+                            });
+                          }
+                          setShowLinkBankModal(false);
+                          // Reset form
+                          setLinkBankName('');
+                          setLinkBankPAN('');
+                          setLinkBankEmail('');
+                          setLinkBankKYCVerified(false);
+                          setLinkBankAccountNumber('');
+                          setLinkBankIFSC('');
+                          setLinkBankAccountHolder('');
+                          setLinkBankPhoneNumber('');
+                        } else {
+                          alert(data.error || 'Failed to link bank account. Please try again.');
+                        }
+                      } catch (error: any) {
+                        console.error('Link bank error:', error);
+                        alert(`Error: ${error.message || 'Failed to link bank account. Please try again.'}`);
+                      } finally {
+                        setLinkBankLoading(false);
+                      }
+                    }}
+                    disabled={linkBankLoading}
+                    className="flex-1 px-4 py-3 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                    {linkBankLoading ? 'Linking...' : 'Link Bank Account'}
+                      </button>
+                </div>
+              </div>
+            </motion.div>
+                    </div>
+                  )}
+
+        {/* Link UPI Modal */}
+        {showLinkUPIModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Link UPI ID</h3>
+                      <button
+                  onClick={() => {
+                    setShowLinkUPIModal(false);
+                    // Reset form
+                    setLinkUPIName('');
+                    setLinkUPIEmail('');
+                    setLinkUPIId('');
+                    setLinkUPIPhoneNumber('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                      </button>
+                    </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Full Name (as per bank records)</label>
+                  <input
+                    type="text"
+                    value={linkUPIName}
+                    onChange={(e) => setLinkUPIName(e.target.value)}
+                    placeholder="Enter your full name"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={linkUPIEmail}
+                    onChange={(e) => setLinkUPIEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">UPI ID</label>
+                  <input
+                    type="text"
+                    value={linkUPIId}
+                    onChange={(e) => setLinkUPIId(e.target.value.toLowerCase())}
+                    placeholder="yourname@paytm or yourname@upi"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Format: yourname@bankname (e.g., john@paytm, jane@ybl)</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number (Optional)</label>
+                  <div className="flex gap-2">
+                    <select
+                      value={linkUPIPhoneCountryCode}
+                      onChange={(e) => setLinkUPIPhoneCountryCode(e.target.value)}
+                      className="px-3 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                    >
+                      <option value="+91">+91 (IN)</option>
+                      <option value="+63">+63 (PH)</option>
+                      <option value="+62">+62 (ID)</option>
+                    </select>
+                    <input
+                      type="tel"
+                      value={linkUPIPhoneNumber}
+                      onChange={(e) => setLinkUPIPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                      placeholder="1234567890 (optional)"
+                      className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4">
                 <button
-                  onClick={() => setShowReceivePaymentModal(false)}
+                    onClick={() => {
+                      setShowLinkUPIModal(false);
+                      // Reset form
+                      setLinkUPIName('');
+                      setLinkUPIEmail('');
+                      setLinkUPIId('');
+                      setLinkUPIPhoneNumber('');
+                    }}
+                    className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!onMetaAccessToken) {
+                        alert('OnMeta authentication required. Please refresh the page.');
+                        return;
+                      }
+
+                      if (!linkUPIName || !linkUPIEmail || !linkUPIId) {
+                        alert('Please fill in all required fields');
+                        return;
+                      }
+
+                      if (!linkUPIId.includes('@')) {
+                        alert('Invalid UPI ID format. Should be like: yourname@bankname');
+                        return;
+                      }
+
+                      setLinkUPILoading(true);
+                      try {
+                        const requestBody: any = {
+                          name: linkUPIName,
+                          email: linkUPIEmail,
+                          upiId: linkUPIId,
+                        };
+
+                        if (linkUPIPhoneNumber) {
+                          requestBody.phone = {
+                            countryCode: linkUPIPhoneCountryCode,
+                            number: linkUPIPhoneNumber,
+                          };
+                        }
+
+                        const response = await fetch('/api/onmeta/account/link-upi', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${onMetaAccessToken}`,
+                          },
+                          body: JSON.stringify(requestBody),
+                        });
+
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                          alert(`UPI ID linking ${data.status || 'initiated'}!`);
+                          setOnMetaUPIStatus(data.status);
+                          // Store UPI ID for order creation
+                          if (data.status === 'SUCCESS') {
+                            setLinkedUPIId(linkUPIId);
+                          }
+                          setShowLinkUPIModal(false);
+                          // Reset form
+                          setLinkUPIName('');
+                          setLinkUPIEmail('');
+                          setLinkUPIId('');
+                          setLinkUPIPhoneNumber('');
+                        } else {
+                          alert(data.error || 'Failed to link UPI ID. Please try again.');
+                        }
+                      } catch (error: any) {
+                        console.error('Link UPI error:', error);
+                        alert(`Error: ${error.message || 'Failed to link UPI ID. Please try again.'}`);
+                      } finally {
+                        setLinkUPILoading(false);
+                      }
+                    }}
+                    disabled={linkUPILoading}
+                    className="flex-1 px-4 py-3 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {linkUPILoading ? 'Linking...' : 'Link UPI ID'}
+                </button>
+                </div>
+                    </div>
+          </motion.div>
+          </div>
+        )}
+
+        {/* Update UTR Modal */}
+        {showUpdateUTRModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Update UTR</h3>
+                <button
+                  onClick={() => {
+                    setShowUpdateUTRModal(false);
+                    setUpdateUTRForm({
+                      orderId: '',
+                      utr: '',
+                      paymentMode: '',
+                    });
+                  }}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1471,18 +2890,452 @@ export default function DashboardPage() {
                 </button>
               </div>
 
+                    <div className="space-y-4">
+                {/* Order ID Input */}
+                            <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Order ID</label>
+                  <input
+                    type="text"
+                    value={updateUTRForm.orderId}
+                    onChange={(e) => setUpdateUTRForm({ ...updateUTRForm, orderId: e.target.value })}
+                    placeholder="Enter order ID from create order response"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all font-mono text-sm"
+                  />
+                </div>
+
+                {/* UTR Input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">UTR (Unique Transaction Reference)</label>
+                  <input
+                    type="text"
+                    value={updateUTRForm.utr}
+                  onChange={(e) => {
+                      // Allow only alphanumeric for UTR
+                      const value = e.target.value.replace(/[^A-Za-z0-9]/g, '');
+                      setUpdateUTRForm({ ...updateUTRForm, utr: value });
+                  }}
+                    placeholder="Enter UTR from payment success screen"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all font-mono text-sm"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    UPI/IMPS: 12 digits | NEFT: 16 alphanumeric characters
+                  </p>
+                </div>
+
+                {/* Payment Mode Selection (Optional) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Mode (Optional - for validation)</label>
+                  <select
+                    value={updateUTRForm.paymentMode}
+                    onChange={(e) => setUpdateUTRForm({ ...updateUTRForm, paymentMode: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                >
+                    <option value="">Select payment mode (optional)</option>
+                    <option value="INR_UPI">UPI (12 digits)</option>
+                    <option value="INR_IMPS">IMPS (12 digits)</option>
+                    <option value="INR_NEFT">NEFT (16 alphanumeric)</option>
+                </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Selecting payment mode helps validate UTR format
+                  </p>
+                            </div>
+
+                {/* UTR Format Info */}
+                <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <h4 className="text-sm font-semibold text-blue-900 mb-2">UTR Format Guidelines:</h4>
+                  <ul className="text-xs text-blue-800 space-y-1">
+                    <li>• UPI Payment: 12 character numbers</li>
+                    <li>• IMPS Payment: 12 character numbers</li>
+                    <li>• NEFT Payment: 16 character alphanumeric</li>
+                  </ul>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4">
+                          <button
+                  onClick={() => {
+                      setShowUpdateUTRModal(false);
+                      setUpdateUTRForm({
+                        orderId: '',
+                        utr: '',
+                        paymentMode: '',
+                      });
+                  }}
+                    className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleUpdateUTR}
+                    disabled={updateUTRLoading}
+                    className="flex-1 px-4 py-3 bg-pink-500 text-white rounded-xl font-semibold hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {updateUTRLoading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Updating...
+                      </span>
+                    ) : (
+                      'Update UTR'
+                    )}
+                          </button>
+                      </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Order Status Modal */}
+        {showOrderStatusModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Check Order Status</h3>
+                <button
+                  onClick={() => {
+                    setShowOrderStatusModal(false);
+                    setOrderStatus(null);
+                    setOrderStatusInput('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+                        </div>
+
+              <div className="space-y-4">
+                {/* Order ID Input */}
+                        <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Order ID</label>
+                          <input
+                    type="text"
+                    value={orderStatusInput}
+                    onChange={(e) => setOrderStatusInput(e.target.value)}
+                    placeholder="Enter order ID from create order response"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all font-mono text-sm"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Enter the order ID you received when creating an order</p>
+                        </div>
+
+                {/* Order Status Result */}
+                {orderStatus && (
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-6 p-6 bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl border-2 border-violet-200"
+                  >
+                    <h4 className="text-lg font-bold text-gray-900 mb-4">Order Status Details</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Order ID:</span>
+                        <span className="font-semibold text-gray-900 font-mono text-sm">{orderStatus.orderId}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Status:</span>
+                        <span className={`font-semibold px-3 py-1 rounded-full text-sm ${
+                          orderStatus.status === 'completed' || orderStatus.status === 'SUCCESS' 
+                            ? 'bg-green-100 text-green-700' 
+                            : orderStatus.status === 'pending' || orderStatus.status === 'PENDING'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : orderStatus.status === 'failed' || orderStatus.status === 'FAILED'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-gray-100 text-gray-700'
+                    }`}>
+                          {orderStatus.status || orderStatus.orderStatus || 'Unknown'}
+                    </span>
+                      </div>
+                      {orderStatus.order && typeof orderStatus.order === 'object' && (
+                        <div className="mt-4 pt-4 border-t border-violet-200">
+                          <h5 className="font-semibold text-gray-900 mb-2">Order Details:</h5>
+                          <pre className="text-xs bg-white p-3 rounded-lg overflow-x-auto">
+                            {JSON.stringify(orderStatus.order, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                      {orderStatus.message && (
+                        <div className="mt-2 text-sm text-gray-600">
+                          <strong>Message:</strong> {orderStatus.message}
+                        </div>
+                      )}
+                    </div>
+                </motion.div>
+              )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4">
+                <button
+                    onClick={() => {
+                      setShowOrderStatusModal(false);
+                      setOrderStatus(null);
+                      setOrderStatusInput('');
+                    }}
+                    className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                >
+                    Close
+                </button>
+                <button
+                    onClick={fetchOrderStatus}
+                    disabled={orderStatusLoading}
+                    className="flex-1 px-4 py-3 bg-violet-500 text-white rounded-xl font-semibold hover:bg-violet-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {orderStatusLoading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Fetching...
+                      </span>
+                  ) : (
+                      'Check Status'
+                  )}
+                </button>
+                      </div>
+                    </div>
+          </motion.div>
+          </div>
+                  )}
+
+        {/* Token Quotation Modal */}
+        {showQuotationModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Get Token Quotation</h3>
+                <button
+                  onClick={() => {
+                    setShowQuotationModal(false);
+                    setQuotation(null);
+                    setQuotationForm({
+                      buyTokenSymbol: 'USDC',
+                      chainId: 80001,
+                      fiatCurrency: 'inr',
+                      fiatAmount: '',
+                      buyTokenAddress: '',
+                    });
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Token Symbol */}
+                    <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Token Symbol</label>
+                  <input
+                    type="text"
+                    value={quotationForm.buyTokenSymbol}
+                    onChange={(e) => setQuotationForm({ ...quotationForm, buyTokenSymbol: e.target.value.toUpperCase() })}
+                    placeholder="USDC"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                  />
+                        </div>
+
+                {/* Chain ID */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Chain ID</label>
+                  <select
+                    value={quotationForm.chainId}
+                    onChange={(e) => setQuotationForm({ ...quotationForm, chainId: parseInt(e.target.value) })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                  >
+                    <option value={80001}>80001 - Polygon Testnet</option>
+                    <option value={137}>137 - Polygon Mainnet</option>
+                    <option value={1}>1 - Ethereum Mainnet</option>
+                    <option value={5}>5 - Goerli Testnet</option>
+                    <option value={56}>56 - BSC Mainnet</option>
+                    <option value={97}>97 - BSC Testnet</option>
+                  </select>
+                        </div>
+
+                {/* Fiat Currency */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Fiat Currency</label>
+                  <select
+                    value={quotationForm.fiatCurrency}
+                    onChange={(e) => setQuotationForm({ ...quotationForm, fiatCurrency: e.target.value.toLowerCase() })}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                  >
+                    <option value="inr">INR - Indian Rupee</option>
+                    <option value="php">PHP - Philippine Peso</option>
+                    <option value="idr">IDR - Indonesian Rupiah</option>
+                    <option value="usd">USD - US Dollar</option>
+                  </select>
+                        </div>
+
+                {/* Fiat Amount */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Fiat Amount</label>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
+                      {quotationForm.fiatCurrency === 'inr' && '₹'}
+                      {quotationForm.fiatCurrency === 'php' && '₱'}
+                      {quotationForm.fiatCurrency === 'idr' && 'Rp'}
+                      {quotationForm.fiatCurrency === 'usd' && '$'}
+                        </div>
+                    <input
+                      type="number"
+                      value={quotationForm.fiatAmount}
+                      onChange={(e) => setQuotationForm({ ...quotationForm, fiatAmount: e.target.value })}
+                      placeholder="100"
+                      min="0"
+                      step="0.01"
+                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Token Address */}
+                    <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Token Contract Address</label>
+                  <input
+                    type="text"
+                    value={quotationForm.buyTokenAddress}
+                    onChange={(e) => setQuotationForm({ ...quotationForm, buyTokenAddress: e.target.value })}
+                    placeholder="0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all font-mono text-sm"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Enter the smart contract address of the token</p>
+              </div>
+
+                {/* Quotation Result */}
+                {quotation && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-6 p-6 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl border-2 border-teal-200"
+                  >
+                    <h4 className="text-lg font-bold text-gray-900 mb-4">Quotation Details</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Token Symbol:</span>
+                        <span className="font-semibold text-gray-900">{quotation.buyTokenSymbol || quotationForm.buyTokenSymbol}</span>
+                  </div>
+                      {quotation.buyTokenAmount !== undefined && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Token Amount:</span>
+                          <span className="font-semibold text-gray-900">{quotation.buyTokenAmount.toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
+              </div>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Fiat Amount:</span>
+                        <span className="font-semibold text-gray-900">
+                          {quotationForm.fiatCurrency === 'inr' ? '₹' : quotationForm.fiatCurrency === 'php' ? '₱' : quotationForm.fiatCurrency === 'idr' ? 'Rp' : '$'}
+                          {quotation.fiatAmount?.toLocaleString() || quotationForm.fiatAmount}
+                        </span>
+                  </div>
+                      {quotation.conversionRate !== undefined && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Conversion Rate:</span>
+                          <span className="font-semibold text-gray-900">
+                            {quotationForm.fiatCurrency === 'inr' ? '₹' : quotationForm.fiatCurrency === 'php' ? '₱' : quotationForm.fiatCurrency === 'idr' ? 'Rp' : '$'}
+                            {quotation.conversionRate.toLocaleString(undefined, { maximumFractionDigits: 4 })} per {quotation.buyTokenSymbol || quotationForm.buyTokenSymbol}
+                          </span>
+              </div>
+                      )}
+                      {quotation.commission !== undefined && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600">Commission:</span>
+                          <span className="font-semibold text-gray-900">
+                            {quotationForm.fiatCurrency === 'inr' ? '₹' : quotationForm.fiatCurrency === 'php' ? '₱' : quotationForm.fiatCurrency === 'idr' ? 'Rp' : '$'}
+                            {quotation.commission.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
+                      {quotation.totalAmount !== undefined && (
+                        <div className="flex justify-between items-center pt-3 border-t border-teal-200">
+                          <span className="text-gray-700 font-semibold">Total Amount:</span>
+                          <span className="font-bold text-lg text-teal-600">
+                            {quotationForm.fiatCurrency === 'inr' ? '₹' : quotationForm.fiatCurrency === 'php' ? '₱' : quotationForm.fiatCurrency === 'idr' ? 'Rp' : '$'}
+                            {quotation.totalAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      )}
+                </div>
+              </motion.div>
+            )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4">
+                    <button
+                    onClick={() => {
+                      setShowQuotationModal(false);
+                      setQuotation(null);
+                      setQuotationForm({
+                        buyTokenSymbol: 'USDC',
+                        chainId: 80001,
+                        fiatCurrency: 'inr',
+                        fiatAmount: '',
+                        buyTokenAddress: '',
+                      });
+                    }}
+                    className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                  >
+                    Close
+                    </button>
+                    <button
+                    onClick={fetchQuotation}
+                    disabled={quotationLoading}
+                    className="flex-1 px-4 py-3 bg-teal-500 text-white rounded-xl font-semibold hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {quotationLoading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Fetching...
+                      </span>
+                    ) : (
+                      'Get Quotation'
+                    )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+              </div>
+        )}
+
+        {/* Receive Payment Modal */}
+        {showReceivePaymentModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Receive Payment</h3>
+                    <button
+                  onClick={() => setShowReceivePaymentModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                    >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
               <div className="grid md:grid-cols-2 gap-6">
                 {/* Create Payment Link */}
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
+                        whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-8 border border-green-200 hover:border-green-400 transition-all text-left"
-                >
+                      >
                   <div className="w-16 h-16 bg-green-500 rounded-xl flex items-center justify-center mb-4">
                     <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                     </svg>
-                  </div>
+                            </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">Create Payment Link</h3>
                   <p className="text-gray-600 text-sm">Generate a shareable payment link</p>
                 </motion.button>
@@ -1497,13 +3350,13 @@ export default function DashboardPage() {
                     <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                     </svg>
-                  </div>
+                          </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">Show QR Code</h3>
                   <p className="text-gray-600 text-sm">Display QR code to receive payments</p>
                 </motion.button>
-              </div>
-            </motion.div>
-          </div>
+                        </div>
+                      </motion.div>
+                  </div>
         )}
 
         {/* Wallet Connection Modal */}
@@ -1576,7 +3429,7 @@ export default function DashboardPage() {
                     >
                       Download Phantom
                     </a>
-                  </div>
+        </div>
                 )}
               </div>
             </motion.div>

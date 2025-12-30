@@ -462,64 +462,64 @@ export default function PayPage() {
             {/* Stablecoin Payment UI */}
             {!isPaid && !isExpired && paymentMethod === "stablecoin" && (
               <>
-                {/* Wallet Status */}
-                {showWalletPrompt && (
-                  <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                    <p className="text-yellow-400 text-sm mb-3">
-                      You need a wallet to make this payment
-                    </p>
-                    <button
-                      onClick={handleCreateWallet}
-                      className="w-full bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 font-medium py-2 rounded-lg transition-colors"
-                    >
-                      Create Wallet
-                    </button>
-                  </div>
-                )}
-
-                {walletAddress && (
-                  <div className="mb-6 space-y-2">
-                    <div className="bg-[#0a0d0f] border border-white/10 rounded-lg p-3">
-                      <p className="text-xs text-zinc-400 mb-1">Your Wallet</p>
-                      <p className="text-sm text-white font-mono">{formatAddress(walletAddress)}</p>
-                    </div>
-                    
-                    {/* SOL Balance */}
-                    <div className="bg-[#0a0d0f] border border-white/10 rounded-lg p-3">
-                      <div className="flex justify-between items-center">
-                        <p className="text-xs text-zinc-400">SOL Balance</p>
-                        <p className={`text-sm font-medium ${solBalance >= 0.001 ? 'text-green-400' : 'text-red-400'}`}>
-                          {solBalance.toFixed(9)} SOL
-                        </p>
-                      </div>
-                      {solBalance < 0.001 && (
-                        <p className="text-xs text-red-400 mt-1">
-                          ⚠️ You need at least 0.001 SOL for transaction fees
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Pay Button */}
+            {/* Wallet Status */}
+            {showWalletPrompt && (
+              <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <p className="text-yellow-400 text-sm mb-3">
+                  You need a wallet to make this payment
+                </p>
                 <button
-                  onClick={handlePay}
-                  disabled={paying || !walletAddress || solBalance < 0.001}
-                  className="w-full bg-[#ff6b00] text-black font-semibold py-3 rounded-lg hover:bg-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  onClick={handleCreateWallet}
+                  className="w-full bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 font-medium py-2 rounded-lg transition-colors"
                 >
-                  {paying ? (
-                    <>
-                      <LoadingSpinner size="sm" />
-                      Processing Payment...
-                    </>
-                  ) : !walletAddress ? (
-                    "Connect Wallet"
-                  ) : solBalance < 0.001 ? (
-                    "Insufficient SOL for Fees"
-                  ) : (
-                    `Pay ${formatTokenAmount(payLink.amount, payLink.token)} ${payLink.token}`
-                  )}
+                  Create Wallet
                 </button>
+              </div>
+            )}
+
+            {walletAddress && (
+              <div className="mb-6 space-y-2">
+                <div className="bg-[#0a0d0f] border border-white/10 rounded-lg p-3">
+                  <p className="text-xs text-zinc-400 mb-1">Your Wallet</p>
+                  <p className="text-sm text-white font-mono">{formatAddress(walletAddress)}</p>
+                </div>
+                
+                {/* SOL Balance */}
+                <div className="bg-[#0a0d0f] border border-white/10 rounded-lg p-3">
+                  <div className="flex justify-between items-center">
+                    <p className="text-xs text-zinc-400">SOL Balance</p>
+                    <p className={`text-sm font-medium ${solBalance >= 0.001 ? 'text-green-400' : 'text-red-400'}`}>
+                      {solBalance.toFixed(9)} SOL
+                    </p>
+                  </div>
+                  {solBalance < 0.001 && (
+                    <p className="text-xs text-red-400 mt-1">
+                      ⚠️ You need at least 0.001 SOL for transaction fees
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Pay Button */}
+              <button
+                onClick={handlePay}
+                disabled={paying || !walletAddress || solBalance < 0.001}
+                className="w-full bg-[#ff6b00] text-black font-semibold py-3 rounded-lg hover:bg-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {paying ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    Processing Payment...
+                  </>
+                ) : !walletAddress ? (
+                  "Connect Wallet"
+                ) : solBalance < 0.001 ? (
+                  "Insufficient SOL for Fees"
+                ) : (
+                  `Pay ${formatTokenAmount(payLink.amount, payLink.token)} ${payLink.token}`
+                )}
+              </button>
               </>
             )}
 

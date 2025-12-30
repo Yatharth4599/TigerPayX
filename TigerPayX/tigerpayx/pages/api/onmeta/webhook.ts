@@ -6,7 +6,14 @@ import crypto from 'crypto';
  * This endpoint receives callbacks from OnMeta when order status changes
  * Configure this URL in your OnMeta dashboard: https://yourdomain.com/api/onmeta/webhook
  * 
- * Webhook events: fiatPending, orderReceived, fiatReceived, transferred, completed, expired
+ * Webhook events:
+ * 1. fiatPending - User initialized order but fiat deposit is pending
+ * 2. orderReceived - User completed payment, OnMeta initiated crypto transfer
+ * 3. InProgress (optional) - Order is in-progress on the blockchain
+ * 4. fiatReceived - OnMeta confirmed receipt of payment
+ * 5. transferred - Token transfer confirmed on blockchain
+ * 6. completed - Order completed successfully, user received tokens
+ * 7. expired - Order expired (pending > 3 hours)
  */
 export default async function handler(
   req: NextApiRequest,
@@ -26,27 +33,38 @@ export default async function handler(
       return res.status(401).json({ error: 'Missing signature' });
     }
 
-    // Compute HMAC signature
-    const payload = JSON.stringify(req.body);
+    if (!apiSecret) {
+      console.error('ONMETA_CLIENT_SECRET not configured');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
+    // Get raw body for HMAC verification
+    // Note: Next.js parses JSON body by default, but for HMAC we need to verify against raw body
+    // We'll use the parsed body and stringify it consistently
+    const webhookData = req.body;
+    const payload = JSON.stringify(webhookData);
+
+    // Compute HMAC signature using SHA256
     const computedSignature = crypto
       .createHmac('sha256', apiSecret)
       .update(payload)
       .digest('hex');
 
-    // Verify signature
-    if (signature !== computedSignature) {
-      console.error('Invalid webhook signature');
+    // Verify signature (use constant-time comparison for security)
+    const isValid = crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(computedSignature)
+    );
+
+    if (!isValid) {
+      console.error('Invalid webhook signature', {
+        received: signature.substring(0, 10) + '...',
+        computed: computedSignature.substring(0, 10) + '...',
+      });
       return res.status(401).json({ error: 'Invalid signature' });
     }
 
-    const webhookData = req.body;
-    console.log('OnMeta webhook received:', webhookData);
-
-    // Verify webhook signature if OnMeta provides one
-    // const signature = req.headers['x-onmeta-signature'];
-    // if (signature) {
-    //   // Verify signature here
-    // }
+    console.log('OnMeta webhook signature verified successfully');
 
     // Extract order information from OnMeta webhook
     const {
@@ -64,6 +82,7 @@ export default async function handler(
       transferredAmountWei,
       customer,
       createdAt,
+      metaData, // Contains conversionRate, commission, and user-set metadata
     } = webhookData;
 
     console.log('Processing OnMeta webhook:', {
@@ -72,65 +91,155 @@ export default async function handler(
       eventType,
       fiat,
       currency,
-      receiverWalletAddress: receiverWalletAddress?.slice(0, 8) + '...',
-      buyTokenSymbol,
       chainId,
+      receiverWalletAddress: receiverWalletAddress?.slice(0, 10) + '...',
+      buyTokenSymbol,
+      hasMetadata: !!metaData,
     });
 
     // Handle different webhook event types
     switch (eventType) {
       case 'fiatPending':
-        console.log('Order fiat payment pending:', orderId);
+        console.log('📋 Order fiat payment pending:', orderId);
+        console.log('Details:', {
+          orderId,
+          fiat,
+          currency,
+          receiverWalletAddress,
+          buyTokenSymbol,
+        });
         // User has initiated order but fiat deposit is pending
-        // Update order status in your database
+        // TODO: Update order status in your database to "fiatPending"
+        // TODO: Notify user that payment is pending
         break;
 
       case 'orderReceived':
-        console.log('Order received and payment completed:', orderId);
+        console.log('✅ Order received and payment completed:', orderId);
+        console.log('Details:', {
+          orderId,
+          fiat,
+          currency,
+          status,
+        });
         // User completed payment, OnMeta initiated crypto transfer
-        // Update order status
+        // TODO: Update order status in your database to "orderReceived"
+        // TODO: Notify user that payment was received
+        break;
+
+      case 'InProgress':
+        console.log('⏳ Order in progress on blockchain:', orderId);
+        console.log('Details:', {
+          orderId,
+          chainId,
+          buyTokenSymbol,
+        });
+        // Order is in-progress on the blockchain (optional event, occurs with non-native tokens)
+        // TODO: Update order status in your database to "InProgress"
+        // TODO: Notify user that transaction is being processed
         break;
 
       case 'fiatReceived':
-        console.log('Fiat payment confirmed received:', orderId);
+        console.log('💰 Fiat payment confirmed received:', orderId);
+        console.log('Details:', {
+          orderId,
+          fiat,
+          currency,
+        });
         // OnMeta confirmed receipt of payment
-        // Update order status
+        // TODO: Update order status in your database to "fiatReceived"
         break;
 
       case 'transferred':
-        console.log('Tokens transferred on blockchain:', orderId, 'Txn:', txnHash);
-        // Token transfer confirmed on blockchain
-        // Update order status, notify user
-        break;
-
-      case 'completed':
-        console.log('Order completed successfully:', orderId);
+        console.log('🔗 Tokens transferred on blockchain:', orderId);
         console.log('Transaction details:', {
+          orderId,
           txnHash,
           transferredAmount,
           transferredAmountWei,
           receiverWalletAddress,
+          chainId,
         });
+        // Token transfer confirmed on blockchain
+        // TODO: Update order status in your database to "transferred"
+        // TODO: Store transaction hash
+        // TODO: Notify user that tokens are being transferred
+        break;
+
+      case 'completed':
+        console.log('🎉 Order completed successfully:', orderId);
+        console.log('Transaction details:', {
+          orderId,
+          txnHash,
+          transferredAmount,
+          transferredAmountWei,
+          receiverWalletAddress,
+          buyTokenSymbol,
+          buyTokenAddress,
+          chainId,
+          fiat,
+          currency,
+        });
+
+        // Extract metadata (conversionRate, commission, user-set metadata)
+        if (metaData) {
+          console.log('Metadata:', {
+            conversionRate: metaData.conversionRate,
+            commission: metaData.commission,
+            userMetadata: metaData,
+          });
+        }
+
         // Order fully completed
-        // Update order status, credit user's account, send notification
-        // You can access metadata.conversionRate and metadata.commission here
+        // TODO: Update order status in your database to "completed"
+        // TODO: Store transaction hash, transferred amount, conversion rate, commission
+        // TODO: Credit user's account with the tokens
+        // TODO: Send success notification to user
+        // TODO: Update user's transaction history
         break;
 
       case 'expired':
-        console.log('Order expired:', orderId);
+        console.log('⏰ Order expired:', orderId);
+        console.log('Details:', {
+          orderId,
+          createdAt,
+          status,
+        });
         // Order expired (pending > 3 hours)
-        // Update order status, notify user
+        // TODO: Update order status in your database to "expired"
+        // TODO: Notify user that order has expired
+        // TODO: Process any refunds if necessary
         break;
 
       default:
-        console.log('Unhandled webhook event type:', eventType);
+        console.warn('⚠️ Unhandled webhook event type:', eventType);
+        console.log('Full webhook data:', webhookData);
     }
 
     // Always return 200 to acknowledge receipt
-    return res.status(200).json({ received: true });
+    // OnMeta will retry if it doesn't receive a 200 response
+    return res.status(200).json({ 
+      received: true,
+      orderId,
+      eventType,
+    });
   } catch (error: any) {
-    console.error('OnMeta webhook error:', error);
-    // Still return 200 to prevent OnMeta from retrying
-    return res.status(200).json({ received: true, error: error.message });
+    console.error('❌ OnMeta webhook error:', error);
+    // Still return 200 to prevent OnMeta from retrying indefinitely
+    // Log the error for investigation
+    return res.status(200).json({ 
+      received: true, 
+      error: error.message,
+    });
   }
 }
+
+// Disable body parsing for this route to allow raw body access for HMAC verification
+// Note: Next.js API routes parse JSON by default, so we work with the parsed body
+// If you need raw body access, you'll need to use a custom server or middleware
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '1mb',
+    },
+  },
+};

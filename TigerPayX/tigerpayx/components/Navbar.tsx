@@ -52,20 +52,20 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5">
-            <LogoImage />
+                <LogoImage />
             <span className="text-xl font-bold text-gray-900">TigerPayX</span>
-          </Link>
+            </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
               <Link
                 key={item.href}
-                href={item.href}
+                  href={item.href}
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-[#ff6b00] transition-colors"
-              >
-                {item.label}
-              </Link>
+                >
+                  {item.label}
+                </Link>
             ))}
           </nav>
 
@@ -120,10 +120,10 @@ export function Navbar() {
             {/* Open App / Logout Button */}
             {router.pathname === "/dashboard" ? (
               <button
-                onClick={handleLogout}
+                  onClick={handleLogout}
                 className="hidden md:inline-flex items-center gap-2 bg-red-500 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-red-600 transition-colors"
-              >
-                Logout
+                >
+                  Logout
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
@@ -190,11 +190,11 @@ export function Navbar() {
                       handleLogout();
                     }}
                     className="inline-flex items-center gap-2 bg-red-500 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-red-600 transition-colors w-full justify-center"
-                  >
+                >
                     Logout
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
+                  </svg>
                   </button>
                 ) : (
                   <Link
@@ -207,9 +207,9 @@ export function Navbar() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
                   </Link>
-                )}
-              </div>
-            </div>
+            )}
+          </div>
+        </div>
           </motion.div>
         )}
       </div>

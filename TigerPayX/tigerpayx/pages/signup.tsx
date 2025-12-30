@@ -225,7 +225,7 @@ export default function SignupPage() {
                   <div className="text-sm text-white/70">Borderless transactions</div>
                 </div>
               </div>
-            </div>
+          </div>
           </motion.div>
 
           {/* Right side - Signup form */}
@@ -242,10 +242,10 @@ export default function SignupPage() {
               <div className="relative z-10">
                 {!showVerification ? (
                   <>
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
                     >
                       <h2 className="text-3xl font-bold text-white mb-2">Create Account</h2>
                       <p className="text-white/70 mb-8">Join TigerPayX today</p>
@@ -260,16 +260,16 @@ export default function SignupPage() {
                       >
                         <label htmlFor="name" className="block text-sm font-medium text-white">
                           Full Name <span className="text-red-300">*</span>
-                        </label>
-                        <input
-                          id="name"
-                          name="name"
-                          type="text"
-                          required
-                          placeholder="John Doe"
+                  </label>
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    required
+                    placeholder="John Doe"
                           className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/50 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
                           style={{ color: '#ffffff' }}
-                        />
+                  />
                       </motion.div>
 
                       <motion.div
@@ -280,19 +280,19 @@ export default function SignupPage() {
                       >
                         <label htmlFor="handle" className="block text-sm font-medium text-white">
                           Username <span className="text-white/50 text-xs">(optional)</span>
-                        </label>
-                        <div className="flex items-center gap-2">
+                  </label>
+                  <div className="flex items-center gap-2">
                           <span className="text-white/50 text-lg">@</span>
-                          <input
-                            id="handle"
-                            name="handle"
-                            type="text"
-                            placeholder="johndoe"
-                            pattern="[a-z0-9._]+"
+                    <input
+                      id="handle"
+                      name="handle"
+                      type="text"
+                      placeholder="johndoe"
+                      pattern="[a-z0-9._]+"
                             className="flex-1 rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/50 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
                             style={{ color: '#ffffff' }}
-                          />
-                        </div>
+                    />
+                  </div>
                         <p className="text-xs text-white/50">Leave empty to auto-generate</p>
                       </motion.div>
 
@@ -304,16 +304,16 @@ export default function SignupPage() {
                       >
                         <label htmlFor="email" className="block text-sm font-medium text-white">
                           Email <span className="text-red-300">*</span>
-                        </label>
-                        <input
-                          id="email"
-                          name="email"
-                          type="email"
-                          required
+                  </label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
                           placeholder="you@example.com"
                           className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/50 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
                           style={{ color: '#ffffff' }}
-                        />
+                  />
                       </motion.div>
 
                       <motion.div
@@ -324,21 +324,21 @@ export default function SignupPage() {
                       >
                         <label htmlFor="password" className="block text-sm font-medium text-white">
                           Password <span className="text-red-300">*</span>
-                        </label>
-                        <input
-                          id="password"
-                          name="password"
-                          type="password"
-                          required
-                          placeholder="Create a strong password"
-                          minLength={8}
+                  </label>
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    required
+                    placeholder="Create a strong password"
+                    minLength={8}
                           className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white placeholder:text-white/50 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
                           style={{ color: '#ffffff' }}
-                        />
+                  />
                         <p className="text-xs text-white/50">Must be at least 8 characters</p>
                       </motion.div>
 
-                      {error && (
+                {error && (
                         <motion.div
                           initial={{ opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
@@ -346,18 +346,18 @@ export default function SignupPage() {
                         >
                           <p className="text-sm text-red-200">{error}</p>
                         </motion.div>
-                      )}
+                )}
 
                       <motion.button
-                        type="submit"
-                        disabled={loading}
+                  type="submit"
+                  disabled={loading}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         className="w-full bg-white text-[#ff6b00] py-4 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-xl disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-                      >
+                >
                         {loading ? "Creating account..." : "Create Account"}
                       </motion.button>
-                    </form>
+              </form>
 
                     <motion.p
                       initial={{ opacity: 0 }}
@@ -366,16 +366,16 @@ export default function SignupPage() {
                       className="mt-6 text-center text-sm text-white/70"
                     >
                       Already have an account?{" "}
-                      <Link
-                        href="/login"
+                    <Link
+                      href="/login"
                         className="text-white font-semibold hover:text-yellow-300 transition-colors"
-                      >
-                        Log in
-                      </Link>
+                    >
+                      Log in
+                    </Link>
                     </motion.p>
-                  </>
-                ) : (
-                  <>
+                </>
+              ) : (
+                <>
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -385,7 +385,7 @@ export default function SignupPage() {
                       <p className="text-white/70 mb-2">
                         We've sent a 6-digit code to{" "}
                         <span className="font-semibold text-white">{userEmail}</span>
-                      </p>
+                    </p>
                     </motion.div>
 
                     <form className="space-y-6 mt-8" onSubmit={handleVerifyOTP}>
@@ -397,22 +397,22 @@ export default function SignupPage() {
                       >
                         <label htmlFor="otp" className="block text-sm font-medium text-white">
                           Verification Code
-                        </label>
-                        <input
-                          id="otp"
-                          name="otp"
-                          type="text"
-                          required
-                          maxLength={6}
-                          value={otp}
-                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                          placeholder="000000"
+                      </label>
+                      <input
+                        id="otp"
+                        name="otp"
+                        type="text"
+                        required
+                        maxLength={6}
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                        placeholder="000000"
                           className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-center text-2xl font-mono tracking-widest text-white placeholder:text-white/30 outline-none focus:border-white/40 focus:bg-white/15 transition-all"
                           style={{ color: '#ffffff' }}
-                        />
+                      />
                       </motion.div>
 
-                      {error && (
+                    {error && (
                         <motion.div
                           initial={{ opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
@@ -420,31 +420,31 @@ export default function SignupPage() {
                         >
                           <p className="text-sm text-red-200">{error}</p>
                         </motion.div>
-                      )}
+                    )}
 
                       <motion.button
-                        type="submit"
-                        disabled={verifying || otp.length !== 6}
+                      type="submit"
+                      disabled={verifying || otp.length !== 6}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         className="w-full bg-white text-[#ff6b00] py-4 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {verifying ? "Verifying..." : "Verify Email"}
+                    >
+                      {verifying ? "Verifying..." : "Verify Email"}
                       </motion.button>
 
-                      <div className="text-center">
-                        <button
-                          type="button"
-                          onClick={handleResendOTP}
-                          disabled={resending}
+                    <div className="text-center">
+                      <button
+                        type="button"
+                        onClick={handleResendOTP}
+                        disabled={resending}
                           className="text-sm text-white/70 hover:text-white transition-colors disabled:opacity-50"
-                        >
-                          {resending ? "Sending..." : "Resend Code"}
-                        </button>
-                      </div>
-                    </form>
-                  </>
-                )}
+                      >
+                        {resending ? "Sending..." : "Resend Code"}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
               </div>
             </div>
           </motion.div>

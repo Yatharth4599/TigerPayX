@@ -41,10 +41,10 @@ export function MerchantFormModal({ isOpen, onClose, onSuccess, defaultSettlemen
     if (isOpen) {
       const walletAddr = getWalletAddress();
       if (walletAddr) {
-        setFormData(prev => ({
-          ...prev,
+      setFormData(prev => ({
+        ...prev,
           settlementAddress: walletAddr,
-        }));
+      }));
       }
     }
   }, [defaultSettlementAddress, isOpen]);
