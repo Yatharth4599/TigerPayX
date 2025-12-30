@@ -41,6 +41,7 @@ export default function DashboardPage() {
   const [onMetaRefreshToken, setOnMetaRefreshToken] = useState<string | null>(null);
   const [onMetaBankStatus, setOnMetaBankStatus] = useState<string | null>(null);
   const [onMetaUPIStatus, setOnMetaUPIStatus] = useState<string | null>(null);
+  const [onMetaAuthLoading, setOnMetaAuthLoading] = useState(true); // Track authentication loading state
   const [showLinkBankModal, setShowLinkBankModal] = useState(false);
   const [showLinkUPIModal, setShowLinkUPIModal] = useState(false);
   
@@ -180,7 +181,12 @@ export default function DashboardPage() {
   useEffect(() => {
     const onMetaLogin = async () => {
       const userEmail = getAuthEmail();
-      if (!userEmail) return;
+      if (!userEmail) {
+        setOnMetaAuthLoading(false);
+        return;
+      }
+      
+      setOnMetaAuthLoading(true);
       
       // Check if we have a stored refresh token first
       const storedRefreshToken = localStorage.getItem('onmeta_refresh_token');
@@ -209,12 +215,14 @@ export default function DashboardPage() {
             }
             console.log('OnMeta token refreshed successfully');
             fetchOnMetaAccountStatus(refreshData.accessToken);
+            setOnMetaAuthLoading(false);
             return;
           }
         } catch (error) {
           console.error('OnMeta token refresh failed, will try login:', error);
           // Clear invalid refresh token
           localStorage.removeItem('onmeta_refresh_token');
+          // Continue to try login
         }
       }
 
@@ -253,12 +261,18 @@ export default function DashboardPage() {
           }
         } catch (error) {
           console.error('OnMeta login error:', error);
+        } finally {
+          setOnMetaAuthLoading(false);
         }
+      } else {
+        setOnMetaAuthLoading(false);
       }
     };
 
     if (authChecked) {
       onMetaLogin();
+    } else {
+      setOnMetaAuthLoading(false);
     }
   }, [authChecked]);
 
@@ -1120,7 +1134,11 @@ export default function DashboardPage() {
               <button
               onClick={() => {
                 if (!onMetaAccessToken) {
-                  alert('Please wait for OnMeta authentication to complete');
+                  if (onMetaAuthLoading) {
+                    alert('Please wait for OnMeta authentication to complete');
+                  } else {
+                    alert('OnMeta authentication failed. Please refresh the page to try again.');
+                  }
                   return;
                 }
                 // Pre-fill form with user data
@@ -1129,9 +1147,10 @@ export default function DashboardPage() {
                 setLinkBankKYCVerified(false); // User can update this
                 setShowLinkBankModal(true);
               }}
-              className="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors"
+              disabled={onMetaAuthLoading}
+              className="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-              {onMetaBankStatus === 'SUCCESS' ? '✓ Bank Linked' : onMetaBankStatus === 'PENDING' ? 'Bank Linking...' : 'Link Bank Account'}
+              {onMetaAuthLoading ? 'Authenticating...' : onMetaBankStatus === 'SUCCESS' ? '✓ Bank Linked' : onMetaBankStatus === 'PENDING' ? 'Bank Linking...' : 'Link Bank Account'}
               </button>
           </motion.div>
           
@@ -1163,7 +1182,11 @@ export default function DashboardPage() {
             <button 
               onClick={() => {
                 if (!onMetaAccessToken) {
-                  alert('Please wait for OnMeta authentication to complete');
+                  if (onMetaAuthLoading) {
+                    alert('Please wait for OnMeta authentication to complete');
+                  } else {
+                    alert('OnMeta authentication failed. Please refresh the page to try again.');
+                  }
                   return;
                 }
                 // Pre-fill form with user data
@@ -1171,9 +1194,10 @@ export default function DashboardPage() {
                 setLinkUPIEmail(getAuthEmail() || '');
                 setShowLinkUPIModal(true);
               }}
-              className="w-full bg-green-500 text-white py-3 rounded-xl font-semibold hover:bg-green-600 transition-colors"
+              disabled={onMetaAuthLoading}
+              className="w-full bg-green-500 text-white py-3 rounded-xl font-semibold hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {onMetaUPIStatus === 'SUCCESS' ? '✓ UPI Linked' : onMetaUPIStatus === 'PENDING' ? 'UPI Linking...' : 'Link UPI ID'}
+              {onMetaAuthLoading ? 'Authenticating...' : onMetaUPIStatus === 'SUCCESS' ? '✓ UPI Linked' : onMetaUPIStatus === 'PENDING' ? 'UPI Linking...' : 'Link UPI ID'}
             </button>
           </motion.div>
         </div>
