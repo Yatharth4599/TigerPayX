@@ -111,6 +111,24 @@ export default function DashboardPage() {
   const [supportedCurrencies, setSupportedCurrencies] = useState<any[]>([]);
   const [currenciesLoading, setCurrenciesLoading] = useState(false);
 
+  // KYC Submission state
+  const [showKYCSubmitModal, setShowKYCSubmitModal] = useState(false);
+  const [kycSubmitLoading, setKycSubmitLoading] = useState(false);
+  const [kycSubmitForm, setKycSubmitForm] = useState({
+    email: '',
+    firstName: '',
+    lastName: '',
+    panNumber: '',
+    aadharNumber: '',
+    incomeRange: '<10L' as '<10L' | '10L-15L' | '15L-20L' | '20L-25L' | '25L-50L' | '>50L',
+    profession: '',
+    selfie: '',
+    aadharFront: '',
+    aadharBack: '',
+    panFront: '',
+    panBack: '',
+  });
+
   // Handle OnMeta callback
   useEffect(() => {
     const handleOnMetaCallback = () => {
@@ -1028,38 +1046,50 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-600">Verify identity to unlock features</p>
               </div>
             </div>
-            <button 
-              onClick={async () => {
-                try {
-                  // Call OnMeta KYC API
-                  const response = await fetch('/api/onmeta/kyc', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      userId: getAuthEmail() || undefined,
-                      redirectUrl: `${window.location.origin}/dashboard?onmeta_callback=true&type=kyc`,
-                    }),
-                  });
+            <div className="space-y-2">
+              <button 
+                onClick={() => {
+                  const userEmail = getAuthEmail() || '';
+                  setKycSubmitForm({ ...kycSubmitForm, email: userEmail });
+                  setShowKYCSubmitModal(true);
+                }}
+                className="w-full bg-purple-500 text-white py-2.5 rounded-xl font-semibold hover:bg-purple-600 transition-colors text-sm"
+              >
+                Submit KYC Data
+              </button>
+              <button 
+                onClick={async () => {
+                  try {
+                    // Call OnMeta KYC API
+                    const response = await fetch('/api/onmeta/kyc', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        userId: getAuthEmail() || undefined,
+                        redirectUrl: `${window.location.origin}/dashboard?onmeta_callback=true&type=kyc`,
+                      }),
+                    });
 
-                  const data = await response.json();
-                  
-                  if (data.success && data.kycUrl) {
-                    // Redirect to OnMeta's KYC page
-                    window.location.href = data.kycUrl;
-                  } else {
-                    alert(data.error || 'Failed to initiate KYC. Please try again.');
+                    const data = await response.json();
+                    
+                    if (data.success && data.kycUrl) {
+                      // Redirect to OnMeta's KYC page
+                      window.location.href = data.kycUrl;
+                    } else {
+                      alert(data.error || 'Failed to initiate KYC. Please try again.');
+                    }
+                  } catch (error: any) {
+                    console.error('KYC error:', error);
+                    alert(`Error: ${error.message || 'Failed to initiate KYC. Please try again.'}`);
                   }
-                } catch (error: any) {
-                  console.error('KYC error:', error);
-                  alert(`Error: ${error.message || 'Failed to initiate KYC. Please try again.'}`);
-                }
-              }}
-              className="w-full bg-purple-500 text-white py-3 rounded-xl font-semibold hover:bg-purple-600 transition-colors"
-            >
-              Start KYC
-            </button>
+                }}
+                className="w-full bg-purple-100 text-purple-600 py-2.5 rounded-xl font-semibold hover:bg-purple-200 transition-colors text-sm"
+              >
+                Start KYC (Redirect)
+              </button>
+            </div>
                     </motion.div>
 
           {/* Link Bank Account */}
@@ -2894,6 +2924,366 @@ export default function DashboardPage() {
                 </div>
                     </div>
           </motion.div>
+          </div>
+        )}
+
+        {/* KYC Submission Modal */}
+        {showKYCSubmitModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-3xl p-8 max-w-4xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Submit KYC Data</h3>
+                <button
+                  onClick={() => {
+                    setShowKYCSubmitModal(false);
+                    // Reset form
+                    setKycSubmitForm({
+                      email: '',
+                      firstName: '',
+                      lastName: '',
+                      panNumber: '',
+                      aadharNumber: '',
+                      incomeRange: '<10L',
+                      profession: '',
+                      selfie: '',
+                      aadharFront: '',
+                      aadharBack: '',
+                      panFront: '',
+                      panBack: '',
+                    });
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Personal Information */}
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                      <input
+                        type="email"
+                        value={kycSubmitForm.email}
+                        onChange={(e) => setKycSubmitForm({ ...kycSubmitForm, email: e.target.value })}
+                        placeholder="your@email.com"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">First Name *</label>
+                      <input
+                        type="text"
+                        value={kycSubmitForm.firstName}
+                        onChange={(e) => setKycSubmitForm({ ...kycSubmitForm, firstName: e.target.value })}
+                        placeholder="John"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Last Name *</label>
+                      <input
+                        type="text"
+                        value={kycSubmitForm.lastName}
+                        onChange={(e) => setKycSubmitForm({ ...kycSubmitForm, lastName: e.target.value })}
+                        placeholder="Doe"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">PAN Number *</label>
+                      <input
+                        type="text"
+                        value={kycSubmitForm.panNumber}
+                        onChange={(e) => setKycSubmitForm({ ...kycSubmitForm, panNumber: e.target.value.toUpperCase() })}
+                        placeholder="ABCDE1234F"
+                        maxLength={10}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Aadhaar Number *</label>
+                      <input
+                        type="text"
+                        value={kycSubmitForm.aadharNumber}
+                        onChange={(e) => setKycSubmitForm({ ...kycSubmitForm, aadharNumber: e.target.value.replace(/\D/g, '') })}
+                        placeholder="123456789012"
+                        maxLength={12}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Income Range *</label>
+                      <select
+                        value={kycSubmitForm.incomeRange}
+                        onChange={(e) => setKycSubmitForm({ ...kycSubmitForm, incomeRange: e.target.value as any })}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      >
+                        <option value="<10L">Less than 10L</option>
+                        <option value="10L-15L">10L - 15L</option>
+                        <option value="15L-20L">15L - 20L</option>
+                        <option value="20L-25L">20L - 25L</option>
+                        <option value="25L-50L">25L - 50L</option>
+                        <option value=">50L">Greater than 50L</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Profession *</label>
+                      <input
+                        type="text"
+                        value={kycSubmitForm.profession}
+                        onChange={(e) => setKycSubmitForm({ ...kycSubmitForm, profession: e.target.value })}
+                        placeholder="Business man, Writer, Journalist"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Document Uploads */}
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Document Uploads *</h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {/* Selfie */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Selfie</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const base64 = await new Promise<string>((resolve, reject) => {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const result = reader.result as string;
+                                // Remove data URL prefix if present
+                                const base64String = result.includes(',') ? result.split(',')[1] : result;
+                                resolve(base64String);
+                              };
+                              reader.onerror = reject;
+                              reader.readAsDataURL(file);
+                            });
+                            setKycSubmitForm({ ...kycSubmitForm, selfie: base64 });
+                          }
+                        }}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                      {kycSubmitForm.selfie && <p className="mt-1 text-xs text-green-600">✓ Selfie uploaded</p>}
+                    </div>
+
+                    {/* Aadhaar Front */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Aadhaar Front</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const base64 = await new Promise<string>((resolve, reject) => {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const result = reader.result as string;
+                                const base64String = result.includes(',') ? result.split(',')[1] : result;
+                                resolve(base64String);
+                              };
+                              reader.onerror = reject;
+                              reader.readAsDataURL(file);
+                            });
+                            setKycSubmitForm({ ...kycSubmitForm, aadharFront: base64 });
+                          }
+                        }}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                      {kycSubmitForm.aadharFront && <p className="mt-1 text-xs text-green-600">✓ Aadhaar front uploaded</p>}
+                    </div>
+
+                    {/* Aadhaar Back */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Aadhaar Back</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const base64 = await new Promise<string>((resolve, reject) => {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const result = reader.result as string;
+                                const base64String = result.includes(',') ? result.split(',')[1] : result;
+                                resolve(base64String);
+                              };
+                              reader.onerror = reject;
+                              reader.readAsDataURL(file);
+                            });
+                            setKycSubmitForm({ ...kycSubmitForm, aadharBack: base64 });
+                          }
+                        }}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                      {kycSubmitForm.aadharBack && <p className="mt-1 text-xs text-green-600">✓ Aadhaar back uploaded</p>}
+                    </div>
+
+                    {/* PAN Front */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">PAN Front</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const base64 = await new Promise<string>((resolve, reject) => {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const result = reader.result as string;
+                                const base64String = result.includes(',') ? result.split(',')[1] : result;
+                                resolve(base64String);
+                              };
+                              reader.onerror = reject;
+                              reader.readAsDataURL(file);
+                            });
+                            setKycSubmitForm({ ...kycSubmitForm, panFront: base64 });
+                          }
+                        }}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                      {kycSubmitForm.panFront && <p className="mt-1 text-xs text-green-600">✓ PAN front uploaded</p>}
+                    </div>
+
+                    {/* PAN Back */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">PAN Back</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const base64 = await new Promise<string>((resolve, reject) => {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const result = reader.result as string;
+                                const base64String = result.includes(',') ? result.split(',')[1] : result;
+                                resolve(base64String);
+                              };
+                              reader.onerror = reject;
+                              reader.readAsDataURL(file);
+                            });
+                            setKycSubmitForm({ ...kycSubmitForm, panBack: base64 });
+                          }
+                        }}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                      {kycSubmitForm.panBack && <p className="mt-1 text-xs text-green-600">✓ PAN back uploaded</p>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => {
+                      setShowKYCSubmitModal(false);
+                      setKycSubmitForm({
+                        email: '',
+                        firstName: '',
+                        lastName: '',
+                        panNumber: '',
+                        aadharNumber: '',
+                        incomeRange: '<10L',
+                        profession: '',
+                        selfie: '',
+                        aadharFront: '',
+                        aadharBack: '',
+                        panFront: '',
+                        panBack: '',
+                      });
+                    }}
+                    className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!onMetaAccessToken) {
+                        alert('OnMeta authentication required. Please refresh the page.');
+                        return;
+                      }
+
+                      // Validation
+                      if (!kycSubmitForm.email || !kycSubmitForm.firstName || !kycSubmitForm.lastName ||
+                          !kycSubmitForm.panNumber || !kycSubmitForm.aadharNumber || !kycSubmitForm.profession ||
+                          !kycSubmitForm.selfie || !kycSubmitForm.aadharFront || !kycSubmitForm.aadharBack ||
+                          !kycSubmitForm.panFront || !kycSubmitForm.panBack) {
+                        alert('Please fill in all required fields and upload all documents');
+                        return;
+                      }
+
+                      setKycSubmitLoading(true);
+                      try {
+                        const response = await fetch('/api/onmeta/kyc/submit', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${onMetaAccessToken}`,
+                          },
+                          body: JSON.stringify(kycSubmitForm),
+                        });
+
+                        if (!response.ok) {
+                          const text = await response.text();
+                          throw new Error(`Failed to submit KYC: ${response.status}`);
+                        }
+
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                          alert(data.message || 'KYC data submitted successfully!');
+                          setShowKYCSubmitModal(false);
+                          setKycSubmitForm({
+                            email: '',
+                            firstName: '',
+                            lastName: '',
+                            panNumber: '',
+                            aadharNumber: '',
+                            incomeRange: '<10L',
+                            profession: '',
+                            selfie: '',
+                            aadharFront: '',
+                            aadharBack: '',
+                            panFront: '',
+                            panBack: '',
+                          });
+                        } else {
+                          alert(data.error || 'Failed to submit KYC data. Please try again.');
+                        }
+                      } catch (error: any) {
+                        console.error('KYC submission error:', error);
+                        alert(`Error: ${error.message || 'Failed to submit KYC data. Please try again.'}`);
+                      } finally {
+                        setKycSubmitLoading(false);
+                      }
+                    }}
+                    disabled={kycSubmitLoading}
+                    className="flex-1 px-4 py-3 bg-purple-500 text-white rounded-xl font-semibold hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {kycSubmitLoading ? 'Submitting...' : 'Submit KYC Data'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </div>
         )}
 

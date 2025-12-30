@@ -296,6 +296,42 @@ export interface OnMetaKYCResponse {
   message?: string;
 }
 
+// KYC Data Submission
+export interface OnMetaKYCSubmitRequest {
+  accessToken: string;
+  email: string;
+  selfie: string; // Base64 encoded image or file data
+  aadharFront: string; // Base64 encoded image or file data
+  aadharBack: string; // Base64 encoded image or file data
+  panFront: string; // Base64 encoded image or file data
+  panBack: string; // Base64 encoded image or file data
+  panNumber: string; // Will be encrypted
+  aadharNumber: string; // Will be encrypted
+  firstName: string; // Will be encrypted
+  lastName: string; // Will be encrypted
+  incomeRange: '<10L' | '10L-15L' | '15L-20L' | '20L-25L' | '25L-50L' | '>50L';
+  profession: string;
+}
+
+export interface OnMetaKYCSubmitResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+  [key: string]: any;
+}
+
+/**
+ * Encrypt KYC data fields
+ * TODO: Replace this with the actual encryption code provided by OnMeta
+ * Fields that need encryption: firstName, lastName, panNumber, aadharNumber
+ */
+function encryptKYCField(value: string): string {
+  // PLACEHOLDER: Replace this with actual OnMeta encryption implementation
+  // The encryption code should be provided by OnMeta documentation
+  console.warn('KYC encryption not implemented yet. Please provide the encryption code from OnMeta.');
+  return value; // Return unencrypted for now (this will fail in production)
+}
+
 /**
  * Create a KYC verification request via OnMeta API
  */
@@ -389,6 +425,135 @@ export async function createKYCRequest(request: OnMetaKYCRequest): Promise<OnMet
     return {
       success: false,
       error: error.message || "Network error occurred while contacting OnMeta API",
+    };
+  }
+}
+
+/**
+ * Submit KYC Data
+ * POST /v1/kyc/upload (or similar endpoint)
+ * Submits KYC documents and data to OnMeta
+ */
+export async function submitKYCData(request: OnMetaKYCSubmitRequest): Promise<OnMetaKYCSubmitResponse> {
+  try {
+    if (!ONMETA_CLIENT_ID) {
+      return {
+        success: false,
+        error: "OnMeta API credentials not configured",
+      };
+    }
+
+    if (!request.accessToken) {
+      return {
+        success: false,
+        error: "Access token is required. Please login first.",
+      };
+    }
+
+    // Encrypt sensitive fields
+    const encryptedFirstName = encryptKYCField(request.firstName);
+    const encryptedLastName = encryptKYCField(request.lastName);
+    const encryptedPanNumber = encryptKYCField(request.panNumber);
+    const encryptedAadharNumber = encryptKYCField(request.aadharNumber);
+
+    // Create form data
+    // Note: Node.js 18+ has FormData built-in. For base64 images, we append them as strings.
+    // If OnMeta expects actual file objects, we may need to convert base64 to Buffer/Blob.
+    const formData = new FormData();
+    formData.append('email', request.email);
+    formData.append('selfie', request.selfie);
+    formData.append('aadharFront', request.aadharFront);
+    formData.append('aadharBack', request.aadharBack);
+    formData.append('panFront', request.panFront);
+    formData.append('panBack', request.panBack);
+    formData.append('panNumber', encryptedPanNumber);
+    formData.append('aadharNumber', encryptedAadharNumber);
+    formData.append('firstName', encryptedFirstName);
+    formData.append('lastName', encryptedLastName);
+    formData.append('incomeRange', request.incomeRange);
+    formData.append('profession', request.profession);
+
+    // Try different endpoint patterns
+    const possibleEndpoints = [
+      `${ONMETA_API_BASE_URL}/v1/kyc/upload`,
+      `${ONMETA_API_BASE_URL}/v1/kyc/submit`,
+      `${ONMETA_API_BASE_URL}/v1/upload/kyc`,
+      `${ONMETA_API_BASE_URL}/api/v1/kyc/upload`,
+    ];
+
+    let lastError: any = null;
+
+    for (const apiUrl of possibleEndpoints) {
+      try {
+        console.log("OnMeta submit KYC data request:", {
+          url: apiUrl,
+          email: request.email,
+          hasAccessToken: !!request.accessToken,
+          incomeRange: request.incomeRange,
+          profession: request.profession,
+        });
+
+        // Get headers for FormData (Node.js FormData may need headers)
+        const headers: Record<string, string> = {
+          "x-api-key": ONMETA_CLIENT_ID,
+          "Authorization": `Bearer ${request.accessToken}`,
+        };
+
+        // For Node.js FormData, we might need to get headers if using form-data package
+        // Built-in FormData handles headers automatically with fetch
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers,
+          body: formData,
+        });
+
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await response.text();
+          console.error(`OnMeta submit KYC response is not JSON for ${apiUrl}:`, {
+            status: response.status,
+            contentType,
+            textPreview: text.substring(0, 200),
+          });
+          lastError = { message: `Invalid response format: ${response.status} ${response.statusText}` };
+          continue; // Try next endpoint
+        }
+
+        const data = await response.json();
+        console.log("OnMeta submit KYC response:", {
+          status: response.status,
+          success: data.success,
+        });
+
+        if (response.ok) {
+          return {
+            success: true,
+            message: data.message || "KYC data submitted successfully",
+            ...data,
+          };
+        }
+
+        if (response.status !== 404) {
+          lastError = data;
+          break; // Don't try other endpoints if it's not a 404
+        }
+      } catch (fetchError: any) {
+        console.error(`Error trying endpoint ${apiUrl}:`, fetchError);
+        lastError = fetchError;
+        continue; // Try next endpoint
+      }
+    }
+
+    return {
+      success: false,
+      error: lastError?.message || lastError?.error || "Failed to submit KYC data. Please check the API endpoint and parameters.",
+    };
+  } catch (error: any) {
+    console.error("OnMeta submit KYC error:", error);
+    return {
+      success: false,
+      error: error.message || "Network error occurred",
     };
   }
 }
