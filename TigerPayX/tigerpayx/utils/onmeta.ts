@@ -92,20 +92,46 @@ export async function createDepositOrder(request: OnMetaDepositRequest): Promise
     });
     
     // Try the most common pattern first: /v1/deposit (without /api)
+    // NOTE: Check your OnMeta dashboard API documentation for the exact endpoint
+    // Common patterns: /v1/deposit, /api/v1/deposit, /api/deposit, /deposit, /v1/onramp, /v1/order
     const apiUrl = `${ONMETA_API_BASE_URL}/v1/deposit`;
 
     // OnMeta API endpoint for creating deposit orders
-    // Note: Endpoint path may vary - check OnMeta API documentation
-    // Common patterns: /api/v1/deposit, /v1/deposit, /deposit, /api/deposit
+    // Note: Endpoint path may vary - check OnMeta API documentation in your dashboard
     let response;
     try {
-      response = await fetch(apiUrl, {
+      // Try different authentication patterns
+      // Pattern 1: x-api-key header with Client ID, Authorization Bearer with Secret
+      // Pattern 2: Both as headers
+      // Pattern 3: Basic auth
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      
+      // Add API key
+      if (ONMETA_CLIENT_ID) {
+        headers["x-api-key"] = ONMETA_CLIENT_ID;
+        headers["X-API-Key"] = ONMETA_CLIENT_ID; // Try both cases
+      }
+      
+      // Add secret - try as Bearer token first
+      if (ONMETA_CLIENT_SECRET) {
+        headers["Authorization"] = `Bearer ${ONMETA_CLIENT_SECRET}`;
+      }
+      
+      console.log("OnMeta API request:", {
+        url: apiUrl,
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "x-api-key": ONMETA_CLIENT_ID,
-          "Authorization": `Bearer ${ONMETA_CLIENT_SECRET}`,
+          ...headers,
+          Authorization: headers.Authorization ? "Bearer ***" : undefined,
         },
+        body: { ...requestBody, walletAddress: requestBody.walletAddress?.slice(0, 8) + '...' },
+      });
+      
+      response = await fetch(apiUrl, {
+        method: "POST",
+        headers,
         body: JSON.stringify(requestBody),
       });
       console.log("OnMeta API response status:", response.status, response.statusText);
