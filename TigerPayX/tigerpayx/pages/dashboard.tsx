@@ -174,6 +174,13 @@ export default function DashboardPage() {
               'Authorization': `Bearer ${storedRefreshToken}`,
             },
           });
+          
+          if (!refreshResponse.ok) {
+            const text = await refreshResponse.text();
+            console.error('OnMeta token refresh failed:', refreshResponse.status, text.substring(0, 100));
+            throw new Error(`Failed to refresh token: ${refreshResponse.status}`);
+          }
+          
           const refreshData = await refreshResponse.json();
           
           if (refreshData.success && refreshData.accessToken) {
@@ -203,6 +210,12 @@ export default function DashboardPage() {
             },
             body: JSON.stringify({ email: userEmail }),
           });
+
+          if (!response.ok) {
+            const text = await response.text();
+            console.error('OnMeta login failed:', response.status, text.substring(0, 100));
+            throw new Error(`Failed to login: ${response.status}`);
+          }
 
           const data = await response.json();
           
@@ -269,6 +282,13 @@ export default function DashboardPage() {
     setTokensLoading(true);
     try {
       const response = await fetch('/api/onmeta/tokens');
+      
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('Failed to fetch supported tokens:', response.status, text.substring(0, 100));
+        throw new Error(`Failed to fetch tokens: ${response.status}`);
+      }
+      
       const data = await response.json();
       
       if (data.success && data.tokens) {
@@ -289,6 +309,13 @@ export default function DashboardPage() {
     setLimitsLoading(true);
     try {
       const response = await fetch('/api/onmeta/chain-limits');
+      
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('Failed to fetch chain limits:', response.status, text.substring(0, 100));
+        throw new Error(`Failed to fetch chain limits: ${response.status}`);
+      }
+      
       const data = await response.json();
       
       if (data.success && data.limits) {
@@ -309,6 +336,13 @@ export default function DashboardPage() {
     setCurrenciesLoading(true);
     try {
       const response = await fetch('/api/onmeta/currencies');
+      
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('Failed to fetch supported currencies:', response.status, text.substring(0, 100));
+        throw new Error(`Failed to fetch currencies: ${response.status}`);
+      }
+      
       const data = await response.json();
       
       if (data.success && data.currencies) {
