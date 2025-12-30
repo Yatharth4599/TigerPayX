@@ -1092,6 +1092,41 @@ export async function fetchTokenQuotation(request: OnMetaQuotationRequest): Prom
   }
 }
 
+// ==================== Create Onramp Order ====================
+
+export interface OnMetaCreateOnrampOrderRequest {
+  accessToken: string; // Bearer token from customer login
+  buyTokenSymbol: string; // e.g., "USDC"
+  chainId: number; // e.g., 80001 for polygon testnet
+  fiatCurrency: string; // e.g., "inr"
+  fiatAmount: number; // e.g., 100
+  buyTokenAddress: string; // e.g., "0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889"
+  receiverAddress: string; // e.g., "0xCdF10Bc7a1fAE391ff18F4C220ACe912547971cC"
+  paymentMode: string; // e.g., "INR_UPI", "INR_IMPS", "INR_NEFT"
+  upiId?: {
+    upiId: string; // e.g., "bank@upi"
+  };
+  bankDetails?: {
+    accountNumber: string;
+    ifscCode?: string; // For INR/IMPS/NEFT
+    routingNumber?: string; // For PHP
+    bankCode?: string; // For IDR
+    accountHolderName: string;
+  };
+  metaData?: Record<string, string>; // Optional metadata (all values must be strings)
+  redirectUrl?: string; // Optional redirect URL
+}
+
+export interface OnMetaCreateOnrampOrderResponse {
+  success: boolean;
+  orderId?: string;
+  orderUrl?: string;
+  depositUrl?: string;
+  message?: string;
+  error?: string;
+  [key: string]: any; // Allow for additional fields
+}
+
 /**
  * Create Onramp Order
  * POST /v1/orders/create-onramp (or similar endpoint)
