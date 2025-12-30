@@ -1,9 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import crypto from 'crypto';
 
 /**
  * OnMeta Webhook Handler
  * This endpoint receives callbacks from OnMeta when order status changes
  * Configure this URL in your OnMeta dashboard: https://yourdomain.com/api/onmeta/webhook
+ * 
+ * Webhook events: fiatPending, orderReceived, fiatReceived, transferred, completed, expired
  */
 export default async function handler(
   req: NextApiRequest,
@@ -14,6 +17,28 @@ export default async function handler(
   }
 
   try {
+    // Verify HMAC signature
+    const signature = req.headers['x-onmeta-signature'] as string;
+    const apiSecret = process.env.ONMETA_CLIENT_SECRET || '';
+    
+    if (!signature) {
+      console.error('Missing X-Onmeta-Signature header');
+      return res.status(401).json({ error: 'Missing signature' });
+    }
+
+    // Compute HMAC signature
+    const payload = JSON.stringify(req.body);
+    const computedSignature = crypto
+      .createHmac('sha256', apiSecret)
+      .update(payload)
+      .digest('hex');
+
+    // Verify signature
+    if (signature !== computedSignature) {
+      console.error('Invalid webhook signature');
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+
     const webhookData = req.body;
     console.log('OnMeta webhook received:', webhookData);
 
@@ -23,48 +48,82 @@ export default async function handler(
     //   // Verify signature here
     // }
 
-    // Extract order information
-    const { orderId, order_id, status, transactionId, transaction_id, eventType, event_type } = webhookData;
-
-    const order = orderId || order_id;
-    const transaction = transactionId || transaction_id;
-    const event = eventType || event_type || 'order.updated';
-
-    console.log('Processing webhook:', {
-      order,
-      transaction,
+    // Extract order information from OnMeta webhook
+    const {
+      orderId,
       status,
-      event,
+      eventType,
+      fiat,
+      receiverWalletAddress,
+      buyTokenSymbol,
+      buyTokenAddress,
+      currency,
+      chainId,
+      txnHash,
+      transferredAmount,
+      transferredAmountWei,
+      customer,
+      createdAt,
+    } = webhookData;
+
+    console.log('Processing OnMeta webhook:', {
+      orderId,
+      status,
+      eventType,
+      fiat,
+      currency,
+      receiverWalletAddress: receiverWalletAddress?.slice(0, 8) + '...',
+      buyTokenSymbol,
+      chainId,
     });
 
-    // Handle different event types
-    switch (event) {
-      case 'order.completed':
-      case 'deposit.completed':
-        // Handle successful deposit
-        console.log('Deposit completed for order:', order);
-        // Update your database, send notifications, etc.
+    // Handle different webhook event types
+    switch (eventType) {
+      case 'fiatPending':
+        console.log('Order fiat payment pending:', orderId);
+        // User has initiated order but fiat deposit is pending
+        // Update order status in your database
         break;
 
-      case 'order.failed':
-      case 'deposit.failed':
-        // Handle failed deposit
-        console.log('Deposit failed for order:', order);
-        // Update your database, send notifications, etc.
+      case 'orderReceived':
+        console.log('Order received and payment completed:', orderId);
+        // User completed payment, OnMeta initiated crypto transfer
+        // Update order status
         break;
 
-      case 'withdrawal.completed':
-        // Handle successful withdrawal
-        console.log('Withdrawal completed for order:', order);
+      case 'fiatReceived':
+        console.log('Fiat payment confirmed received:', orderId);
+        // OnMeta confirmed receipt of payment
+        // Update order status
         break;
 
-      case 'withdrawal.failed':
-        // Handle failed withdrawal
-        console.log('Withdrawal failed for order:', order);
+      case 'transferred':
+        console.log('Tokens transferred on blockchain:', orderId, 'Txn:', txnHash);
+        // Token transfer confirmed on blockchain
+        // Update order status, notify user
+        break;
+
+      case 'completed':
+        console.log('Order completed successfully:', orderId);
+        console.log('Transaction details:', {
+          txnHash,
+          transferredAmount,
+          transferredAmountWei,
+          receiverWalletAddress,
+        });
+        // Order fully completed
+        // Update order status, credit user's account, send notification
+        // You can access metadata.conversionRate and metadata.commission here
+        break;
+
+      case 'expired':
+        console.log('Order expired:', orderId);
+        // Order expired (pending > 3 hours)
+        // Update order status, notify user
         break;
 
       default:
-        console.log('Unhandled webhook event:', event);
+        console.log('Unhandled webhook event type:', eventType);
     }
 
     // Always return 200 to acknowledge receipt
