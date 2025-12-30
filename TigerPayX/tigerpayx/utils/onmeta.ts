@@ -597,55 +597,78 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
     };
 
     // Try different endpoint patterns for login
-    const apiUrl = `${ONMETA_API_BASE_URL}/v1/auth/login`;
-    console.log("OnMeta login request:", {
-      url: apiUrl,
-      email: request.email,
-    });
+    const possibleEndpoints = [
+      `${ONMETA_API_BASE_URL}/v1/auth/login`,
+      `${ONMETA_API_BASE_URL}/v1/customer/login`,
+      `${ONMETA_API_BASE_URL}/api/v1/auth/login`,
+      `${ONMETA_API_BASE_URL}/v1/user/login`,
+      `${ONMETA_API_BASE_URL}/v1/login`,
+    ];
 
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": ONMETA_CLIENT_ID,
-      },
-      body: JSON.stringify(requestBody),
-    });
+    let lastError: any = null;
 
-    // Check if response is JSON before parsing
-    const contentType = response.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-      const text = await response.text();
-      console.error("OnMeta login response is not JSON:", {
-        status: response.status,
-        contentType,
-        textPreview: text.substring(0, 200),
-      });
-      return {
-        success: false,
-        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
-      };
-    }
+    for (const apiUrl of possibleEndpoints) {
+      try {
+        console.log("OnMeta login request:", {
+          url: apiUrl,
+          email: request.email,
+        });
 
-    const data = await response.json();
-    console.log("OnMeta login response:", {
-      status: response.status,
-      hasAccessToken: !!data.accessToken,
-      hasRefreshToken: !!data.refreshToken,
-    });
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": ONMETA_CLIENT_ID,
+          },
+          body: JSON.stringify(requestBody),
+        });
 
-    if (!response.ok) {
-      return {
-        success: false,
-        error: data.message || data.error || `Login failed: ${response.status} ${response.statusText}`,
-      };
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await response.text();
+          console.error(`OnMeta login response is not JSON for ${apiUrl}:`, {
+            status: response.status,
+            contentType,
+            textPreview: text.substring(0, 200),
+          });
+          if (response.status !== 404) {
+            lastError = { message: `Invalid response format: ${response.status} ${response.statusText}` };
+            break; // Don't try other endpoints if it's not a 404
+          }
+          continue; // Try next endpoint for 404
+        }
+
+        const data = await response.json();
+        console.log("OnMeta login response:", {
+          status: response.status,
+          hasAccessToken: !!data.accessToken,
+          hasRefreshToken: !!data.refreshToken,
+        });
+
+        if (response.ok) {
+          return {
+            success: true,
+            accessToken: data.accessToken || data.access_token,
+            refreshToken: data.refreshToken || data.refresh_token,
+            message: data.message,
+          };
+        }
+
+        if (response.status !== 404) {
+          lastError = data;
+          break; // Don't try other endpoints if it's not a 404
+        }
+      } catch (fetchError: any) {
+        console.error(`Error trying endpoint ${apiUrl}:`, fetchError);
+        lastError = fetchError;
+        continue; // Try next endpoint
+      }
     }
 
     return {
-      success: true,
-      accessToken: data.accessToken || data.access_token,
-      refreshToken: data.refreshToken || data.refresh_token,
-      message: data.message,
+      success: false,
+      error: lastError?.message || lastError?.error || "Failed to login. Please check the API endpoint and credentials.",
     };
   } catch (error: any) {
     console.error("OnMeta login error:", error);
