@@ -74,13 +74,25 @@ export async function createDepositOrder(request: OnMetaDepositRequest): Promise
       redirectUrl: request.redirectUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/dashboard`,
     };
 
-    const apiUrl = `${ONMETA_API_BASE_URL}/api/v1/deposit`;
+    // Try different endpoint patterns - OnMeta API structure may vary
+    // Common patterns: /api/v1/deposit, /v1/deposit, /api/deposit, /deposit
+    const possibleEndpoints = [
+      `${ONMETA_API_BASE_URL}/v1/deposit`,
+      `${ONMETA_API_BASE_URL}/api/deposit`,
+      `${ONMETA_API_BASE_URL}/api/v1/deposit`,
+      `${ONMETA_API_BASE_URL}/deposit`,
+    ];
+    
     console.log("OnMeta deposit request:", {
-      url: apiUrl,
+      baseUrl: ONMETA_API_BASE_URL,
+      possibleEndpoints,
       method: "POST",
       hasCredentials: !!(ONMETA_CLIENT_ID && ONMETA_CLIENT_SECRET),
       body: { ...requestBody, walletAddress: requestBody.walletAddress?.slice(0, 8) + '...' },
     });
+    
+    // Try the most common pattern first: /v1/deposit (without /api)
+    const apiUrl = `${ONMETA_API_BASE_URL}/v1/deposit`;
 
     // OnMeta API endpoint for creating deposit orders
     // Note: Endpoint path may vary - check OnMeta API documentation
@@ -120,7 +132,22 @@ export async function createDepositOrder(request: OnMetaDepositRequest): Promise
     }
 
     if (!response.ok) {
-      console.error("OnMeta API Error:", data);
+      console.error("OnMeta API Error:", {
+        status: response.status,
+        statusText: response.statusText,
+        url: apiUrl,
+        data: data,
+        headers: Object.fromEntries(response.headers.entries()),
+      });
+      
+      // If 404, suggest checking the endpoint
+      if (response.status === 404) {
+        return {
+          success: false,
+          error: `OnMeta API endpoint not found (404). Please check the API endpoint path. Tried: ${apiUrl}. Check OnMeta documentation for the correct endpoint.`,
+        };
+      }
+      
       return {
         success: false,
         error: data.message || data.error || data.errorMessage || `Failed to create deposit order: ${response.status} ${response.statusText}`,
@@ -174,8 +201,15 @@ export async function createWithdrawOrder(request: OnMetaWithdrawRequest): Promi
     }
 
     // OnMeta API endpoint for creating withdrawal orders
-    // Note: Endpoint path may vary - check OnMeta API documentation
-    const response = await fetch(`${ONMETA_API_BASE_URL}/api/v1/withdraw`, {
+    // Try /v1/withdraw first (most common pattern)
+    const apiUrl = `${ONMETA_API_BASE_URL}/v1/withdraw`;
+    console.log("OnMeta withdraw request:", {
+      url: apiUrl,
+      method: "POST",
+      payload: { ...payload, bankAccountNumber: payload.bankAccountNumber?.slice(0, 4) + '...' },
+    });
+    
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -188,7 +222,20 @@ export async function createWithdrawOrder(request: OnMetaWithdrawRequest): Promi
     const data = await response.json();
 
     if (!response.ok) {
-      console.error("OnMeta API Error:", data);
+      console.error("OnMeta API Error:", {
+        status: response.status,
+        statusText: response.statusText,
+        url: apiUrl,
+        data: data,
+      });
+      
+      if (response.status === 404) {
+        return {
+          success: false,
+          error: `OnMeta API endpoint not found (404). Please check the API endpoint path. Tried: ${apiUrl}. Check OnMeta documentation for the correct endpoint.`,
+        };
+      }
+      
       return {
         success: false,
         error: data.message || data.error || `Failed to create withdrawal order: ${response.status} ${response.statusText}`,
@@ -241,8 +288,8 @@ export async function createKYCRequest(request: OnMetaKYCRequest): Promise<OnMet
       redirectUrl: request.redirectUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/dashboard?onmeta_callback=true&type=kyc`,
     };
 
-    // OnMeta KYC API endpoint - adjust based on their actual API
-    const apiUrl = `${ONMETA_API_BASE_URL}/api/v1/kyc`;
+    // OnMeta KYC API endpoint - try /v1/kyc first (most common pattern)
+    const apiUrl = `${ONMETA_API_BASE_URL}/v1/kyc`;
     console.log("OnMeta KYC request:", {
       url: apiUrl,
       method: "POST",
@@ -285,7 +332,20 @@ export async function createKYCRequest(request: OnMetaKYCRequest): Promise<OnMet
     }
 
     if (!response.ok) {
-      console.error("OnMeta KYC API Error:", data);
+      console.error("OnMeta KYC API Error:", {
+        status: response.status,
+        statusText: response.statusText,
+        url: apiUrl,
+        data: data,
+      });
+      
+      if (response.status === 404) {
+        return {
+          success: false,
+          error: `OnMeta API endpoint not found (404). Please check the API endpoint path. Tried: ${apiUrl}. Check OnMeta documentation for the correct endpoint.`,
+        };
+      }
+      
       return {
         success: false,
         error: data.message || data.error || data.errorMessage || `Failed to create KYC request: ${response.status} ${response.statusText}`,
@@ -319,7 +379,11 @@ export async function getOrderStatus(orderId: string): Promise<any> {
       };
     }
 
-    const response = await fetch(`${ONMETA_API_BASE_URL}/api/v1/order/${orderId}`, {
+    // Try /v1/order/{orderId} first
+    const apiUrl = `${ONMETA_API_BASE_URL}/v1/order/${orderId}`;
+    console.log("OnMeta get order status request:", { url: apiUrl, orderId });
+    
+    const response = await fetch(apiUrl, {
       method: "GET",
       headers: {
         "x-api-key": ONMETA_CLIENT_ID,
