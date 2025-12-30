@@ -5,8 +5,10 @@
 
 // OnMeta API Configuration
 // These should be set via environment variables in .env.local
-// Based on OnMeta documentation: platform.onmeta.in is the base URL
-const ONMETA_API_BASE_URL = process.env.ONMETA_API_BASE_URL || "https://platform.onmeta.in";
+// Staging API base URL (most endpoints use this)
+const ONMETA_API_BASE_URL = process.env.ONMETA_API_BASE_URL || "https://stg.api.onmeta.in";
+// Some endpoints (like UPI) use a different base URL
+const ONMETA_API_BASE_URL_ALT = process.env.ONMETA_API_BASE_URL_ALT || "https://api.platform.onmeta.in";
 const ONMETA_CLIENT_ID = process.env.ONMETA_CLIENT_ID || "";
 const ONMETA_CLIENT_SECRET = process.env.ONMETA_CLIENT_SECRET || "";
 
@@ -596,79 +598,57 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
       email: request.email,
     };
 
-    // Try different endpoint patterns for login
-    const possibleEndpoints = [
-      `${ONMETA_API_BASE_URL}/v1/auth/login`,
-      `${ONMETA_API_BASE_URL}/v1/customer/login`,
-      `${ONMETA_API_BASE_URL}/api/v1/auth/login`,
-      `${ONMETA_API_BASE_URL}/v1/user/login`,
-      `${ONMETA_API_BASE_URL}/v1/login`,
-    ];
+    // Correct endpoint for customer login
+    const apiUrl = `${ONMETA_API_BASE_URL}/v1/users/login`;
 
-    let lastError: any = null;
+    console.log("OnMeta login request:", {
+      url: apiUrl,
+      email: request.email,
+    });
 
-    for (const apiUrl of possibleEndpoints) {
-      try {
-        console.log("OnMeta login request:", {
-          url: apiUrl,
-          email: request.email,
-        });
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ONMETA_CLIENT_ID,
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-        const response = await fetch(apiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": ONMETA_CLIENT_ID,
-          },
-          body: JSON.stringify(requestBody),
-        });
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error("OnMeta login response is not JSON:", {
+        status: response.status,
+        contentType,
+        textPreview: text.substring(0, 200),
+      });
+      return {
+        success: false,
+        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+      };
+    }
 
-        // Check if response is JSON before parsing
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const text = await response.text();
-          console.error(`OnMeta login response is not JSON for ${apiUrl}:`, {
-            status: response.status,
-            contentType,
-            textPreview: text.substring(0, 200),
-          });
-          if (response.status !== 404) {
-            lastError = { message: `Invalid response format: ${response.status} ${response.statusText}` };
-            break; // Don't try other endpoints if it's not a 404
-          }
-          continue; // Try next endpoint for 404
-        }
+    const data = await response.json();
+    console.log("OnMeta login response:", {
+      status: response.status,
+      hasAccessToken: !!data.accessToken,
+      hasRefreshToken: !!data.refreshToken,
+    });
 
-        const data = await response.json();
-        console.log("OnMeta login response:", {
-          status: response.status,
-          hasAccessToken: !!data.accessToken,
-          hasRefreshToken: !!data.refreshToken,
-        });
-
-        if (response.ok) {
-          return {
-            success: true,
-            accessToken: data.accessToken || data.access_token,
-            refreshToken: data.refreshToken || data.refresh_token,
-            message: data.message,
-          };
-        }
-
-        if (response.status !== 404) {
-          lastError = data;
-          break; // Don't try other endpoints if it's not a 404
-        }
-      } catch (fetchError: any) {
-        console.error(`Error trying endpoint ${apiUrl}:`, fetchError);
-        lastError = fetchError;
-        continue; // Try next endpoint
-      }
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.message || data.error || `Login failed: ${response.status} ${response.statusText}`,
+      };
     }
 
     return {
-      success: false,
-      error: lastError?.message || lastError?.error || "Failed to login. Please check the API endpoint and credentials.",
+      success: true,
+      accessToken: data.accessToken || data.access_token,
+      refreshToken: data.refreshToken || data.refresh_token,
+      message: data.message,
     };
   } catch (error: any) {
     console.error("OnMeta login error:", error);
@@ -692,7 +672,8 @@ export async function onMetaRefreshToken(refreshToken: string): Promise<OnMetaRe
       };
     }
 
-    const apiUrl = `${ONMETA_API_BASE_URL}/v1/auth/refresh`;
+    // Correct endpoint for refresh token
+    const apiUrl = `${ONMETA_API_BASE_URL}/v1/users/refresh-token`;
     console.log("OnMeta refresh token request:", { url: apiUrl });
 
     const response = await fetch(apiUrl, {
@@ -765,6 +746,7 @@ export interface OnMetaLinkBankRequest {
 export interface OnMetaLinkBankResponse {
   success: boolean;
   status?: "SUCCESS" | "PENDING" | "FAILED";
+  refNumber?: string; // Reference number needed to check status later
   error?: string;
   message?: string;
 }
@@ -783,6 +765,7 @@ export interface OnMetaLinkUPIRequest {
 export interface OnMetaLinkUPIResponse {
   success: boolean;
   status?: "SUCCESS" | "PENDING" | "FAILED";
+  refNumber?: string; // Reference number needed to check status later
   error?: string;
   message?: string;
 }
@@ -809,7 +792,8 @@ export async function onMetaLinkBankAccount(request: OnMetaLinkBankRequest): Pro
       phone: request.phone,
     };
 
-    const apiUrl = `${ONMETA_API_BASE_URL}/v1/account/link-bank`;
+    // Correct endpoint for link bank account
+    const apiUrl = `${ONMETA_API_BASE_URL}/v1/users/account-link`;
     console.log("OnMeta link bank request:", {
       url: apiUrl,
       email: request.email,
@@ -826,10 +810,26 @@ export async function onMetaLinkBankAccount(request: OnMetaLinkBankRequest): Pro
       body: JSON.stringify(requestBody),
     });
 
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error("OnMeta link bank response is not JSON:", {
+        status: response.status,
+        contentType,
+        textPreview: text.substring(0, 200),
+      });
+      return {
+        success: false,
+        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+      };
+    }
+
     const data = await response.json();
     console.log("OnMeta link bank response:", {
       status: response.status,
       accountStatus: data.status,
+      refNumber: data.refNumber,
     });
 
     if (!response.ok) {
@@ -842,6 +842,7 @@ export async function onMetaLinkBankAccount(request: OnMetaLinkBankRequest): Pro
     return {
       success: true,
       status: data.status || data.accountStatus,
+      refNumber: data.refNumber || data.ref_number || data.referenceNumber,
       message: data.message,
     };
   } catch (error: any) {
@@ -857,7 +858,7 @@ export async function onMetaLinkBankAccount(request: OnMetaLinkBankRequest): Pro
  * Get Bank Account Status
  * GET /v1/account/bank-status (or similar endpoint)
  */
-export async function onMetaGetBankStatus(accessToken: string): Promise<{ success: boolean; status?: string; error?: string }> {
+export async function onMetaGetBankStatus(accessToken: string, refNumber?: string): Promise<{ success: boolean; status?: string; error?: string; refNumber?: string }> {
   try {
     if (!ONMETA_CLIENT_ID) {
       return {
@@ -866,7 +867,17 @@ export async function onMetaGetBankStatus(accessToken: string): Promise<{ succes
       };
     }
 
-    const apiUrl = `${ONMETA_API_BASE_URL}/v1/account/bank-status`;
+    // Bank status endpoint requires refNumber in path
+    // If refNumber is not provided, try calling without it first (some APIs might auto-detect)
+    // If that fails, the API will return an error with instructions
+
+    // Correct endpoint for get bank status (requires refNumber)
+    // Note: If refNumber is not provided, this will fail - refNumber should come from account-link response
+    const apiUrl = refNumber 
+      ? `${ONMETA_API_BASE_URL}/v1/users/get-bank-status/${refNumber}`
+      : `${ONMETA_API_BASE_URL}/v1/users/get-bank-status`; // Try without refNumber (might fail)
+    console.log("OnMeta get bank status request:", { url: apiUrl, refNumber: refNumber || 'not provided' });
+    
     const response = await fetch(apiUrl, {
       method: "GET",
       headers: {
@@ -874,6 +885,21 @@ export async function onMetaGetBankStatus(accessToken: string): Promise<{ succes
         "x-api-key": ONMETA_CLIENT_ID,
       },
     });
+
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error("OnMeta get bank status response is not JSON:", {
+        status: response.status,
+        contentType,
+        textPreview: text.substring(0, 200),
+      });
+      return {
+        success: false,
+        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+      };
+    }
 
     const data = await response.json();
 
@@ -887,6 +913,7 @@ export async function onMetaGetBankStatus(accessToken: string): Promise<{ succes
     return {
       success: true,
       status: data.status || data.accountStatus,
+      refNumber: data.refNumber || refNumber,
     };
   } catch (error: any) {
     console.error("OnMeta get bank status error:", error);
@@ -920,7 +947,8 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
       requestBody.phone = request.phone;
     }
 
-    const apiUrl = `${ONMETA_API_BASE_URL}/v1/account/link-upi`;
+    // Correct endpoint for link UPI - uses different base URL
+    const apiUrl = `${ONMETA_API_BASE_URL_ALT}/v1/users/upi-link`;
     console.log("OnMeta link UPI request:", {
       url: apiUrl,
       email: request.email,
@@ -937,7 +965,27 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
       body: JSON.stringify(requestBody),
     });
 
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error("OnMeta link UPI response is not JSON:", {
+        status: response.status,
+        contentType,
+        textPreview: text.substring(0, 200),
+      });
+      return {
+        success: false,
+        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+      };
+    }
+
     const data = await response.json();
+    console.log("OnMeta link UPI response:", {
+      status: response.status,
+      upiStatus: data.status,
+      refNumber: data.refNumber,
+    });
 
     if (!response.ok) {
       return {
@@ -949,6 +997,7 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
     return {
       success: true,
       status: data.status || data.upiStatus,
+      refNumber: data.refNumber || data.ref_number || data.referenceNumber,
       message: data.message,
     };
   } catch (error: any) {
@@ -964,7 +1013,7 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
  * Get UPI Status
  * GET /v1/account/upi-status (or similar endpoint)
  */
-export async function onMetaGetUPIStatus(accessToken: string): Promise<{ success: boolean; status?: string; error?: string }> {
+export async function onMetaGetUPIStatus(accessToken: string, refNumber?: string): Promise<{ success: boolean; status?: string; error?: string; refNumber?: string }> {
   try {
     if (!ONMETA_CLIENT_ID) {
       return {
@@ -973,7 +1022,13 @@ export async function onMetaGetUPIStatus(accessToken: string): Promise<{ success
       };
     }
 
-    const apiUrl = `${ONMETA_API_BASE_URL}/v1/account/upi-status`;
+    // UPI status endpoint requires refNumber in path
+    // Note: If refNumber is not provided, this will fail - refNumber should come from upi-link response
+    const apiUrl = refNumber
+      ? `${ONMETA_API_BASE_URL_ALT}/v1/users/get-upi-status/${refNumber}`
+      : `${ONMETA_API_BASE_URL_ALT}/v1/users/get-upi-status`; // Try without refNumber (might fail)
+    console.log("OnMeta get UPI status request:", { url: apiUrl, refNumber: refNumber || 'not provided' });
+    
     const response = await fetch(apiUrl, {
       method: "GET",
       headers: {
@@ -981,6 +1036,21 @@ export async function onMetaGetUPIStatus(accessToken: string): Promise<{ success
         "x-api-key": ONMETA_CLIENT_ID,
       },
     });
+
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error("OnMeta get UPI status response is not JSON:", {
+        status: response.status,
+        contentType,
+        textPreview: text.substring(0, 200),
+      });
+      return {
+        success: false,
+        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+      };
+    }
 
     const data = await response.json();
 
@@ -994,6 +1064,7 @@ export async function onMetaGetUPIStatus(accessToken: string): Promise<{ success
     return {
       success: true,
       status: data.status || data.upiStatus,
+      refNumber: data.refNumber || refNumber,
     };
   } catch (error: any) {
     console.error("OnMeta get UPI status error:", error);
@@ -1054,70 +1125,52 @@ export async function fetchSupportedTokens(): Promise<OnMetaTokensResponse> {
       };
     }
 
-    // Try different endpoint patterns
-    const possibleEndpoints = [
-      `${ONMETA_API_BASE_URL}/v1/tokens/`,
-      `${ONMETA_API_BASE_URL}/v1/tokens`,
-      `${ONMETA_API_BASE_URL}/api/v1/tokens/`,
-    ];
+    // Correct endpoint for fetch tokens
+    const apiUrl = `${ONMETA_API_BASE_URL}/v1/tokens/`;
+    console.log("OnMeta fetch tokens request:", { url: apiUrl });
 
-    let lastError: any = null;
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "x-api-key": ONMETA_CLIENT_ID,
+      },
+    });
 
-    for (const apiUrl of possibleEndpoints) {
-      try {
-        console.log("OnMeta fetch tokens request:", { url: apiUrl });
-
-        const response = await fetch(apiUrl, {
-          method: "GET",
-          headers: {
-            "Accept": "application/json",
-            "x-api-key": ONMETA_CLIENT_ID,
-          },
-        });
-
-        // Check if response is JSON before parsing
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const text = await response.text();
-          console.error(`OnMeta fetch tokens response is not JSON for ${apiUrl}:`, {
-            status: response.status,
-            contentType,
-            textPreview: text.substring(0, 200),
-          });
-          lastError = { message: `Invalid response format: ${response.status} ${response.statusText}` };
-          continue; // Try next endpoint
-        }
-
-        const data = await response.json();
-        console.log("OnMeta fetch tokens response:", {
-          status: response.status,
-          tokenCount: Array.isArray(data) ? data.length : data.tokens?.length || 0,
-        });
-
-        if (response.ok) {
-          // Handle both array response and object with tokens property
-          const tokens = Array.isArray(data) ? data : (data.tokens || data.data || []);
-          
-          return {
-            success: true,
-            tokens: tokens,
-          };
-        }
-
-        if (response.status !== 404) {
-          lastError = data;
-          break; // Don't try other endpoints if it's not a 404
-        }
-      } catch (fetchError: any) {
-        console.error(`Error trying endpoint ${apiUrl}:`, fetchError);
-        lastError = fetchError;
-        continue; // Try next endpoint
-      }
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error("OnMeta fetch tokens response is not JSON:", {
+        status: response.status,
+        contentType,
+        textPreview: text.substring(0, 200),
+      });
+      return {
+        success: false,
+        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+      };
     }
 
+    const data = await response.json();
+    console.log("OnMeta fetch tokens response:", {
+      status: response.status,
+      tokenCount: Array.isArray(data) ? data.length : data.tokens?.length || 0,
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.message || data.error || `Failed to fetch tokens: ${response.status} ${response.statusText}`,
+      };
+    }
+
+    // Handle both array response and object with tokens property
+    const tokens = Array.isArray(data) ? data : (data.tokens || data.data || []);
+    
     return {
-      success: false,
-      error: lastError?.message || lastError?.error || "Failed to fetch supported tokens. Please check the API endpoint.",
+      success: true,
+      tokens: tokens,
     };
   } catch (error: any) {
     console.error("OnMeta fetch tokens error:", error);
@@ -1141,71 +1194,52 @@ export async function fetchChainLimits(): Promise<ChainLimitsResponse> {
       };
     }
 
-    // Try different endpoint patterns
-    const possibleEndpoints = [
-      `${ONMETA_API_BASE_URL}/v1/orders/get-chain-limit`,
-      `${ONMETA_API_BASE_URL}/v1/orders/get-chain-limit/`,
-      `${ONMETA_API_BASE_URL}/v1/chain-limits`,
-      `${ONMETA_API_BASE_URL}/v1/limits/chain`,
-    ];
+    // Correct endpoint for fetch chain limits
+    const apiUrl = `${ONMETA_API_BASE_URL}/v1/orders/get-chain-limit`;
+    console.log("OnMeta fetch chain limits request:", { url: apiUrl });
 
-    let lastError: any = null;
+    const response = await fetch(apiUrl, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "x-api-key": ONMETA_CLIENT_ID,
+      },
+    });
 
-    for (const apiUrl of possibleEndpoints) {
-      try {
-        console.log("OnMeta fetch chain limits request:", { url: apiUrl });
-
-        const response = await fetch(apiUrl, {
-          method: "GET",
-          headers: {
-            "Accept": "application/json",
-            "x-api-key": ONMETA_CLIENT_ID,
-          },
-        });
-
-        // Check if response is JSON before parsing
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const text = await response.text();
-          console.error(`OnMeta fetch chain limits response is not JSON for ${apiUrl}:`, {
-            status: response.status,
-            contentType,
-            textPreview: text.substring(0, 200),
-          });
-          lastError = { message: `Invalid response format: ${response.status} ${response.statusText}` };
-          continue; // Try next endpoint
-        }
-
-        const data = await response.json();
-        console.log("OnMeta fetch chain limits response:", {
-          status: response.status,
-          hasLimits: !!data.limits || !!data.data || Array.isArray(data),
-        });
-
-        if (response.ok) {
-          // Handle different response formats
-          const limits = Array.isArray(data) ? data : (data.limits || data.data || []);
-          
-          return {
-            success: true,
-            limits: limits,
-          };
-        }
-
-        if (response.status !== 404) {
-          lastError = data;
-          break; // Don't try other endpoints if it's not a 404
-        }
-      } catch (fetchError: any) {
-        console.error(`Error trying endpoint ${apiUrl}:`, fetchError);
-        lastError = fetchError;
-        continue; // Try next endpoint
-      }
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error("OnMeta fetch chain limits response is not JSON:", {
+        status: response.status,
+        contentType,
+        textPreview: text.substring(0, 200),
+      });
+      return {
+        success: false,
+        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+      };
     }
 
+    const data = await response.json();
+    console.log("OnMeta fetch chain limits response:", {
+      status: response.status,
+      hasLimits: !!data.limits || !!data.data || Array.isArray(data),
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.message || data.error || `Failed to fetch chain limits: ${response.status} ${response.statusText}`,
+      };
+    }
+
+    // Handle different response formats
+    const limits = Array.isArray(data) ? data : (data.limits || data.data || []);
+    
     return {
-      success: false,
-      error: lastError?.message || lastError?.error || "Failed to fetch chain limits. Please check the API endpoint.",
+      success: true,
+      limits: limits,
     };
   } catch (error: any) {
     console.error("OnMeta fetch chain limits error:", error);
@@ -1266,66 +1300,60 @@ export async function fetchTokenQuotation(request: OnMetaQuotationRequest): Prom
       buyTokenAddress: request.buyTokenAddress,
     };
 
-    // Try different endpoint patterns
-    const possibleEndpoints = [
-      `${ONMETA_API_BASE_URL}/v1/quotation`,
-      `${ONMETA_API_BASE_URL}/v1/quotation/`,
-      `${ONMETA_API_BASE_URL}/v1/quote`,
-      `${ONMETA_API_BASE_URL}/v1/orders/quotation`,
-    ];
+    // Correct endpoint for fetch quotation
+    const apiUrl = `${ONMETA_API_BASE_URL}/v1/quote/buy`;
+    console.log("OnMeta fetch quotation request:", {
+      url: apiUrl,
+      buyTokenSymbol: request.buyTokenSymbol,
+      chainId: request.chainId,
+      fiatCurrency: request.fiatCurrency,
+      fiatAmount: request.fiatAmount,
+    });
 
-    let lastError: any = null;
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ONMETA_CLIENT_ID,
+        "Accept": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-    for (const apiUrl of possibleEndpoints) {
-      try {
-        console.log("OnMeta fetch quotation request:", {
-          url: apiUrl,
-          buyTokenSymbol: request.buyTokenSymbol,
-          chainId: request.chainId,
-          fiatCurrency: request.fiatCurrency,
-          fiatAmount: request.fiatAmount,
-        });
-
-        const response = await fetch(apiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": ONMETA_CLIENT_ID,
-            "Accept": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        });
-
-        const data = await response.json();
-        console.log("OnMeta fetch quotation response:", {
-          status: response.status,
-          hasQuotation: !!data.quotation || !!data.data,
-        });
-
-        if (response.ok) {
-          // Handle different response formats
-          const quotation = data.quotation || data.data || data;
-          
-          return {
-            success: true,
-            quotation: quotation,
-          };
-        }
-
-        if (response.status !== 404) {
-          lastError = data;
-          break; // Don't try other endpoints if it's not a 404
-        }
-      } catch (fetchError: any) {
-        console.error(`Error trying endpoint ${apiUrl}:`, fetchError);
-        lastError = fetchError;
-        continue; // Try next endpoint
-      }
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error("OnMeta fetch quotation response is not JSON:", {
+        status: response.status,
+        contentType,
+        textPreview: text.substring(0, 200),
+      });
+      return {
+        success: false,
+        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+      };
     }
 
+    const data = await response.json();
+    console.log("OnMeta fetch quotation response:", {
+      status: response.status,
+      hasQuotation: !!data.quotation || !!data.data,
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.message || data.error || `Failed to fetch quotation: ${response.status} ${response.statusText}`,
+      };
+    }
+
+    // Handle different response formats
+    const quotation = data.quotation || data.data || data;
+    
     return {
-      success: false,
-      error: lastError?.message || lastError?.error || "Failed to fetch quotation. Please check the API endpoint and parameters.",
+      success: true,
+      quotation: quotation,
     };
   } catch (error: any) {
     console.error("OnMeta fetch quotation error:", error);

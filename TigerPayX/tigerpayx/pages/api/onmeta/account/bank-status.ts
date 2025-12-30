@@ -21,10 +21,11 @@ export default async function handler(
     }
 
     const accessToken = authHeader.replace('Bearer ', '');
+    const refNumber = req.query.refNumber as string | undefined;
 
-    console.log('OnMeta get bank status API route called');
+    console.log('OnMeta get bank status API route called', { refNumber });
 
-    const result = await onMetaGetBankStatus(accessToken);
+    const result = await onMetaGetBankStatus(accessToken, refNumber);
 
     if (result.success) {
       return res.status(200).json(result);
