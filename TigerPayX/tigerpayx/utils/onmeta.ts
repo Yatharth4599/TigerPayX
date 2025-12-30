@@ -447,6 +447,21 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
       body: JSON.stringify(requestBody),
     });
 
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error("OnMeta login response is not JSON:", {
+        status: response.status,
+        contentType,
+        textPreview: text.substring(0, 200),
+      });
+      return {
+        success: false,
+        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+      };
+    }
+
     const data = await response.json();
     console.log("OnMeta login response:", {
       status: response.status,
@@ -499,6 +514,21 @@ export async function onMetaRefreshToken(refreshToken: string): Promise<OnMetaRe
         "Authorization": `Bearer ${refreshToken}`,
       },
     });
+
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error("OnMeta refresh token response is not JSON:", {
+        status: response.status,
+        contentType,
+        textPreview: text.substring(0, 200),
+      });
+      return {
+        success: false,
+        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+      };
+    }
 
     const data = await response.json();
 
@@ -857,6 +887,19 @@ export async function fetchSupportedTokens(): Promise<OnMetaTokensResponse> {
           },
         });
 
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await response.text();
+          console.error(`OnMeta fetch tokens response is not JSON for ${apiUrl}:`, {
+            status: response.status,
+            contentType,
+            textPreview: text.substring(0, 200),
+          });
+          lastError = { message: `Invalid response format: ${response.status} ${response.statusText}` };
+          continue; // Try next endpoint
+        }
+
         const data = await response.json();
         console.log("OnMeta fetch tokens response:", {
           status: response.status,
@@ -931,6 +974,19 @@ export async function fetchChainLimits(): Promise<ChainLimitsResponse> {
             "x-api-key": ONMETA_CLIENT_ID,
           },
         });
+
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await response.text();
+          console.error(`OnMeta fetch chain limits response is not JSON for ${apiUrl}:`, {
+            status: response.status,
+            contentType,
+            textPreview: text.substring(0, 200),
+          });
+          lastError = { message: `Invalid response format: ${response.status} ${response.statusText}` };
+          continue; // Try next endpoint
+        }
 
         const data = await response.json();
         console.log("OnMeta fetch chain limits response:", {
@@ -1723,6 +1779,19 @@ export async function fetchSupportedCurrencies(): Promise<SupportedCurrenciesRes
             "x-api-key": ONMETA_CLIENT_ID,
           },
         });
+
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await response.text();
+          console.error(`OnMeta fetch supported currencies response is not JSON for ${apiUrl}:`, {
+            status: response.status,
+            contentType,
+            textPreview: text.substring(0, 200),
+          });
+          lastError = { message: `Invalid response format: ${response.status} ${response.statusText}` };
+          continue; // Try next endpoint
+        }
 
         const data = await response.json();
         console.log("OnMeta fetch supported currencies response:", {
