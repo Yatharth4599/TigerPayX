@@ -609,6 +609,7 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
+        "Accept": "application/json",
         "Content-Type": "application/json",
         "x-api-key": ONMETA_CLIENT_ID,
       },
