@@ -261,7 +261,7 @@ export default function DashboardPage() {
           }
         } catch (error) {
           console.error('OnMeta login error:', error);
-        } finally {
+    } finally {
           setOnMetaAuthLoading(false);
         }
       } else {
@@ -303,7 +303,7 @@ export default function DashboardPage() {
         if (upiData.success) {
           setOnMetaUPIStatus(upiData.status);
         }
-        }
+      }
     } catch (error) {
       console.error('Error fetching OnMeta account status:', error);
     }
@@ -461,7 +461,7 @@ export default function DashboardPage() {
 
     if (!onMetaAccessToken) {
       alert('OnMeta authentication required. Please wait for authentication to complete or refresh the page.');
-      return;
+        return;
     }
 
     setUpdateUTRLoading(true);
@@ -556,8 +556,8 @@ export default function DashboardPage() {
     const fiatAmount = parseFloat(quotationForm.fiatAmount);
     if (isNaN(fiatAmount) || fiatAmount <= 0) {
       alert('Please enter a valid fiat amount');
-        return;
-      }
+      return;
+    }
 
     setQuotationLoading(true);
     setQuotation(null);
@@ -612,8 +612,8 @@ export default function DashboardPage() {
             createdAt: new Date().toISOString(),
           });
           setProfileLoading(false);
-          return;
-        }
+      return;
+    }
 
         // In production: fetch real user data
         const response = await fetch("/api/user", {
@@ -689,10 +689,10 @@ export default function DashboardPage() {
         // Store in localStorage for persistence
         localStorage.setItem("tigerpayx_wallet_address", result.publicKey);
         localStorage.setItem("tigerpayx_wallet_name", walletName);
-      } else {
+          } else {
         alert(result.error || "Failed to connect wallet");
-      }
-    } catch (error: any) {
+          }
+        } catch (error: any) {
       console.error("Error connecting wallet:", error);
       alert(error.message || "Failed to connect wallet. Please make sure the wallet extension is installed.");
     } finally {
@@ -759,7 +759,7 @@ export default function DashboardPage() {
             setWalletAddress(null);
             setConnectedWalletName(null);
       }
-        } catch (error) {
+    } catch (error) {
           // Error checking wallet - clear stored connection
           localStorage.removeItem("tigerpayx_wallet_address");
           localStorage.removeItem("tigerpayx_wallet_name");
@@ -1025,7 +1025,7 @@ export default function DashboardPage() {
               <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6">
                 <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+                    </svg>
               </div>
               <h2 className="text-3xl font-bold text-white mb-2">Receive Money</h2>
               <p className="text-white/90 mb-6">Create a payment link to receive payments</p>
@@ -1034,8 +1034,8 @@ export default function DashboardPage() {
                 className="w-full bg-white text-green-600 py-4 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg"
               >
                 Receive Payment
-              </button>
-                        </div>
+                  </button>
+                </div>
           </motion.div>
           </div>
         )}
@@ -1043,7 +1043,7 @@ export default function DashboardPage() {
         {/* Services Section - KYC, Bank Account & UPI */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           {/* KYC Verification */}
-          <motion.div
+                    <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
@@ -1072,7 +1072,7 @@ export default function DashboardPage() {
                 Submit KYC Data
               </button>
               <button 
-                onClick={async () => {
+                      onClick={async () => {
                   try {
                     // Call OnMeta KYC API
                     const response = await fetch('/api/onmeta/kyc', {
@@ -1103,7 +1103,7 @@ export default function DashboardPage() {
               >
                 Start KYC (Redirect)
               </button>
-            </div>
+                        </div>
                     </motion.div>
 
           {/* Link Bank Account */}
@@ -1117,8 +1117,8 @@ export default function DashboardPage() {
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-                </div>
+                        </svg>
+                      </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-gray-900">Link Bank Account</h3>
                 <p className="text-sm text-gray-600">Connect bank for fiat transactions</p>
@@ -1152,7 +1152,7 @@ export default function DashboardPage() {
               >
               {onMetaAuthLoading ? 'Authenticating...' : onMetaBankStatus === 'SUCCESS' ? '✓ Bank Linked' : onMetaBankStatus === 'PENDING' ? 'Bank Linking...' : 'Link Bank Account'}
               </button>
-          </motion.div>
+                    </motion.div>
           
           {/* Link UPI ID */}
           <motion.div
@@ -1166,7 +1166,7 @@ export default function DashboardPage() {
                 <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
-            </div>
+                </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-gray-900">Link UPI ID</h3>
                 <p className="text-sm text-gray-600">Connect UPI for instant payments</p>
@@ -1179,7 +1179,7 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
-            <button 
+              <button
               onClick={() => {
                 if (!onMetaAccessToken) {
                   if (onMetaAuthLoading) {
@@ -1198,9 +1198,9 @@ export default function DashboardPage() {
               className="w-full bg-green-500 text-white py-3 rounded-xl font-semibold hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {onMetaAuthLoading ? 'Authenticating...' : onMetaUPIStatus === 'SUCCESS' ? '✓ UPI Linked' : onMetaUPIStatus === 'PENDING' ? 'UPI Linking...' : 'Link UPI ID'}
-            </button>
+              </button>
           </motion.div>
-        </div>
+            </div>
 
         {/* Supported Tokens & Limits Section */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
@@ -2548,7 +2548,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-gray-900">Link Bank Account</h3>
                     <button
-                          onClick={() => {
+                      onClick={() => {
                     setShowLinkBankModal(false);
                     // Reset form
                     setLinkBankName('');
@@ -2680,8 +2680,8 @@ export default function DashboardPage() {
 
                 {/* Action Buttons */}
                 <div className="flex gap-3 pt-4">
-                      <button
-                    onClick={() => {
+                    <button
+                          onClick={() => {
                       setShowLinkBankModal(false);
                       // Reset form
                       setLinkBankName('');
@@ -2771,12 +2771,12 @@ export default function DashboardPage() {
                     className="flex-1 px-4 py-3 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                     {linkBankLoading ? 'Linking...' : 'Link Bank Account'}
-                      </button>
+                    </button>
                 </div>
               </div>
             </motion.div>
-                    </div>
-                  )}
+                  </div>
+                )}
 
         {/* Link UPI Modal */}
         {showLinkUPIModal && (
@@ -2803,7 +2803,7 @@ export default function DashboardPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                       </button>
-                    </div>
+          </div>
 
               <div className="space-y-4">
                 <div>
@@ -2815,7 +2815,7 @@ export default function DashboardPage() {
                     placeholder="Enter your full name"
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
                   />
-                </div>
+                  </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                   <input
@@ -2825,7 +2825,7 @@ export default function DashboardPage() {
                     placeholder="your@email.com"
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
                   />
-                </div>
+                  </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">UPI ID</label>
                   <input
@@ -2836,7 +2836,7 @@ export default function DashboardPage() {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
                   />
                   <p className="mt-1 text-xs text-gray-500">Format: yourname@bankname (e.g., john@paytm, jane@ybl)</p>
-                </div>
+                  </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number (Optional)</label>
                   <div className="flex gap-2">
@@ -2861,7 +2861,7 @@ export default function DashboardPage() {
 
                 {/* Action Buttons */}
                 <div className="flex gap-3 pt-4">
-                <button
+                      <button
                     onClick={() => {
                       setShowLinkUPIModal(false);
                       // Reset form
@@ -2944,12 +2944,12 @@ export default function DashboardPage() {
                     className="flex-1 px-4 py-3 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {linkUPILoading ? 'Linking...' : 'Link UPI ID'}
-                </button>
+                      </button>
                 </div>
                     </div>
           </motion.div>
-          </div>
-        )}
+                    </div>
+                  )}
 
         {/* KYC Submission Modal */}
         {showKYCSubmitModal && (
@@ -2961,7 +2961,7 @@ export default function DashboardPage() {
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-gray-900">Submit KYC Data</h3>
-                <button
+                      <button
                   onClick={() => {
                     setShowKYCSubmitModal(false);
                     // Reset form
@@ -2985,8 +2985,8 @@ export default function DashboardPage() {
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                </button>
-              </div>
+                      </button>
+                    </div>
 
               <div className="space-y-6">
                 {/* Personal Information */}
@@ -3217,7 +3217,7 @@ export default function DashboardPage() {
 
                 {/* Action Buttons */}
                 <div className="flex gap-3 pt-4">
-                  <button
+                <button
                     onClick={() => {
                       setShowKYCSubmitModal(false);
                       setKycSubmitForm({
@@ -3304,10 +3304,10 @@ export default function DashboardPage() {
                     className="flex-1 px-4 py-3 bg-purple-500 text-white rounded-xl font-semibold hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {kycSubmitLoading ? 'Submitting...' : 'Submit KYC Data'}
-                  </button>
+                </button>
                 </div>
-              </div>
-            </motion.div>
+                    </div>
+          </motion.div>
           </div>
         )}
 
