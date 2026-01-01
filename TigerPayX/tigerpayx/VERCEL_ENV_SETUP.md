@@ -1,155 +1,124 @@
-# 🔧 Vercel Environment Variables Setup
+# Vercel Environment Variables Setup
 
-## The Issue
+## ⚠️ CRITICAL: OnMeta API Key Missing
 
-The `@` syntax in `vercel.json` references Vercel Secrets, which you need to create separately. For simplicity, we've removed that and you'll set environment variables directly in the Vercel Dashboard.
+The 401 "unauthorized to access" errors indicate that `ONMETA_CLIENT_ID` is not set in your Vercel production environment.
+
+## Required Environment Variables
+
+### 1. OnMeta API Credentials (REQUIRED)
+```
+ONMETA_CLIENT_ID=359288fc-f15a-44ba-a1e1-cf04c894c2be
+ONMETA_CLIENT_SECRET=your-client-secret-here
+ONMETA_API_BASE_URL=https://stg.api.onmeta.in
+```
+
+**Note**: Replace `your-client-secret-here` with your actual OnMeta client secret.
+
+### 2. Application URL (REQUIRED)
+```
+NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
+```
+**Important**: Replace `your-app.vercel.app` with your actual Vercel deployment URL.
+
+### 3. Database (if using)
+```
+DATABASE_URL=your-database-connection-string
+```
+
+### 4. NextAuth (if using)
+```
+NEXTAUTH_SECRET=your-secret-key-here
+NEXTAUTH_URL=https://your-app.vercel.app
+```
 
 ## How to Set Environment Variables in Vercel
 
-### Step 1: Go to Environment Variables
-
-1. Open your Vercel Dashboard
-2. Select your **TigerPayX** project
+### Option 1: Via Vercel Dashboard (Recommended)
+1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
+2. Select your project (`TigerPayX`)
 3. Go to **Settings** → **Environment Variables**
+4. Add each variable:
+   - Click **Add New**
+   - Enter the variable name (e.g., `ONMETA_CLIENT_ID`)
+   - Enter the value
+   - Select **Production**, **Preview**, and **Development** (or as needed)
+   - Click **Save**
+5. **Redeploy** your application after adding variables
 
-### Step 2: Add Each Variable
+### Option 2: Via Vercel CLI
+```bash
+vercel env add ONMETA_CLIENT_ID production
+# Enter value when prompted: 359288fc-f15a-44ba-a1e1-cf04c894c2be
 
-Click **"Add New"** for each variable below:
+vercel env add ONMETA_CLIENT_SECRET production
+# Enter your client secret
 
-#### Required Variables:
+vercel env add ONMETA_API_BASE_URL production
+# Enter: https://stg.api.onmeta.in
 
-**1. DATABASE_URL**
-- **Name**: `DATABASE_URL`
-- **Value**: Your PostgreSQL connection string
-  - Example: `postgresql://user:password@host:5432/tigerpayx?sslmode=require`
-- **Environment**: ✅ Production, ✅ Preview, ✅ Development
+vercel env add NEXT_PUBLIC_APP_URL production
+# Enter your Vercel app URL (e.g., https://tigerpayx.vercel.app)
+```
 
-**2. JWT_SECRET**
-- **Name**: `JWT_SECRET`
-- **Value**: Generate a random 32+ character string
-  - You can use: `openssl rand -base64 32`
-- **Environment**: ✅ Production, ✅ Preview, ✅ Development
+## After Setting Variables
 
-**3. JWT_EXPIRES_IN**
-- **Name**: `JWT_EXPIRES_IN`
-- **Value**: `7d`
-- **Environment**: ✅ Production, ✅ Preview, ✅ Development
+1. **Redeploy** your application:
+   - Go to Vercel Dashboard → Your Project → Deployments
+   - Click the "..." menu on the latest deployment
+   - Select **Redeploy**
 
-**4. SOLANA_NETWORK**
-- **Name**: `SOLANA_NETWORK`
-- **Value**: `mainnet-beta`
-- **Environment**: ✅ Production, ✅ Preview, ✅ Development
+   OR
 
-**5. NEXT_PUBLIC_SOLANA_NETWORK**
-- **Name**: `NEXT_PUBLIC_SOLANA_NETWORK`
-- **Value**: `mainnet-beta`
-- **Environment**: ✅ Production, ✅ Preview, ✅ Development
+   - Push a new commit to trigger auto-deployment
 
-**6. SOLANA_RPC_URL**
-- **Name**: `SOLANA_RPC_URL`
-- **Value**: `https://api.mainnet-beta.solana.com`
-  - Or use a premium RPC: `https://your-helius-url.com`
-- **Environment**: ✅ Production, ✅ Preview, ✅ Development
+2. **Verify** the variables are loaded:
+   - Check Vercel function logs
+   - Look for any warnings about missing credentials
+   - Test the APIs in production
 
-**7. SOLANA_DEVNET_RPC_URL**
-- **Name**: `SOLANA_DEVNET_RPC_URL`
-- **Value**: `https://api.devnet.solana.com`
-- **Environment**: ✅ Production, ✅ Preview, ✅ Development
+## Quick Fix Command
 
-**8. TT_TOKEN_MINT**
-- **Name**: `TT_TOKEN_MINT`
-- **Value**: Your Tiger Token mainnet mint address
-- **Environment**: ✅ Production, ✅ Preview, ✅ Development
+If you have Vercel CLI installed and are logged in:
 
-**9. TT_TOKEN_MINT_DEVNET**
-- **Name**: `TT_TOKEN_MINT_DEVNET`
-- **Value**: Your Tiger Token devnet mint address (optional)
-- **Environment**: ✅ Production, ✅ Preview, ✅ Development
+```bash
+cd tigerpayx
 
-**10. NODE_ENV**
-- **Name**: `NODE_ENV`
-- **Value**: `production`
-- **Environment**: ✅ Production only
+# Set all required variables
+vercel env add ONMETA_CLIENT_ID production
+# Enter: 359288fc-f15a-44ba-a1e1-cf04c894c2be
 
-#### Optional Variables (PayRam):
+vercel env add ONMETA_CLIENT_SECRET production
+# Enter your actual secret
 
-**11. PAYRAM_API_URL** (Only if using PayRam)
-- **Name**: `PAYRAM_API_URL`
-- **Value**: `https://payram.yourdomain.com`
-- **Environment**: ✅ Production, ✅ Preview, ✅ Development
+vercel env add ONMETA_API_BASE_URL production
+# Enter: https://stg.api.onmeta.in
 
-**12. PAYRAM_API_KEY** (Only if using PayRam)
-- **Name**: `PAYRAM_API_KEY`
-- **Value**: Your PayRam API key
-- **Environment**: ✅ Production, ✅ Preview, ✅ Development
+vercel env add NEXT_PUBLIC_APP_URL production
+# Enter your Vercel app URL
 
-**13. NEXT_PUBLIC_PAYRAM_API_URL** (Only if using PayRam)
-- **Name**: `NEXT_PUBLIC_PAYRAM_API_URL`
-- **Value**: `https://payram.yourdomain.com`
-- **Environment**: ✅ Production, ✅ Preview, ✅ Development
+# Redeploy
+vercel --prod
+```
 
-### Step 3: Save and Redeploy
+## Verification
 
-After adding all variables:
-1. Click **"Save"** for each variable
-2. Go to **Deployments** tab
-3. Click **"Redeploy"** on the latest deployment
-   - Or push a new commit to trigger a new deployment
-
-## Quick Setup with Vercel Postgres
-
-If you're using **Vercel Postgres**:
-
-1. Go to **Storage** tab in your Vercel project
-2. Create a **Postgres** database
-3. Vercel will **automatically** create `DATABASE_URL` for you
-4. You only need to add the other variables manually
-
-## Verify Variables Are Set
-
-After deployment, check build logs:
-1. Go to **Deployments** → Latest deployment
-2. Click **"Build Logs"**
-3. Look for successful Prisma migration
-4. No errors about missing environment variables
+After setting variables and redeploying, check:
+1. Browser console - should no longer see 401 errors
+2. Vercel function logs - should see successful API calls
+3. Dashboard - tokens, limits, and currencies should load
 
 ## Troubleshooting
 
-### Error: "Environment Variable X references Secret Y, which does not exist"
+### Still getting 401 errors?
+1. Verify variables are set for **Production** environment
+2. Check variable names match exactly (case-sensitive)
+3. Ensure no extra spaces in values
+4. Redeploy after adding variables
+5. Check Vercel logs for any errors
 
-**Solution**: This means you're using `@` syntax. We've removed that from `vercel.json`. Just set variables directly in the dashboard.
-
-### Error: "DATABASE_URL not found"
-
-**Solution**: 
-- Make sure you added `DATABASE_URL` in Vercel Dashboard
-- Check it's set for **Production** environment
-- Redeploy after adding
-
-### Build Fails with Database Error
-
-**Solution**:
-- Verify `DATABASE_URL` format is correct
-- Check database allows connections from Vercel
-- Ensure SSL mode is set: `?sslmode=require`
-
-## Example: Setting DATABASE_URL
-
-If using **Supabase**:
-```
-postgresql://postgres:[YOUR-PASSWORD]@db.xxx.supabase.co:5432/postgres?sslmode=require
-```
-
-If using **Neon**:
-```
-postgresql://user:password@ep-xxx.region.aws.neon.tech/dbname?sslmode=require
-```
-
-If using **Vercel Postgres**:
-- Automatically set when you create the database
-- Check in **Storage** → Your database → **.env.local** tab
-
----
-
-**After setting all variables, redeploy and your app should work!** 🚀
-
+### Variables not loading?
+1. Make sure you're checking the **Production** environment
+2. Variables starting with `NEXT_PUBLIC_` are available in browser
+3. Other variables are only available in server-side code
+4. Restart/redeploy after adding variables

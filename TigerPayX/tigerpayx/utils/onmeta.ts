@@ -616,9 +616,10 @@ export interface OnMetaRefreshTokenResponse {
 export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMetaLoginResponse> {
   try {
     if (!ONMETA_CLIENT_ID) {
+      console.error("OnMeta API credentials missing: ONMETA_CLIENT_ID is not set in environment variables");
       return {
         success: false,
-        error: "OnMeta API credentials not configured",
+        error: "OnMeta API credentials not configured. Please set ONMETA_CLIENT_ID in Vercel environment variables.",
       };
     }
 
@@ -1147,9 +1148,10 @@ export interface ChainLimitsResponse {
 export async function fetchSupportedTokens(): Promise<OnMetaTokensResponse> {
   try {
     if (!ONMETA_CLIENT_ID) {
+      console.error("OnMeta API credentials missing: ONMETA_CLIENT_ID is not set in environment variables");
       return {
         success: false,
-        error: "OnMeta API credentials not configured",
+        error: "OnMeta API credentials not configured. Please set ONMETA_CLIENT_ID in Vercel environment variables.",
       };
     }
 
@@ -1216,9 +1218,10 @@ export async function fetchSupportedTokens(): Promise<OnMetaTokensResponse> {
 export async function fetchChainLimits(): Promise<ChainLimitsResponse> {
   try {
     if (!ONMETA_CLIENT_ID) {
+      console.error("OnMeta API credentials missing: ONMETA_CLIENT_ID is not set in environment variables");
       return {
         success: false,
-        error: "OnMeta API credentials not configured",
+        error: "OnMeta API credentials not configured. Please set ONMETA_CLIENT_ID in Vercel environment variables.",
       };
     }
 
@@ -1995,9 +1998,10 @@ export interface SupportedCurrenciesResponse {
 export async function fetchSupportedCurrencies(): Promise<SupportedCurrenciesResponse> {
   try {
     if (!ONMETA_CLIENT_ID) {
+      console.error("OnMeta API credentials missing: ONMETA_CLIENT_ID is not set in environment variables");
       return {
         success: false,
-        error: "OnMeta API credentials not configured",
+        error: "OnMeta API credentials not configured. Please set ONMETA_CLIENT_ID in Vercel environment variables.",
       };
     }
 
