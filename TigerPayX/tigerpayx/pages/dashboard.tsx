@@ -151,8 +151,21 @@ export default function DashboardPage() {
         if (type === 'kyc') {
           if (status === 'success' || status === 'completed') {
             showToast('KYC verification completed successfully!', 'success');
-          } else if (error) {
-            showToast(`KYC verification failed: ${error}`, 'error');
+            // Optionally fetch KYC status to update UI
+            const userEmail = getAuthEmail();
+            if (userEmail && onMetaAccessToken) {
+              // Fetch updated KYC status
+              fetch('/api/onmeta/kyc-status', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${onMetaAccessToken}`,
+                },
+                body: JSON.stringify({ email: userEmail }),
+              }).catch(err => console.error('Failed to fetch KYC status:', err));
+            }
+          } else if (error || status === 'failure') {
+            showToast(`KYC verification failed: ${error || 'Please try again'}`, 'error');
           }
         } else if (type === 'withdrawal' || urlParams.get('withdrawal') === 'true') {
           if (status === 'success' || status === 'completed') {
