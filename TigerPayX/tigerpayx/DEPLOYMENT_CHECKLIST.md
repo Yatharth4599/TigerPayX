@@ -1,147 +1,123 @@
-# ✅ Vercel Deployment Checklist
+# Production Deployment Checklist
 
-## Before Redeploying
+## Pre-Deployment Checks ✅
 
-### 1. Environment Variables (CRITICAL)
+### 1. Build Verification
+- [x] Build completed successfully
+- [x] No TypeScript errors
+- [x] All API routes compiled correctly
 
-Make sure these are set in **Vercel Dashboard → Settings → Environment Variables**:
+### 2. Code Changes Summary
+- [x] Fixed OnMeta API response handling (chain-limits, tokens, currencies, order-history)
+- [x] Improved UI/UX (toasts, loading states, form validation, mobile responsiveness)
+- [x] Added copy-to-clipboard functionality
+- [x] Added auto-refresh for pending orders
+- [x] Improved empty states and status badges
 
-#### Required:
-- [ ] `DATABASE_URL` - PostgreSQL connection string
-- [ ] `JWT_SECRET` - Random 32+ character string
-- [ ] `JWT_EXPIRES_IN` - `7d`
-- [ ] `SOLANA_NETWORK` - `mainnet-beta`
-- [ ] `NEXT_PUBLIC_SOLANA_NETWORK` - `mainnet-beta`
-- [ ] `SOLANA_RPC_URL` - `https://api.mainnet-beta.solana.com`
-- [ ] `SOLANA_DEVNET_RPC_URL` - `https://api.devnet.solana.com`
-- [ ] `TT_TOKEN_MINT` - Your Tiger Token mint address
-- [ ] `NODE_ENV` - `production` (Production only)
+## Environment Variables Required
 
-#### Optional (PayRam):
-- [ ] `PAYRAM_API_URL` - Only if using PayRam
-- [ ] `PAYRAM_API_KEY` - Only if using PayRam
-- [ ] `NEXT_PUBLIC_PAYRAM_API_URL` - Only if using PayRam
+Make sure these are set in Vercel:
 
-**Important**: Set each variable for **Production**, **Preview**, and **Development** environments.
+### Required OnMeta Variables
+```
+ONMETA_CLIENT_ID=your-client-id
+ONMETA_CLIENT_SECRET=your-client-secret
+ONMETA_API_BASE_URL=https://stg.api.onmeta.in
+```
 
-### 2. Database Setup
+### Required App URL
+```
+NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
+```
+**Important**: Replace `your-app.vercel.app` with your actual Vercel deployment URL
 
-- [ ] PostgreSQL database created (Vercel Postgres, Supabase, Neon, etc.)
-- [ ] `DATABASE_URL` environment variable set
-- [ ] Database allows connections from Vercel
+### Database (if using)
+```
+DATABASE_URL=your-database-url
+```
 
-### 3. Code Fixes Applied
+### Other Required Variables
+```
+NEXTAUTH_SECRET=your-secret
+NEXTAUTH_URL=https://your-app.vercel.app
+```
 
-- [ ] `next.config.ts` - Removed `standalone` output
-- [ ] `tailwind.config.ts` - Added for Tailwind v4
-- [ ] `prisma.config.ts` - Fixed DATABASE_URL handling
-- [ ] All changes pushed to GitHub
+## Deployment Steps
 
-## After Deployment
+### Option 1: Deploy via Vercel Dashboard
+1. Push your changes to GitHub
+2. Go to Vercel Dashboard
+3. Your project should auto-deploy
+4. Check deployment logs for any errors
 
-### 1. Check Build Logs
+### Option 2: Deploy via Vercel CLI
+```bash
+cd tigerpayx
+vercel --prod
+```
 
-1. Go to Vercel Dashboard → Deployments
-2. Click on latest deployment
-3. Check **Build Logs** for:
-   - ✅ No errors
-   - ✅ Prisma Client generated
-   - ✅ CSS compiled successfully
-   - ✅ Build completed successfully
+## Post-Deployment Verification
 
-### 2. Test the Site
+### 1. Test OnMeta APIs
+- [ ] Chain Limits API loads correctly
+- [ ] Tokens API loads correctly
+- [ ] Currencies API loads correctly
+- [ ] Order History API works (requires authentication)
 
-1. **Clear Browser Cache**
-   - Hard refresh: `Ctrl+Shift+R` or `Cmd+Shift+R`
-   - Or use incognito mode
+### 2. Test UI/UX Improvements
+- [ ] Toast notifications appear instead of alerts
+- [ ] Loading spinners show on buttons
+- [ ] Skeleton loaders appear during data fetching
+- [ ] Form validation shows inline errors
+- [ ] Mobile responsiveness works correctly
+- [ ] Copy buttons work for addresses/IDs
 
-2. **Check UI**
-   - [ ] Styling looks correct
-   - [ ] Colors and gradients showing
-   - [ ] Logo displays
-   - [ ] Animations working
+### 3. Test OnMeta Integration
+- [ ] User can authenticate with OnMeta
+- [ ] Deposit flow works end-to-end
+- [ ] Withdrawal flow works (if implemented)
+- [ ] KYC submission works
+- [ ] Order status updates correctly
+- [ ] Auto-refresh works for pending orders
 
-3. **Test Functionality**
-   - [ ] Sign up works
-   - [ ] Login works
-   - [ ] Dashboard loads
-   - [ ] API calls work (check Network tab)
+### 4. Check Logs
+- [ ] No errors in Vercel function logs
+- [ ] API calls are successful
+- [ ] Webhooks are being received (if configured)
 
-### 3. Browser Console Check
+## OnMeta Dashboard Configuration
 
-1. Open DevTools (F12)
-2. Check **Console** tab:
-   - [ ] No red errors
-   - [ ] No missing environment variable errors
-   - [ ] No API errors
+### Redirect URLs (CRITICAL)
+Add these URLs to OnMeta dashboard:
+- `https://your-app.vercel.app/dashboard?onmeta_callback=true`
+- `https://your-app.vercel.app/dashboard?onmeta_callback=true&type=kyc`
+- `https://your-app.vercel.app/dashboard?onmeta_callback=true&type=withdrawal`
 
-3. Check **Network** tab:
-   - [ ] CSS files loading (/_next/static/css/)
-   - [ ] JavaScript files loading
-   - [ ] API calls succeeding
-   - [ ] Images loading
+### Webhook URL (Optional)
+- `https://your-app.vercel.app/api/onmeta/webhook`
 
 ## Troubleshooting
 
-### UI Looks Broken
+### If APIs fail:
+1. Check environment variables in Vercel dashboard
+2. Verify `ONMETA_CLIENT_ID` is correct
+3. Check Vercel function logs for errors
+4. Verify `NEXT_PUBLIC_APP_URL` is set correctly
 
-**Symptoms**: No styling, plain HTML
-**Fix**: 
-- Clear browser cache
-- Check if CSS files are loading in Network tab
-- Verify build logs show CSS compilation
+### If redirects don't work:
+1. Verify `NEXT_PUBLIC_APP_URL` matches your Vercel URL exactly
+2. Check OnMeta dashboard has your URL whitelisted
+3. Clear browser cache and try again
 
-### Nothing Works / JavaScript Errors
+### If build fails:
+1. Check Node.js version (should be >= 18)
+2. Verify all dependencies are installed
+3. Check Prisma schema is valid
 
-**Symptoms**: Buttons don't work, API calls fail
-**Fix**:
-- Check browser console for errors
-- Verify environment variables are set
-- Check API routes are accessible
-- Verify DATABASE_URL is correct
+## Rollback Plan
 
-### Images Not Loading
-
-**Symptoms**: Logo missing, broken images
-**Fix**:
-- Verify `/public/assets/logo.png` exists
-- Check image paths in code
-- Verify Next.js Image component is working
-
-### Database Errors
-
-**Symptoms**: Sign up/login fails, "Database error"
-**Fix**:
-- Verify `DATABASE_URL` is set correctly
-- Check database allows connections
-- Verify migrations ran successfully
-- Check build logs for Prisma errors
-
-## Quick Test Commands
-
-After deployment, test these endpoints:
-
-```bash
-# Test homepage
-curl https://tiger-pay-x.vercel.app/
-
-# Test API (should return error without auth, but not 500)
-curl https://tiger-pay-x.vercel.app/api/auth
-
-# Check if CSS is loading
-curl -I https://tiger-pay-x.vercel.app/_next/static/css/
-```
-
-## Success Criteria
-
-✅ Build completes without errors
-✅ Site loads with proper styling
-✅ No console errors
-✅ Sign up/login works
-✅ Dashboard loads
-✅ API calls succeed
-
----
-
-**After fixing and redeploying, your site should work perfectly!** 🚀
-
+If something goes wrong:
+1. Go to Vercel Dashboard
+2. Navigate to Deployments
+3. Find the last working deployment
+4. Click "..." → "Promote to Production"

@@ -33,6 +33,7 @@ model User {
   
   transactions  Transaction[]
   merchants     Merchant[]
+  onmetaOrders  OnMetaOrder[]
 }
 
 model Merchant {
@@ -111,5 +112,54 @@ model WaitingList {
   updatedAt     DateTime @updatedAt
   
   @@index([email])
+  @@index([createdAt])
+}
+
+model OnMetaOrder {
+  id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // OnMeta order details
+  onmetaOrderId         String   @unique // Order ID from OnMeta
+  orderType             String   // "onramp", "offramp", "kyc"
+  status                String   @default("pending") // "pending", "fiatPending", "orderReceived", "fiatReceived", "InProgress", "transferred", "completed", "expired", "failed"
+  eventType             String?  // Latest event type from webhook
+  
+  // Order details
+  buyTokenSymbol        String?
+  buyTokenAddress       String?
+  buyTokenAmount        String?  // Amount of tokens to receive
+  fiatCurrency          String?  // "INR", "PHP", "IDR"
+  fiatAmount            String?  // Amount in fiat
+  chainId               Int?
+  
+  // Payment details
+  paymentMode           String?  // "INR_UPI", "INR_IMPS", "INR_NEFT"
+  upiId                 String?
+  bankDetails           Json?    // Bank account details (if applicable)
+  
+  // Transaction details
+  receiverWalletAddress String?  // Wallet address to receive tokens
+  transactionHash      String?  // Blockchain transaction hash
+  transferredAmount    String?  // Amount transferred
+  transferredAmountWei String?  // Amount in wei (for EVM chains)
+  
+  // Metadata
+  conversionRate        String?  // Conversion rate from fiat to crypto
+  commission           String?  // Commission charged
+  metadata              Json?    // Additional metadata from OnMeta
+  utr                   String?  // UTR (Unique Transaction Reference) for payment tracking
+  
+  // Timestamps
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  completedAt           DateTime?
+  expiredAt             DateTime?
+  
+  @@index([userId])
+  @@index([onmetaOrderId])
+  @@index([status])
+  @@index([orderType])
   @@index([createdAt])
 }

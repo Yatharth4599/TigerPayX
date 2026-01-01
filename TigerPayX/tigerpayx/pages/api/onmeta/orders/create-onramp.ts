@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createOnrampOrder } from '@/utils/onmeta';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 /**
  * OnMeta Create Onramp Order API Route
@@ -101,6 +104,51 @@ export default async function handler(
       metaData,
       redirectUrl,
     });
+
+    if (result.success && result.orderId) {
+      // Store order in database if we have user email in metadata
+      try {
+        const userEmail = metaData?.email || metaData?.userEmail;
+        if (userEmail) {
+          const user = await prisma.user.findUnique({
+            where: { email: userEmail },
+          });
+
+          if (user) {
+            // Check if order already exists (might have been created by webhook)
+            const existingOrder = await prisma.onMetaOrder.findUnique({
+              where: { onmetaOrderId: result.orderId },
+            });
+
+            if (!existingOrder) {
+              await prisma.onMetaOrder.create({
+                data: {
+                  onmetaOrderId: result.orderId,
+                  userId: user.id,
+                  orderType: 'onramp',
+                  status: 'pending',
+                  buyTokenSymbol: buyTokenSymbol,
+                  buyTokenAddress: buyTokenAddress,
+                  fiatCurrency: fiatCurrency.toUpperCase(),
+                  fiatAmount: fiatAmount.toString(),
+                  chainId: chainId,
+                  paymentMode: paymentMode,
+                  receiverWalletAddress: receiverAddress,
+                  upiId: upiId?.upiId,
+                  bankDetails: bankDetails ? JSON.parse(JSON.stringify(bankDetails)) : null,
+                  metadata: metaData ? JSON.parse(JSON.stringify(metaData)) : null,
+                },
+              });
+              console.log('✅ Stored order in database:', result.orderId);
+            }
+          }
+        }
+      } catch (dbError) {
+        console.error('❌ Error storing order in database:', dbError);
+        // Don't fail the request if database storage fails
+        // The webhook will create the order later if needed
+      }
+    }
 
     if (result.success) {
       return res.status(200).json(result);

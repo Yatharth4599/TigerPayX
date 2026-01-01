@@ -4,6 +4,10 @@ import { useRouter } from "next/router";
 import { Navbar } from "@/components/Navbar";
 import { isAuthenticated, getAuthEmail } from "@/utils/auth";
 import { getDetectedWallets, connectWallet, disconnectWallet, getConnectedWalletAddress, DetectedWallet } from "@/app/wallet/walletDetection";
+import { showToast, ToastContainer } from "@/components/Toast";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { SkeletonCard, SkeletonBalance, SkeletonTable } from "@/components/SkeletonLoader";
+import { CopyButton } from "@/components/CopyButton";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -35,6 +39,7 @@ export default function DashboardPage() {
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositAmount, setDepositAmount] = useState<string>("");
   const [depositWalletAddress, setDepositWalletAddress] = useState<string>("");
+  const [depositErrors, setDepositErrors] = useState<{ amount?: string; address?: string }>({});
   
   // OnMeta authentication state
   const [onMetaAccessToken, setOnMetaAccessToken] = useState<string | null>(null);
@@ -145,25 +150,25 @@ export default function DashboardPage() {
         
         if (type === 'kyc') {
           if (status === 'success' || status === 'completed') {
-            alert('KYC verification completed successfully!');
+            showToast('KYC verification completed successfully!', 'success');
           } else if (error) {
-            alert(`KYC verification failed: ${error}`);
+            showToast(`KYC verification failed: ${error}`, 'error');
           }
         } else if (type === 'withdrawal' || urlParams.get('withdrawal') === 'true') {
           if (status === 'success' || status === 'completed') {
-            alert('Withdrawal completed successfully!');
+            showToast('Withdrawal completed successfully!', 'success');
           } else if (error || status === 'failed') {
-            alert(`Withdrawal failed: ${error || 'Please try again.'}`);
+            showToast(`Withdrawal failed: ${error || 'Please try again.'}`, 'error');
           }
         } else {
           // Default to deposit/onramp
           if (status === 'success' || status === 'completed' || urlParams.get('success') === 'true') {
-            alert('Deposit completed successfully!');
+            showToast('Deposit completed successfully!', 'success');
             // Refresh wallet balance or update UI
           } else if (error || status === 'failed' || urlParams.get('failed') === 'true') {
-            alert(`Deposit failed: ${error || 'Please try again.'}`);
+            showToast(`Deposit failed: ${error || 'Please try again.'}`, 'error');
           } else if (urlParams.get('cancelled') === 'true') {
-            alert('Deposit was cancelled.');
+            showToast('Deposit was cancelled.', 'warning');
           }
         }
         
@@ -323,11 +328,14 @@ export default function DashboardPage() {
       
       const data = await response.json();
       
-      if (data.success && data.tokens) {
-        setSupportedTokens(data.tokens);
-        console.log('Supported tokens loaded:', data.tokens.length);
+      // Handle response format: {success: true, data: [...]} or {success: true, tokens: [...]}
+      const tokens = data.data || data.tokens || [];
+      
+      if (data.success && tokens.length > 0) {
+        setSupportedTokens(tokens);
+        console.log('Supported tokens loaded:', tokens.length);
       } else {
-        console.error('Failed to fetch supported tokens:', data.error);
+        console.error('Failed to fetch supported tokens:', data.error || 'No tokens data');
       }
     } catch (error) {
       console.error('Error fetching supported tokens:', error);
@@ -350,11 +358,14 @@ export default function DashboardPage() {
       
       const data = await response.json();
       
-      if (data.success && data.limits) {
-        setChainLimits(data.limits);
-        console.log('Chain limits loaded:', data.limits.length);
+      // Handle response format: {success: true, data: [...]} or {success: true, limits: [...]}
+      const limits = data.data || data.limits || [];
+      
+      if (data.success && limits.length > 0) {
+        setChainLimits(limits);
+        console.log('Chain limits loaded:', limits.length);
       } else {
-        console.error('Failed to fetch chain limits:', data.error);
+        console.error('Failed to fetch chain limits:', data.error || 'No limits data');
       }
     } catch (error) {
       console.error('Error fetching chain limits:', error);
@@ -377,11 +388,14 @@ export default function DashboardPage() {
       
       const data = await response.json();
       
-      if (data.success && data.currencies) {
-        setSupportedCurrencies(data.currencies);
-        console.log('Supported currencies loaded:', data.currencies.length);
+      // Handle response format: {success: true, data: [...]} or {success: true, currencies: [...]}
+      const currencies = data.data || data.currencies || [];
+      
+      if (data.success && currencies.length > 0) {
+        setSupportedCurrencies(currencies);
+        console.log('Supported currencies loaded:', currencies.length);
       } else {
-        console.error('Failed to fetch supported currencies:', data.error);
+        console.error('Failed to fetch supported currencies:', data.error || 'No currencies data');
       }
     } catch (error) {
       console.error('Error fetching supported currencies:', error);
@@ -415,17 +429,20 @@ export default function DashboardPage() {
 
       const data = await response.json();
       
-      if (data.success && data.orders) {
+      // Handle response format: {success: true, data: [...]} or {success: true, orders: [...]}
+      const orders = data.data || data.orders || [];
+      
+      if (data.success && orders.length > 0) {
         if (append) {
-          setOrderHistory(prev => [...prev, ...data.orders]);
+          setOrderHistory(prev => [...prev, ...orders]);
         } else {
-          setOrderHistory(data.orders);
+          setOrderHistory(orders);
         }
-        setOrderHistoryHasMore(data.hasMore || data.orders.length === 10);
+        setOrderHistoryHasMore(data.hasMore || orders.length === 10);
         setOrderHistorySkip(skip);
-        console.log('Order history fetched successfully:', data.orders.length, 'orders');
+        console.log('Order history fetched successfully:', orders.length, 'orders');
       } else {
-        console.error('Failed to fetch order history:', data.error);
+        console.error('Failed to fetch order history:', data.error || 'No orders data');
         if (!append) {
           setOrderHistory([]);
         }
@@ -447,20 +464,41 @@ export default function DashboardPage() {
     }
   }, [onMetaAccessToken]);
 
+  // Auto-refresh order history every 30 seconds if there are pending orders
+  useEffect(() => {
+    if (!onMetaAccessToken || orderHistory.length === 0) return;
+
+    const hasPendingOrders = orderHistory.some((order: any) => {
+      const status = order.status || order.orderStatus || '';
+      return status === 'pending' || status === 'PENDING' || status === 'fiatPending' || 
+             status === 'orderReceived' || status === 'fiatReceived' || status === 'InProgress';
+    });
+
+    if (hasPendingOrders) {
+      const interval = setInterval(() => {
+        if (!orderHistoryLoading) {
+          fetchOrderHistory(0, false);
+        }
+      }, 30000); // Refresh every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [onMetaAccessToken, orderHistory, orderHistoryLoading]);
+
   // Update UTR
   const handleUpdateUTR = async () => {
     if (!updateUTRForm.orderId || updateUTRForm.orderId.trim() === '') {
-      alert('Please enter an order ID');
+      showToast('Please enter an order ID', 'error');
       return;
     }
 
     if (!updateUTRForm.utr || updateUTRForm.utr.trim() === '') {
-      alert('Please enter a UTR');
+      showToast('Please enter a UTR', 'error');
       return;
     }
 
     if (!onMetaAccessToken) {
-      alert('OnMeta authentication required. Please wait for authentication to complete or refresh the page.');
+      showToast('OnMeta authentication required. Please wait for authentication to complete or refresh the page.', 'warning');
         return;
     }
 
@@ -483,7 +521,7 @@ export default function DashboardPage() {
       const data = await response.json();
       
       if (data.success) {
-        alert(data.message || 'UTR updated successfully!');
+        showToast(data.message || 'UTR updated successfully!', 'success');
         setShowUpdateUTRModal(false);
         setUpdateUTRForm({
           orderId: '',
@@ -491,11 +529,11 @@ export default function DashboardPage() {
           paymentMode: '',
         });
       } else {
-        alert(data.error || 'Failed to update UTR. Please try again.');
+        showToast(data.error || 'Failed to update UTR. Please try again.', 'error');
       }
     } catch (error: any) {
       console.error('Error updating UTR:', error);
-      alert(`Error: ${error.message || 'Failed to update UTR. Please try again.'}`);
+      showToast(`Error: ${error.message || 'Failed to update UTR. Please try again.'}`, 'error');
     } finally {
       setUpdateUTRLoading(false);
     }
@@ -504,12 +542,12 @@ export default function DashboardPage() {
   // Fetch order status
   const fetchOrderStatus = async () => {
     if (!orderStatusInput || orderStatusInput.trim() === '') {
-      alert('Please enter an order ID');
+      showToast('Please enter an order ID', 'error');
       return;
     }
 
     if (!onMetaAccessToken) {
-      alert('OnMeta authentication required. Please wait for authentication to complete or refresh the page.');
+      showToast('OnMeta authentication required. Please wait for authentication to complete or refresh the page.', 'warning');
       return;
     }
 
@@ -533,13 +571,14 @@ export default function DashboardPage() {
       if (data.success && data.status) {
         setOrderStatus(data);
         console.log('Order status fetched successfully:', data);
+        showToast('Order status fetched successfully', 'success');
       } else {
-        alert(data.error || 'Failed to fetch order status. Please check the order ID and try again.');
+        showToast(data.error || 'Failed to fetch order status. Please check the order ID and try again.', 'error');
         setOrderStatus(null);
       }
     } catch (error: any) {
       console.error('Error fetching order status:', error);
-      alert(`Error: ${error.message || 'Failed to fetch order status. Please try again.'}`);
+      showToast(`Error: ${error.message || 'Failed to fetch order status. Please try again.'}`, 'error');
       setOrderStatus(null);
     } finally {
       setOrderStatusLoading(false);
@@ -549,13 +588,13 @@ export default function DashboardPage() {
   // Fetch quotation
   const fetchQuotation = async () => {
     if (!quotationForm.buyTokenSymbol || !quotationForm.chainId || !quotationForm.fiatCurrency || !quotationForm.fiatAmount || !quotationForm.buyTokenAddress) {
-      alert('Please fill in all required fields');
+      showToast('Please fill in all required fields', 'error');
       return;
     }
 
     const fiatAmount = parseFloat(quotationForm.fiatAmount);
     if (isNaN(fiatAmount) || fiatAmount <= 0) {
-      alert('Please enter a valid fiat amount');
+      showToast('Please enter a valid fiat amount', 'error');
       return;
     }
 
@@ -582,13 +621,14 @@ export default function DashboardPage() {
       if (data.success && data.quotation) {
         setQuotation(data.quotation);
         console.log('Quotation fetched successfully:', data.quotation);
+        showToast('Quotation fetched successfully', 'success');
       } else {
-        alert(data.error || 'Failed to fetch quotation. Please try again.');
+        showToast(data.error || 'Failed to fetch quotation. Please try again.', 'error');
         setQuotation(null);
       }
     } catch (error: any) {
       console.error('Error fetching quotation:', error);
-      alert(`Error: ${error.message || 'Failed to fetch quotation. Please try again.'}`);
+      showToast(`Error: ${error.message || 'Failed to fetch quotation. Please try again.'}`, 'error');
       setQuotation(null);
     } finally {
       setQuotationLoading(false);
@@ -690,11 +730,11 @@ export default function DashboardPage() {
         localStorage.setItem("tigerpayx_wallet_address", result.publicKey);
         localStorage.setItem("tigerpayx_wallet_name", walletName);
           } else {
-        alert(result.error || "Failed to connect wallet");
+        showToast(result.error || "Failed to connect wallet", "error");
           }
         } catch (error: any) {
       console.error("Error connecting wallet:", error);
-      alert(error.message || "Failed to connect wallet. Please make sure the wallet extension is installed.");
+      showToast(error.message || "Failed to connect wallet. Please make sure the wallet extension is installed.", "error");
     } finally {
       setConnectingWallet(null);
     }
@@ -839,10 +879,10 @@ export default function DashboardPage() {
 
   if (loading || !authChecked) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#ff6b00] mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-gray-600 font-medium">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -851,6 +891,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 overflow-x-hidden">
       <Navbar />
+      <ToastContainer />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
         {/* Profile Section - Compact */}
@@ -861,9 +902,13 @@ export default function DashboardPage() {
           className="mb-8 bg-white rounded-2xl p-6 border border-gray-200 shadow-lg"
             >
           {profileLoading ? (
-            <div className="flex items-center justify-center py-6">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#ff6b00]"></div>
-          </div>
+            <div className="flex items-center gap-4 animate-pulse">
+              <div className="w-16 h-16 bg-gray-200 rounded-xl"></div>
+              <div className="flex-1">
+                <div className="h-6 bg-gray-200 rounded w-32 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-48"></div>
+              </div>
+            </div>
           ) : userProfile ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -915,8 +960,8 @@ export default function DashboardPage() {
                     <p className="text-white/80 text-sm font-medium mb-2">Total Balance</p>
                     {balanceLoading ? (
                       <div className="flex items-center gap-3">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-                        <h2 className="text-4xl md:text-5xl font-bold text-white">Loading...</h2>
+                        <LoadingSpinner size="sm" />
+                        <div className="h-12 bg-white/20 rounded-lg w-48 animate-pulse"></div>
                       </div>
                     ) : (
                       <h2 className="text-4xl md:text-5xl font-bold text-white">
@@ -1092,11 +1137,11 @@ export default function DashboardPage() {
                       // Redirect to OnMeta's KYC page
                       window.location.href = data.kycUrl;
                     } else {
-                      alert(data.error || 'Failed to initiate KYC. Please try again.');
+                      showToast(data.error || 'Failed to initiate KYC. Please try again.', 'error');
                     }
                   } catch (error: any) {
                     console.error('KYC error:', error);
-                    alert(`Error: ${error.message || 'Failed to initiate KYC. Please try again.'}`);
+                    showToast(`Error: ${error.message || 'Failed to initiate KYC. Please try again.'}`, 'error');
                   }
                 }}
                 className="w-full bg-purple-100 text-purple-600 py-2.5 rounded-xl font-semibold hover:bg-purple-200 transition-colors text-sm"
@@ -1135,9 +1180,9 @@ export default function DashboardPage() {
               onClick={() => {
                 if (!onMetaAccessToken) {
                   if (onMetaAuthLoading) {
-                    alert('Please wait for OnMeta authentication to complete');
+                    showToast('Please wait for OnMeta authentication to complete', 'warning');
                   } else {
-                    alert('OnMeta authentication failed. Please refresh the page to try again.');
+                    showToast('OnMeta authentication failed. Please refresh the page to try again.', 'error');
                   }
                   return;
                 }
@@ -1183,9 +1228,9 @@ export default function DashboardPage() {
               onClick={() => {
                 if (!onMetaAccessToken) {
                   if (onMetaAuthLoading) {
-                    alert('Please wait for OnMeta authentication to complete');
+                    showToast('Please wait for OnMeta authentication to complete', 'warning');
                   } else {
-                    alert('OnMeta authentication failed. Please refresh the page to try again.');
+                    showToast('OnMeta authentication failed. Please refresh the page to try again.', 'error');
                   }
                   return;
                 }
@@ -1223,9 +1268,10 @@ export default function DashboardPage() {
               </div>
             </div>
             {tokensLoading ? (
-              <div className="text-center py-4">
-                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[#ff6b00]"></div>
-                <p className="text-sm text-gray-500 mt-2">Loading tokens...</p>
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse"></div>
+                ))}
               </div>
             ) : supportedTokens.length > 0 ? (
               <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -1243,9 +1289,12 @@ export default function DashboardPage() {
             </div>
                     </div>
                     {token.address && (
-                      <p className="text-xs text-gray-400 font-mono truncate max-w-[100px]">
-                        {token.address.slice(0, 6)}...{token.address.slice(-4)}
-                      </p>
+                      <div className="flex items-center gap-1">
+                        <p className="text-xs text-gray-400 font-mono truncate max-w-[100px]">
+                          {token.address.slice(0, 6)}...{token.address.slice(-4)}
+                        </p>
+                        <CopyButton text={token.address} size="sm" />
+                      </div>
                     )}
                   </div>
                 ))}
@@ -1287,55 +1336,77 @@ export default function DashboardPage() {
               </div>
             </div>
             {limitsLoading ? (
-              <div className="text-center py-4">
-                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[#ff6b00]"></div>
-                <p className="text-sm text-gray-500 mt-2">Loading limits...</p>
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse"></div>
+                ))}
               </div>
             ) : chainLimits.length > 0 ? (
               <div className="space-y-3 max-h-64 overflow-y-auto">
-                {chainLimits.map((limit, index) => (
-                  <div key={limit.chainId || index} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-semibold text-gray-900">
-                        {limit.chain || `Chain ${limit.chainId}`}
-                      </p>
-                      {limit.currency && (
-                        <span className="text-xs text-gray-500">{limit.currency}</span>
+                {chainLimits.map((limit, index) => {
+                  // Handle API response structure: {chain, chainId, minLimit: {INR: 500, PHP: 500}, maxLimit: {INR: 500000, PHP: 50000}}
+                  const currencies = limit.minLimit ? Object.keys(limit.minLimit) : [];
+                  
+                  return (
+                    <div key={limit.chainId || index} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="font-semibold text-gray-900 text-base">
+                          {limit.chain || `Chain ${limit.chainId}`}
+                        </p>
+                        <span className="text-xs text-gray-500 font-mono">ID: {limit.chainId}</span>
+                      </div>
+                      {currencies.length > 0 ? (
+                        <div className="space-y-2">
+                          {currencies.map((currency) => {
+                            const min = limit.minLimit?.[currency] || 0;
+                            const max = limit.maxLimit?.[currency] || 0;
+                            const symbol = currency === 'INR' ? '₹' : currency === 'PHP' ? '₱' : currency === 'IDR' ? 'Rp' : '$';
+                            
+                            return (
+                              <div key={currency} className="p-2 bg-white rounded border border-gray-100">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs font-medium text-gray-600">{currency}</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  <div>
+                                    <p className="text-gray-500 text-xs">Min</p>
+                                    <p className="font-semibold text-gray-900">
+                                      {symbol}{min.toLocaleString()}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-gray-500 text-xs">Max</p>
+                                    <p className="font-semibold text-gray-900">
+                                      {symbol}{max.toLocaleString()}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">No limits available</p>
                       )}
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      {limit.minFiat !== undefined && (
-                        <div>
-                          <p className="text-gray-500">Min</p>
-                          <p className="font-semibold text-gray-900">
-                            {limit.currency === 'INR' ? '₹' : limit.currency === 'PHP' ? '₱' : limit.currency === 'IDR' ? 'Rp' : '$'}
-                            {limit.minFiat.toLocaleString()}
-                          </p>
-                        </div>
-                  )}
-                      {limit.maxFiat !== undefined && (
-                        <div>
-                          <p className="text-gray-500">Max</p>
-                          <p className="font-semibold text-gray-900">
-                            {limit.currency === 'INR' ? '₹' : limit.currency === 'PHP' ? '₱' : limit.currency === 'IDR' ? 'Rp' : '$'}
-                            {limit.maxFiat.toLocaleString()}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
-              <div className="text-center py-4">
-                <p className="text-sm text-gray-500">No limits available</p>
-                  <button
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+                <p className="text-sm text-gray-500 mb-3">No limits available</p>
+                <button
                   onClick={fetchChainLimits}
-                  className="mt-2 text-sm text-[#ff6b00] hover:underline"
-                  >
+                  className="text-sm text-[#ff6b00] hover:text-[#e55a00] font-medium"
+                >
                   Retry
-                  </button>
-            </div>
+                </button>
+              </div>
             )}
           </motion.div>
           </div>
@@ -1501,25 +1572,35 @@ export default function DashboardPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 </div>
-                    <div>
-                <h3 className="text-lg font-bold text-gray-900">Order History</h3>
+                    <div className="flex-1">
+                <div className="flex items-center gap-3 mb-1">
+                  <h3 className="text-lg font-bold text-gray-900">Order History</h3>
+                  {orderHistory.some((order: any) => {
+                    const status = order.status || order.orderStatus || '';
+                    return status === 'pending' || status === 'PENDING' || status === 'fiatPending' || 
+                           status === 'orderReceived' || status === 'fiatReceived' || status === 'InProgress';
+                  }) && (
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+                      Auto-refreshing
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-gray-600">Your recent transactions</p>
                     </div>
             </div>
                   <button
               onClick={() => fetchOrderHistory(0, false)}
               disabled={orderHistoryLoading}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                   >
+              {orderHistoryLoading && <LoadingSpinner size="sm" />}
               {orderHistoryLoading ? 'Loading...' : 'Refresh'}
                   </button>
                         </div>
 
           {orderHistoryLoading && orderHistory.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#ff6b00]"></div>
-              <p className="text-sm text-gray-500 mt-2">Loading order history...</p>
-                      </div>
+            <SkeletonTable />
           ) : orderHistory.length > 0 ? (
             <>
               <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -1530,34 +1611,48 @@ export default function DashboardPage() {
                     >
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${
-                          order.status === 'completed' || order.status === 'SUCCESS'
-                            ? 'bg-green-500'
-                            : order.status === 'pending' || order.status === 'PENDING'
-                            ? 'bg-yellow-500'
-                            : order.status === 'failed' || order.status === 'FAILED'
+                        <div className={`w-3 h-3 rounded-full ${
+                          order.status === 'completed' || order.status === 'SUCCESS' || order.status === 'transferred'
+                            ? 'bg-green-500 animate-pulse'
+                            : order.status === 'pending' || order.status === 'PENDING' || order.status === 'fiatPending' || order.status === 'orderReceived' || order.status === 'fiatReceived' || order.status === 'InProgress'
+                            ? 'bg-yellow-500 animate-pulse'
+                            : order.status === 'failed' || order.status === 'FAILED' || order.status === 'expired'
                             ? 'bg-red-500'
                             : 'bg-gray-400'
                         }`}></div>
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            Order #{order.orderId || order.id || 'N/A'}
-                          </p>
-                          <p className="text-xs text-gray-500 font-mono">
-                            {order.orderId || order.id || 'N/A'}
-                          </p>
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <p className="font-semibold text-gray-900">
+                              Order #{order.orderId || order.id || 'N/A'}
+                            </p>
+                            <p className="text-xs text-gray-500 font-mono">
+                              {order.orderId || order.id || 'N/A'}
+                            </p>
+                          </div>
+                          {(order.orderId || order.id) && (
+                            <CopyButton text={order.orderId || order.id} />
+                          )}
                         </div>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        order.status === 'completed' || order.status === 'SUCCESS'
-                          ? 'bg-green-100 text-green-700'
-                          : order.status === 'pending' || order.status === 'PENDING'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : order.status === 'failed' || order.status === 'FAILED'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-gray-100 text-gray-700'
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        order.status === 'completed' || order.status === 'SUCCESS' || order.status === 'transferred'
+                          ? 'bg-green-100 text-green-700 border border-green-200'
+                          : order.status === 'pending' || order.status === 'PENDING' || order.status === 'fiatPending' || order.status === 'orderReceived' || order.status === 'fiatReceived' || order.status === 'InProgress'
+                          ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                          : order.status === 'failed' || order.status === 'FAILED' || order.status === 'expired'
+                          ? 'bg-red-100 text-red-700 border border-red-200'
+                          : 'bg-gray-100 text-gray-700 border border-gray-200'
                       }`}>
-                        {order.status || order.orderStatus || 'Unknown'}
+                        {order.status === 'completed' || order.status === 'SUCCESS' ? '✓ Completed' :
+                         order.status === 'transferred' ? '✓ Transferred' :
+                         order.status === 'pending' || order.status === 'PENDING' ? '⏳ Pending' :
+                         order.status === 'fiatPending' ? '⏳ Payment Pending' :
+                         order.status === 'orderReceived' ? '✅ Payment Received' :
+                         order.status === 'fiatReceived' ? '💰 Fiat Received' :
+                         order.status === 'InProgress' ? '⏳ In Progress' :
+                         order.status === 'failed' || order.status === 'FAILED' ? '❌ Failed' :
+                         order.status === 'expired' ? '⏰ Expired' :
+                         order.status || order.orderStatus || 'Unknown'}
                       </span>
                         </div>
                     <div className="grid grid-cols-2 gap-2 text-sm mt-3">
@@ -1598,15 +1693,30 @@ export default function DashboardPage() {
                 <button
                   onClick={() => fetchOrderHistory(orderHistorySkip + 1, true)}
                   disabled={orderHistoryLoading}
-                  className="w-full mt-4 px-4 py-2 text-sm font-medium text-[#ff6b00] bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50"
+                  className="w-full mt-4 px-4 py-2 text-sm font-medium text-[#ff6b00] bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
+                  {orderHistoryLoading && <LoadingSpinner size="sm" />}
                   {orderHistoryLoading ? 'Loading...' : 'Load More'}
                 </button>
               )}
             </>
           ) : (
-            <div className="text-center py-8">
-              <p className="text-sm text-gray-500">No order history found</p>
+            <div className="text-center py-12">
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No orders yet</h3>
+              <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+                Your order history will appear here once you create your first deposit or withdrawal.
+              </p>
+              <button
+                onClick={() => setShowSendPaymentModal(true)}
+                className="px-6 py-3 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors mb-3"
+              >
+                Create Your First Order
+              </button>
               <button
                 onClick={() => fetchOrderHistory(0, false)}
                 className="mt-2 text-sm text-[#ff6b00] hover:underline"
@@ -1657,8 +1767,11 @@ export default function DashboardPage() {
                       Disconnect
                     </button>
                   </div>
-                  <div className="text-gray-700 text-sm font-mono">
-                    {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Unknown"}
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-700 text-sm font-mono">
+                      {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Unknown"}
+                    </span>
+                    {walletAddress && <CopyButton text={walletAddress} size="sm" />}
                   </div>
                   {connectedWalletName && (
                     <div className="text-gray-500 text-xs mt-1">{connectedWalletName}</div>
@@ -2072,9 +2185,26 @@ export default function DashboardPage() {
                             type="number"
                             placeholder="0.00"
                             value={depositAmount}
-                            onChange={(e) => setDepositAmount(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all bg-white"
+                            onChange={(e) => {
+                              setDepositAmount(e.target.value);
+                              if (depositErrors.amount) {
+                                setDepositErrors({ ...depositErrors, amount: undefined });
+                              }
+                            }}
+                            className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl focus:ring-2 outline-none transition-all bg-white ${
+                              depositErrors.amount 
+                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' 
+                                : 'border-gray-200 focus:border-[#ff6b00] focus:ring-[#ff6b00]/20'
+                            }`}
                           />
+                          {depositErrors.amount && (
+                            <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              {depositErrors.amount}
+                            </p>
+                          )}
                         </div>
                       </div>
                       
@@ -2087,9 +2217,26 @@ export default function DashboardPage() {
                     type="text"
                           placeholder="Enter your crypto wallet address (USDC/USDT)"
                           value={depositWalletAddress || walletAddress || ''}
-                          onChange={(e) => setDepositWalletAddress(e.target.value)}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all bg-white font-mono text-sm"
+                          onChange={(e) => {
+                            setDepositWalletAddress(e.target.value);
+                            if (depositErrors.address) {
+                              setDepositErrors({ ...depositErrors, address: undefined });
+                            }
+                          }}
+                          className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 outline-none transition-all bg-white font-mono text-sm ${
+                            depositErrors.address 
+                              ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' 
+                              : 'border-gray-200 focus:border-[#ff6b00] focus:ring-[#ff6b00]/20'
+                          }`}
                         />
+                        {depositErrors.address && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            {depositErrors.address}
+                          </p>
+                        )}
                         {walletAddress && !depositWalletAddress && (
                           <p className="mt-1 text-xs text-green-600">Using your connected wallet address</p>
                         )}
@@ -2124,29 +2271,38 @@ export default function DashboardPage() {
                       onClick={async () => {
                         // Handle deposit/payment initiation via OnMeta API
                         if (['INR', 'PHP', 'IDR'].includes(selectedPaymentMethod || '')) {
+                          const errors: { amount?: string; address?: string } = {};
                           const amount = parseFloat(depositAmount);
                           if (isNaN(amount) || amount <= 0) {
-                            alert('Please enter a valid amount');
-                            return;
+                            errors.amount = 'Please enter a valid amount';
                           }
 
                           // Use manually entered address if provided, otherwise use connected wallet address
                           const targetWalletAddress = depositWalletAddress || walletAddress;
                           if (!targetWalletAddress || targetWalletAddress.trim() === '') {
-                            alert('Please enter a wallet address or connect your wallet');
-                            return;
+                            errors.address = 'Please enter a wallet address or connect your wallet';
+                          } else {
+                            // Basic wallet address validation (Solana addresses are base58 encoded, 32-44 chars)
+                            const trimmedAddress = targetWalletAddress.trim();
+                            if (trimmedAddress.length < 32 || trimmedAddress.length > 44) {
+                              errors.address = 'Wallet address must be 32-44 characters';
+                            }
                           }
 
-                          // Basic wallet address validation (Solana addresses are base58 encoded, 32-44 chars)
-                          const trimmedAddress = targetWalletAddress.trim();
-                          if (trimmedAddress.length < 32 || trimmedAddress.length > 44) {
-                            alert('Please enter a valid wallet address (32-44 characters)');
+                          if (Object.keys(errors).length > 0) {
+                            setDepositErrors(errors);
+                            showToast('Please fix the errors in the form', 'error');
                             return;
                           }
+                          
+                          setDepositErrors({});
+                          
+                          // Get trimmed address after validation
+                          const trimmedAddress = (depositWalletAddress || walletAddress || '').trim();
 
                           // Check if OnMeta access token is available
                           if (!onMetaAccessToken) {
-                            alert('OnMeta authentication required. Please wait for authentication to complete or refresh the page.');
+                            showToast('OnMeta authentication required. Please wait for authentication to complete or refresh the page.', 'warning');
                             setDepositLoading(false);
                             return;
                           }
@@ -2160,7 +2316,7 @@ export default function DashboardPage() {
                             } else if (onMetaBankStatus === 'SUCCESS') {
                               paymentMode = 'INR_IMPS'; // Default to IMPS for bank
                             } else {
-                              alert('Please link your UPI ID or Bank Account first before creating an order.');
+                              showToast('Please link your UPI ID or Bank Account first before creating an order.', 'warning');
                               setDepositLoading(false);
                               return;
                             }
@@ -2219,7 +2375,7 @@ export default function DashboardPage() {
                                 accountHolderName: linkBankAccountHolder,
                               };
                             } else {
-                              alert('Bank account details are required. Please link your bank account with complete details.');
+                              showToast('Bank account details are required. Please link your bank account with complete details.', 'warning');
                               setDepositLoading(false);
                               return;
                             }
@@ -2243,18 +2399,18 @@ export default function DashboardPage() {
                               // Redirect to OnMeta's order page
                               window.location.href = data.orderUrl || data.depositUrl;
                             } else {
-                              alert(data.error || 'Failed to create onramp order. Please try again.');
+                              showToast(data.error || 'Failed to create onramp order. Please try again.', 'error');
                               setDepositLoading(false);
                             }
                           } catch (error: any) {
                             console.error('Create onramp order error:', error);
-                            alert(`Error: ${error.message || 'Failed to create onramp order. Please try again.'}`);
+                            showToast(`Error: ${error.message || 'Failed to create onramp order. Please try again.'}`, 'error');
                             setDepositLoading(false);
                           }
                         } else {
                           // Handle other payment methods (Stables, Bank Transfer)
                           console.log('Initiate payment for:', selectedPaymentMethod);
-                          alert('This payment method will be implemented soon.');
+                          showToast('This payment method will be implemented soon.', 'info');
                           setSelectedPaymentMethod(null);
                           setDepositAmount('');
                           setDepositWalletAddress('');
@@ -2264,8 +2420,9 @@ export default function DashboardPage() {
                       disabled={
                         (['INR', 'PHP', 'IDR'].includes(selectedPaymentMethod || '') && (!depositAmount || parseFloat(depositAmount) <= 0 || (!walletAddress && !depositWalletAddress)))
                       }
-                      className="flex-1 px-4 py-2 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 px-4 py-3 sm:py-2 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[44px]"
                     >
+                      {depositLoading && <LoadingSpinner size="sm" />}
                       {depositLoading ? 'Processing...' : 'Continue'}
                   </button>
                   </div>
@@ -2277,11 +2434,11 @@ export default function DashboardPage() {
 
         {/* Withdraw Modal */}
         {showWithdrawModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 max-w-2xl w-full shadow-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-gray-900">Withdraw to Bank Account</h3>
@@ -2469,13 +2626,13 @@ export default function DashboardPage() {
                     <button
                     onClick={async () => {
                       if (!selectedWithdrawCurrency || !withdrawAmount || !bankAccountNumber || !bankCode || !accountHolderName) {
-                        alert('Please fill in all required fields');
+                        showToast('Please fill in all required fields', 'error');
                         return;
                       }
 
                       const amount = parseFloat(withdrawAmount);
                       if (isNaN(amount) || amount <= 0) {
-                        alert('Please enter a valid amount');
+                        showToast('Please enter a valid amount', 'error');
                         return;
                       }
 
@@ -2508,7 +2665,7 @@ export default function DashboardPage() {
                         const data = await response.json();
 
                         if (data.success) {
-                          alert(`Withdrawal initiated successfully! Order ID: ${data.orderId || data.transactionId || 'N/A'}`);
+                          showToast(`Withdrawal initiated successfully! Order ID: ${data.orderId || data.transactionId || 'N/A'}`, 'success');
                           // Reset form
                           setWithdrawAmount('');
                           setBankAccountNumber('');
@@ -2517,11 +2674,11 @@ export default function DashboardPage() {
                           setSelectedWithdrawCurrency(null);
                           setShowWithdrawModal(false);
                         } else {
-                          alert(data.error || 'Failed to initiate withdrawal. Please try again.');
+                          showToast(data.error || 'Failed to initiate withdrawal. Please try again.', 'error');
                         }
                       } catch (error: any) {
                         console.error('Withdrawal error:', error);
-                        alert('An error occurred. Please try again.');
+                        showToast('An error occurred. Please try again.', 'error');
                       } finally {
                         setWithdrawLoading(false);
                       }
@@ -2529,6 +2686,7 @@ export default function DashboardPage() {
                     disabled={!selectedWithdrawCurrency || withdrawLoading || !withdrawAmount || !bankAccountNumber || !bankCode || !accountHolderName}
                     className="flex-1 px-4 py-3 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
+                    {withdrawLoading && <LoadingSpinner size="sm" />}
                     {withdrawLoading ? 'Processing...' : 'Withdraw'}
                     </button>
                 </div>
@@ -2539,11 +2697,11 @@ export default function DashboardPage() {
 
         {/* Link Bank Account Modal */}
         {showLinkBankModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 max-w-2xl w-full shadow-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-gray-900">Link Bank Account</h3>
@@ -2700,12 +2858,12 @@ export default function DashboardPage() {
                   <button
                     onClick={async () => {
                       if (!onMetaAccessToken) {
-                        alert('OnMeta authentication required. Please refresh the page.');
+                        showToast('OnMeta authentication required. Please refresh the page.', 'warning');
                         return;
                       }
 
                       if (!linkBankName || !linkBankPAN || !linkBankEmail || !linkBankAccountNumber || !linkBankIFSC || !linkBankAccountHolder || !linkBankPhoneNumber) {
-                        alert('Please fill in all required fields');
+                        showToast('Please fill in all required fields', 'error');
                         return;
                       }
 
@@ -2737,7 +2895,7 @@ export default function DashboardPage() {
                         const data = await response.json();
                         
                         if (data.success) {
-                          alert(`Bank account linking ${data.status || 'initiated'}!`);
+                          showToast(`Bank account linking ${data.status || 'initiated'}!`, 'success');
                           setOnMetaBankStatus(data.status);
                           // Store bank details for order creation
                           if (data.status === 'SUCCESS') {
@@ -2758,11 +2916,11 @@ export default function DashboardPage() {
                           setLinkBankAccountHolder('');
                           setLinkBankPhoneNumber('');
                         } else {
-                          alert(data.error || 'Failed to link bank account. Please try again.');
+                          showToast(data.error || 'Failed to link bank account. Please try again.', 'error');
                         }
                       } catch (error: any) {
                         console.error('Link bank error:', error);
-                        alert(`Error: ${error.message || 'Failed to link bank account. Please try again.'}`);
+                        showToast(`Error: ${error.message || 'Failed to link bank account. Please try again.'}`, 'error');
                       } finally {
                         setLinkBankLoading(false);
                       }
@@ -2770,6 +2928,7 @@ export default function DashboardPage() {
                     disabled={linkBankLoading}
                     className="flex-1 px-4 py-3 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
+                    {linkBankLoading && <LoadingSpinner size="sm" />}
                     {linkBankLoading ? 'Linking...' : 'Link Bank Account'}
                     </button>
                 </div>
@@ -2780,11 +2939,11 @@ export default function DashboardPage() {
 
         {/* Link UPI Modal */}
         {showLinkUPIModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 max-w-2xl w-full shadow-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-gray-900">Link UPI ID</h3>
@@ -2887,7 +3046,7 @@ export default function DashboardPage() {
                       }
 
                       if (!linkUPIId.includes('@')) {
-                        alert('Invalid UPI ID format. Should be like: yourname@bankname');
+                        showToast('Invalid UPI ID format. Should be like: yourname@bankname', 'error');
                         return;
                       }
 
@@ -2918,7 +3077,7 @@ export default function DashboardPage() {
                         const data = await response.json();
                         
                         if (data.success) {
-                          alert(`UPI ID linking ${data.status || 'initiated'}!`);
+                          showToast(`UPI ID linking ${data.status || 'initiated'}!`, 'success');
                           setOnMetaUPIStatus(data.status);
                           // Store UPI ID for order creation
                           if (data.status === 'SUCCESS') {
@@ -2931,11 +3090,11 @@ export default function DashboardPage() {
                           setLinkUPIId('');
                           setLinkUPIPhoneNumber('');
                         } else {
-                          alert(data.error || 'Failed to link UPI ID. Please try again.');
+                          showToast(data.error || 'Failed to link UPI ID. Please try again.', 'error');
                         }
                       } catch (error: any) {
                         console.error('Link UPI error:', error);
-                        alert(`Error: ${error.message || 'Failed to link UPI ID. Please try again.'}`);
+                        showToast(`Error: ${error.message || 'Failed to link UPI ID. Please try again.'}`, 'error');
                       } finally {
                         setLinkUPILoading(false);
                       }
@@ -3251,7 +3410,7 @@ export default function DashboardPage() {
                           !kycSubmitForm.panNumber || !kycSubmitForm.aadharNumber || !kycSubmitForm.profession ||
                           !kycSubmitForm.selfie || !kycSubmitForm.aadharFront || !kycSubmitForm.aadharBack ||
                           !kycSubmitForm.panFront || !kycSubmitForm.panBack) {
-                        alert('Please fill in all required fields and upload all documents');
+                        showToast('Please fill in all required fields and upload all documents', 'error');
                         return;
                       }
 
@@ -3274,7 +3433,7 @@ export default function DashboardPage() {
                         const data = await response.json();
                         
                         if (data.success) {
-                          alert(data.message || 'KYC data submitted successfully!');
+                          showToast(data.message || 'KYC data submitted successfully!', 'success');
                           setShowKYCSubmitModal(false);
                           setKycSubmitForm({
                             email: '',
@@ -3291,18 +3450,19 @@ export default function DashboardPage() {
                             panBack: '',
                           });
                         } else {
-                          alert(data.error || 'Failed to submit KYC data. Please try again.');
+                          showToast(data.error || 'Failed to submit KYC data. Please try again.', 'error');
                         }
                       } catch (error: any) {
                         console.error('KYC submission error:', error);
-                        alert(`Error: ${error.message || 'Failed to submit KYC data. Please try again.'}`);
+                        showToast(`Error: ${error.message || 'Failed to submit KYC data. Please try again.'}`, 'error');
                       } finally {
                         setKycSubmitLoading(false);
                       }
                     }}
                     disabled={kycSubmitLoading}
-                    className="flex-1 px-4 py-3 bg-purple-500 text-white rounded-xl font-semibold hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 px-4 py-3 bg-purple-500 text-white rounded-xl font-semibold hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
+                    {kycSubmitLoading && <LoadingSpinner size="sm" />}
                     {kycSubmitLoading ? 'Submitting...' : 'Submit KYC Data'}
                 </button>
                 </div>
@@ -3416,13 +3576,13 @@ export default function DashboardPage() {
                   <button
                     onClick={handleUpdateUTR}
                     disabled={updateUTRLoading}
-                    className="flex-1 px-4 py-3 bg-pink-500 text-white rounded-xl font-semibold hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 px-4 py-3 bg-pink-500 text-white rounded-xl font-semibold hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {updateUTRLoading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <>
+                        <LoadingSpinner size="sm" />
                         Updating...
-                      </span>
+                      </>
                     ) : (
                       'Update UTR'
                     )}
@@ -3435,11 +3595,11 @@ export default function DashboardPage() {
 
         {/* Order Status Modal */}
         {showOrderStatusModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 max-w-2xl w-full shadow-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-gray-900">Check Order Status</h3>
@@ -3530,13 +3690,13 @@ export default function DashboardPage() {
                 <button
                     onClick={fetchOrderStatus}
                     disabled={orderStatusLoading}
-                    className="flex-1 px-4 py-3 bg-violet-500 text-white rounded-xl font-semibold hover:bg-violet-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 px-4 py-3 bg-violet-500 text-white rounded-xl font-semibold hover:bg-violet-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {orderStatusLoading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <>
+                        <LoadingSpinner size="sm" />
                         Fetching...
-                      </span>
+                      </>
                   ) : (
                       'Check Status'
                   )}
@@ -3735,13 +3895,13 @@ export default function DashboardPage() {
                     <button
                     onClick={fetchQuotation}
                     disabled={quotationLoading}
-                    className="flex-1 px-4 py-3 bg-teal-500 text-white rounded-xl font-semibold hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 px-4 py-3 bg-teal-500 text-white rounded-xl font-semibold hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {quotationLoading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <>
+                        <LoadingSpinner size="sm" />
                         Fetching...
-                      </span>
+                      </>
                     ) : (
                       'Get Quotation'
                     )}

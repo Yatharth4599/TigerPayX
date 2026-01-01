@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import crypto from 'crypto';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 /**
  * OnMeta Webhook Handler
@@ -104,6 +107,53 @@ export default async function handler(
       hasMetadata: !!metaData,
     });
 
+    // Helper function to find or create order in database
+    const findOrCreateOrder = async () => {
+      // Try to find existing order
+      let order = await prisma.onMetaOrder.findUnique({
+        where: { onmetaOrderId: orderId },
+      });
+
+      // If order doesn't exist, try to find user by email from metadata or customer field
+      let userId: string | null = null;
+      if (!order) {
+        const userEmail = metaData?.email || customer?.email || metaData?.userEmail;
+        if (userEmail) {
+          const user = await prisma.user.findUnique({
+            where: { email: userEmail },
+          });
+          if (user) {
+            userId = user.id;
+          }
+        }
+      } else {
+        userId = order.userId;
+      }
+
+      // If order doesn't exist and we have userId, create it
+      if (!order && userId) {
+        order = await prisma.onMetaOrder.create({
+          data: {
+            onmetaOrderId: orderId,
+            userId: userId,
+            orderType: 'onramp', // Default, can be updated
+            status: status || 'pending',
+            eventType: eventType,
+            buyTokenSymbol: buyTokenSymbol,
+            buyTokenAddress: buyTokenAddress,
+            fiatCurrency: currency?.toUpperCase(),
+            fiatAmount: fiat?.toString(),
+            chainId: chainId,
+            receiverWalletAddress: receiverWalletAddress,
+            metadata: metaData ? JSON.parse(JSON.stringify(metaData)) : null,
+            createdAt: createdAt ? new Date(createdAt) : new Date(),
+          },
+        });
+      }
+
+      return { order, userId };
+    };
+
     // Handle different webhook event types
     switch (eventType) {
       case 'fiatPending':
@@ -116,8 +166,23 @@ export default async function handler(
           buyTokenSymbol,
         });
         // User has initiated order but fiat deposit is pending
-        // TODO: Update order status in your database to "fiatPending"
-        // TODO: Notify user that payment is pending
+        try {
+          const { order } = await findOrCreateOrder();
+          if (order) {
+            await prisma.onMetaOrder.update({
+              where: { id: order.id },
+              data: {
+                status: 'fiatPending',
+                eventType: eventType,
+                updatedAt: new Date(),
+              },
+            });
+            console.log('✅ Updated order status to fiatPending');
+          }
+        } catch (error) {
+          console.error('❌ Error updating order status:', error);
+        }
+        // TODO: Notify user that payment is pending (email/push notification)
         break;
 
       case 'orderReceived':
@@ -129,7 +194,22 @@ export default async function handler(
           status,
         });
         // User completed payment, OnMeta initiated crypto transfer
-        // TODO: Update order status in your database to "orderReceived"
+        try {
+          const { order } = await findOrCreateOrder();
+          if (order) {
+            await prisma.onMetaOrder.update({
+              where: { id: order.id },
+              data: {
+                status: 'orderReceived',
+                eventType: eventType,
+                updatedAt: new Date(),
+              },
+            });
+            console.log('✅ Updated order status to orderReceived');
+          }
+        } catch (error) {
+          console.error('❌ Error updating order status:', error);
+        }
         // TODO: Notify user that payment was received
         break;
 
@@ -141,7 +221,22 @@ export default async function handler(
           buyTokenSymbol,
         });
         // Order is in-progress on the blockchain (optional event, occurs with non-native tokens)
-        // TODO: Update order status in your database to "InProgress"
+        try {
+          const { order } = await findOrCreateOrder();
+          if (order) {
+            await prisma.onMetaOrder.update({
+              where: { id: order.id },
+              data: {
+                status: 'InProgress',
+                eventType: eventType,
+                updatedAt: new Date(),
+              },
+            });
+            console.log('✅ Updated order status to InProgress');
+          }
+        } catch (error) {
+          console.error('❌ Error updating order status:', error);
+        }
         // TODO: Notify user that transaction is being processed
         break;
 
@@ -153,7 +248,22 @@ export default async function handler(
           currency,
         });
         // OnMeta confirmed receipt of payment
-        // TODO: Update order status in your database to "fiatReceived"
+        try {
+          const { order } = await findOrCreateOrder();
+          if (order) {
+            await prisma.onMetaOrder.update({
+              where: { id: order.id },
+              data: {
+                status: 'fiatReceived',
+                eventType: eventType,
+                updatedAt: new Date(),
+              },
+            });
+            console.log('✅ Updated order status to fiatReceived');
+          }
+        } catch (error) {
+          console.error('❌ Error updating order status:', error);
+        }
         break;
 
       case 'transferred':
@@ -167,8 +277,25 @@ export default async function handler(
           chainId,
         });
         // Token transfer confirmed on blockchain
-        // TODO: Update order status in your database to "transferred"
-        // TODO: Store transaction hash
+        try {
+          const { order } = await findOrCreateOrder();
+          if (order) {
+            await prisma.onMetaOrder.update({
+              where: { id: order.id },
+              data: {
+                status: 'transferred',
+                eventType: eventType,
+                transactionHash: txnHash,
+                transferredAmount: transferredAmount?.toString(),
+                transferredAmountWei: transferredAmountWei?.toString(),
+                updatedAt: new Date(),
+              },
+            });
+            console.log('✅ Updated order status to transferred and stored transaction hash');
+          }
+        } catch (error) {
+          console.error('❌ Error updating order status:', error);
+        }
         // TODO: Notify user that tokens are being transferred
         break;
 
@@ -197,11 +324,53 @@ export default async function handler(
         }
 
         // Order fully completed
-        // TODO: Update order status in your database to "completed"
-        // TODO: Store transaction hash, transferred amount, conversion rate, commission
-        // TODO: Credit user's account with the tokens
-        // TODO: Send success notification to user
-        // TODO: Update user's transaction history
+        try {
+          const { order } = await findOrCreateOrder();
+          if (order) {
+            await prisma.onMetaOrder.update({
+              where: { id: order.id },
+              data: {
+                status: 'completed',
+                eventType: eventType,
+                transactionHash: txnHash,
+                transferredAmount: transferredAmount?.toString(),
+                transferredAmountWei: transferredAmountWei?.toString(),
+                conversionRate: metaData?.conversionRate?.toString(),
+                commission: metaData?.commission?.toString(),
+                buyTokenAmount: transferredAmount?.toString(),
+                completedAt: new Date(),
+                updatedAt: new Date(),
+              },
+            });
+            console.log('✅ Updated order status to completed and stored all transaction details');
+
+            // Create a transaction record for the user
+            if (order.userId && receiverWalletAddress) {
+              try {
+                await prisma.transaction.create({
+                  data: {
+                    userId: order.userId,
+                    type: 'onramp',
+                    fromAddress: 'onmeta', // OnMeta is the source
+                    toAddress: receiverWalletAddress,
+                    amount: transferredAmount?.toString() || '0',
+                    token: buyTokenSymbol || 'USDC',
+                    txHash: txnHash || '',
+                    status: 'confirmed',
+                    description: `OnMeta onramp: ${fiat} ${currency} → ${transferredAmount} ${buyTokenSymbol}`,
+                  },
+                });
+                console.log('✅ Created transaction record for user');
+              } catch (txError) {
+                console.error('❌ Error creating transaction record:', txError);
+                // Don't fail the webhook if transaction creation fails
+              }
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error updating order status:', error);
+        }
+        // TODO: Send success notification to user (email/push notification)
         break;
 
       case 'expired':
@@ -212,9 +381,25 @@ export default async function handler(
           status,
         });
         // Order expired (pending > 3 hours)
-        // TODO: Update order status in your database to "expired"
+        try {
+          const { order } = await findOrCreateOrder();
+          if (order) {
+            await prisma.onMetaOrder.update({
+              where: { id: order.id },
+              data: {
+                status: 'expired',
+                eventType: eventType,
+                expiredAt: new Date(),
+                updatedAt: new Date(),
+              },
+            });
+            console.log('✅ Updated order status to expired');
+          }
+        } catch (error) {
+          console.error('❌ Error updating order status:', error);
+        }
         // TODO: Notify user that order has expired
-        // TODO: Process any refunds if necessary
+        // TODO: Process any refunds if necessary (handled by OnMeta)
         break;
 
       default:
