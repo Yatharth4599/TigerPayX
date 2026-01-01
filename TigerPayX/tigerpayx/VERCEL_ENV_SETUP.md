@@ -8,10 +8,16 @@ The 401 "unauthorized to access" errors indicate that `ONMETA_CLIENT_ID` is not 
 
 ### 1. OnMeta API Credentials (REQUIRED)
 ```
-ONMETA_CLIENT_ID=359288fc-f15a-44ba-a1e1-cf04c894c2be
+ONMETA_CLIENT_ID=2fbe1c80-b6ae-438b-9052-d7d3bb3c06c4
 ONMETA_CLIENT_SECRET=your-client-secret-here
-ONMETA_API_BASE_URL=https://stg.api.onmeta.in
+ONMETA_API_BASE_URL=https://api.platform.onmeta.in
 ```
+
+**Important**: 
+- Your production API key is: `2fbe1c80-b6ae-438b-9052-d7d3bb3c06c4`
+- Production API uses: `https://api.platform.onmeta.in`
+- Staging API key (for testing): `359288fc-f15a-44ba-a1e1-cf04c894c2be`
+- Staging API uses: `https://stg.api.onmeta.in`
 
 **Note**: Replace `your-client-secret-here` with your actual OnMeta client secret.
 

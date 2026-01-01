@@ -5,8 +5,10 @@
 
 // OnMeta API Configuration
 // These should be set via environment variables in .env.local
-// Staging API base URL (most endpoints use this)
-const ONMETA_API_BASE_URL = process.env.ONMETA_API_BASE_URL || "https://stg.api.onmeta.in";
+// Production API base URL (default for production API keys)
+const ONMETA_API_BASE_URL = process.env.ONMETA_API_BASE_URL || "https://api.platform.onmeta.in";
+// Staging API base URL (for staging API keys)
+const ONMETA_API_BASE_URL_STAGING = process.env.ONMETA_API_BASE_URL_STAGING || "https://stg.api.onmeta.in";
 // Some endpoints (like UPI) use a different base URL
 const ONMETA_API_BASE_URL_ALT = process.env.ONMETA_API_BASE_URL_ALT || "https://api.platform.onmeta.in";
 const ONMETA_CLIENT_ID = process.env.ONMETA_CLIENT_ID || "";
