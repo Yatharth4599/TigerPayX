@@ -2146,3 +2146,111 @@ export async function getOrderStatus(orderId: string): Promise<any> {
     };
   }
 }
+
+
+// ==================== KYC Status ====================
+
+export interface OnMetaKYCStatusRequest {
+  accessToken?: string; // Optional: Bearer token from customer login
+  email: string; // Email of the customer
+}
+
+export interface OnMetaKYCStatusResponse {
+  success: boolean;
+  kycStatus?: string; // e.g., "VERIFIED", "PENDING", "REJECTED"
+  isVerified?: boolean;
+  message?: string;
+  error?: string;
+}
+
+/**
+ * Fetch KYC status of a user by email
+ * POST /v1/users/kyc-status
+ */
+export async function fetchKYCStatus(request: OnMetaKYCStatusRequest): Promise<OnMetaKYCStatusResponse> {
+  try {
+    if (!ONMETA_CLIENT_ID) {
+      console.error("OnMeta API credentials missing: ONMETA_CLIENT_ID is not set in environment variables");
+      return {
+        success: false,
+        error: "OnMeta API credentials not configured. Please set ONMETA_CLIENT_ID in Vercel environment variables.",
+      };
+    }
+
+    if (!request.email || !request.email.includes('@')) {
+      return {
+        success: false,
+        error: "Valid email is required",
+      };
+    }
+
+    const requestBody = {
+      email: request.email,
+    };
+
+    // Production endpoint for KYC status
+    const apiUrl = `${ONMETA_API_BASE_URL}/v1/users/kyc-status`;
+    console.log("OnMeta fetch KYC status request:", {
+      url: apiUrl,
+      email: request.email,
+    });
+
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+      "x-api-key": ONMETA_CLIENT_ID,
+      "Accept": "application/json",
+    };
+
+    // Add Authorization header if access token is provided
+    if (request.accessToken) {
+      headers["Authorization"] = `Bearer ${request.accessToken}`;
+    }
+
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(requestBody),
+    });
+
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error("OnMeta fetch KYC status response is not JSON:", {
+        status: response.status,
+        contentType,
+        textPreview: text.substring(0, 200),
+      });
+      return {
+        success: false,
+        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+      };
+    }
+
+    const data = await response.json();
+    console.log("OnMeta fetch KYC status response:", {
+      status: response.status,
+      kycStatus: data.kycStatus || data.status,
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.message || data.error || `Failed to fetch KYC status: ${response.status} ${response.statusText}`,
+      };
+    }
+
+    return {
+      success: true,
+      kycStatus: data.kycStatus || data.status || data.kyc_status,
+      isVerified: data.isVerified || data.is_verified || (data.kycStatus === 'VERIFIED' || data.status === 'VERIFIED'),
+      message: data.message,
+    };
+  } catch (error: any) {
+    console.error("OnMeta fetch KYC status error:", error);
+    return {
+      success: false,
+      error: error.message || "Network error occurred",
+    };
+  }
+}
