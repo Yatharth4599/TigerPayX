@@ -1108,47 +1108,72 @@ export default function DashboardPage() {
             <div className="space-y-2">
               <button 
                 onClick={() => {
-                  const userEmail = getAuthEmail() || '';
-                  setKycSubmitForm({ ...kycSubmitForm, email: userEmail });
-                  setShowKYCSubmitModal(true);
+                  // Open OnMeta KYC Widget
+                  const apiKey = process.env.NEXT_PUBLIC_ONMETA_CLIENT_ID || '2fbe1c80-b6ae-438b-9052-d7d3bb3c06c4';
+                  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+                  const successUrl = encodeURIComponent(`${baseUrl}/dashboard?onmeta_callback=true&type=kyc&status=success`);
+                  const failureUrl = encodeURIComponent(`${baseUrl}/dashboard?onmeta_callback=true&type=kyc&status=failure`);
+                  
+                  // Production KYC widget URL
+                  const kycWidgetUrl = `https://platform.onmeta.in/kyc/?apiKey=${apiKey}&successRedirectUrl=${successUrl}&failureRedirectUrl=${failureUrl}`;
+                  
+                  // Open in new window or redirect
+                  window.open(kycWidgetUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
                 }}
-                className="w-full bg-purple-500 text-white py-2.5 rounded-xl font-semibold hover:bg-purple-600 transition-colors text-sm"
+                className="w-full bg-purple-500 text-white py-3 rounded-xl font-semibold hover:bg-purple-600 transition-colors text-sm flex items-center justify-center gap-2"
               >
-                Submit KYC Data
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                Start KYC Verification
               </button>
               <button 
-                      onClick={async () => {
+                onClick={async () => {
+                  // Fetch KYC status
+                  const userEmail = getAuthEmail();
+                  if (!userEmail) {
+                    showToast('Please login to check KYC status', 'warning');
+                    return;
+                  }
+                  
                   try {
-                    // Call OnMeta KYC API
-                    const response = await fetch('/api/onmeta/kyc', {
+                    const response = await fetch('/api/onmeta/kyc-status', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
+                        ...(onMetaAccessToken && { 'Authorization': `Bearer ${onMetaAccessToken}` }),
                       },
-                      body: JSON.stringify({
-                        userId: getAuthEmail() || undefined,
-                        redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/dashboard?onmeta_callback=true&type=kyc`,
-                      }),
+                      body: JSON.stringify({ email: userEmail }),
                     });
 
                     const data = await response.json();
                     
-                    if (data.success && data.kycUrl) {
-                      // Redirect to OnMeta's KYC page
-                      window.location.href = data.kycUrl;
+                    if (data.success) {
+                      const status = data.kycStatus || data.status || 'Unknown';
+                      const isVerified = data.isVerified || status === 'VERIFIED';
+                      
+                      if (isVerified) {
+                        showToast('KYC is verified!', 'success');
+                      } else if (status === 'PENDING') {
+                        showToast('KYC verification is pending', 'info');
+                      } else if (status === 'REJECTED') {
+                        showToast('KYC verification was rejected. Please try again.', 'error');
+                      } else {
+                        showToast(`KYC Status: ${status}`, 'info');
+                      }
                     } else {
-                      showToast(data.error || 'Failed to initiate KYC. Please try again.', 'error');
+                      showToast(data.error || 'Failed to fetch KYC status', 'error');
                     }
                   } catch (error: any) {
-                    console.error('KYC error:', error);
-                    showToast(`Error: ${error.message || 'Failed to initiate KYC. Please try again.'}`, 'error');
+                    console.error('KYC status error:', error);
+                    showToast(`Error: ${error.message || 'Failed to fetch KYC status'}`, 'error');
                   }
                 }}
                 className="w-full bg-purple-100 text-purple-600 py-2.5 rounded-xl font-semibold hover:bg-purple-200 transition-colors text-sm"
               >
-                Start KYC (Redirect)
+                Check KYC Status
               </button>
-                        </div>
+            </div>
                     </motion.div>
 
           {/* Link Bank Account */}
