@@ -1082,7 +1082,7 @@ export default function DashboardPage() {
                       },
                       body: JSON.stringify({
                         userId: getAuthEmail() || undefined,
-                        redirectUrl: `${window.location.origin}/dashboard?onmeta_callback=true&type=kyc`,
+                        redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/dashboard?onmeta_callback=true&type=kyc`,
                       }),
                     });
 
@@ -2185,7 +2185,7 @@ export default function DashboardPage() {
                             buyTokenAddress: buyTokenAddress,
                             receiverAddress: trimmedAddress,
                             paymentMode: paymentMode,
-                            redirectUrl: `${window.location.origin}/dashboard?onmeta_callback=true`,
+                            redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/dashboard?onmeta_callback=true`,
                             metaData: {
                               userId: getAuthEmail() || '',
                               userName: userProfile?.name || '',

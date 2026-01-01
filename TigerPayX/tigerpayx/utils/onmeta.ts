@@ -16,6 +16,34 @@ if (!ONMETA_CLIENT_ID || !ONMETA_CLIENT_SECRET) {
   console.warn("OnMeta API credentials not found in environment variables. Please set ONMETA_CLIENT_ID and ONMETA_CLIENT_SECRET in .env.local");
 }
 
+/**
+ * Get the base URL for redirects and callbacks
+ * Uses NEXT_PUBLIC_APP_URL if set (production URL), otherwise falls back to window.location.origin
+ * This ensures OnMeta callbacks work in production
+ */
+function getBaseUrl(): string {
+  // In server-side context, use environment variable
+  if (typeof window === 'undefined') {
+    if (process.env.NEXT_PUBLIC_APP_URL) {
+      return process.env.NEXT_PUBLIC_APP_URL;
+    }
+    if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL}`;
+    }
+    return '';
+  }
+  
+  // In client-side context, prefer environment variable over window.location.origin
+  // This allows overriding localhost with production URL
+  // Note: NEXT_PUBLIC_* vars are available in client-side code
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+  
+  // Fallback to window.location.origin (for local development)
+  return window.location.origin;
+}
+
 export interface OnMetaDepositRequest {
   fiatCurrency: "INR" | "PHP" | "IDR";
   fiatAmount: number;
@@ -73,7 +101,7 @@ export async function createDepositOrder(request: OnMetaDepositRequest): Promise
       cryptoCurrency: request.cryptoCurrency,
       walletAddress: request.walletAddress,
       userId: request.userId,
-      redirectUrl: request.redirectUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/dashboard`,
+      redirectUrl: request.redirectUrl || `${getBaseUrl()}/dashboard`,
     };
 
     // Try different endpoint patterns - OnMeta API structure may vary
@@ -349,7 +377,7 @@ export async function createKYCRequest(request: OnMetaKYCRequest): Promise<OnMet
 
     const requestBody: any = {
       userId: request.userId,
-      redirectUrl: request.redirectUrl || `${typeof window !== 'undefined' ? window.location.origin : ''}/dashboard?onmeta_callback=true&type=kyc`,
+      redirectUrl: request.redirectUrl || `${getBaseUrl()}/dashboard?onmeta_callback=true&type=kyc`,
     };
 
     // OnMeta KYC API endpoint - try /v1/kyc first (most common pattern)

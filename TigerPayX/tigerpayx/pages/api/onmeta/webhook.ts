@@ -4,7 +4,14 @@ import crypto from 'crypto';
 /**
  * OnMeta Webhook Handler
  * This endpoint receives callbacks from OnMeta when order status changes
- * Configure this URL in your OnMeta dashboard: https://yourdomain.com/api/onmeta/webhook
+ * 
+ * NOTE: Webhooks may be optional or configured differently by OnMeta.
+ * If webhooks are not available, you can poll for order status using the API.
+ * 
+ * If OnMeta requires webhook configuration, the URL would be:
+ * https://your-app.vercel.app/api/onmeta/webhook
+ * 
+ * IMPORTANT: Use your PRODUCTION URL, not localhost!
  * 
  * Webhook events:
  * 1. fiatPending - User initialized order but fiat deposit is pending
