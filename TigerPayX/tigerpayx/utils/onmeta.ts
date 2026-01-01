@@ -12,8 +12,17 @@ const ONMETA_API_BASE_URL_ALT = process.env.ONMETA_API_BASE_URL_ALT || "https://
 const ONMETA_CLIENT_ID = process.env.ONMETA_CLIENT_ID || "";
 const ONMETA_CLIENT_SECRET = process.env.ONMETA_CLIENT_SECRET || "";
 
+// Log API key status (without exposing the actual key)
 if (!ONMETA_CLIENT_ID || !ONMETA_CLIENT_SECRET) {
   console.warn("OnMeta API credentials not found in environment variables. Please set ONMETA_CLIENT_ID and ONMETA_CLIENT_SECRET in .env.local");
+} else {
+  console.log("OnMeta API credentials loaded:", {
+    hasClientId: !!ONMETA_CLIENT_ID,
+    clientIdLength: ONMETA_CLIENT_ID.length,
+    clientIdPrefix: ONMETA_CLIENT_ID.substring(0, 8) + "...",
+    hasClientSecret: !!ONMETA_CLIENT_SECRET,
+    apiBaseUrl: ONMETA_API_BASE_URL,
+  });
 }
 
 /**
@@ -1227,7 +1236,11 @@ export async function fetchChainLimits(): Promise<ChainLimitsResponse> {
 
     // Correct endpoint for fetch chain limits
     const apiUrl = `${ONMETA_API_BASE_URL}/v1/orders/get-chain-limit`;
-    console.log("OnMeta fetch chain limits request:", { url: apiUrl });
+    console.log("OnMeta fetch chain limits request:", { 
+      url: apiUrl,
+      hasApiKey: !!ONMETA_CLIENT_ID,
+      apiKeyPrefix: ONMETA_CLIENT_ID ? ONMETA_CLIENT_ID.substring(0, 8) + "..." : "missing",
+    });
 
     const response = await fetch(apiUrl, {
       method: "GET",
