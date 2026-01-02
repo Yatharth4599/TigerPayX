@@ -823,10 +823,39 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
       };
     }
 
+    // Extract tokens from multiple possible locations
+    const accessToken = data.accessToken || 
+                       data.access_token || 
+                       data.token ||
+                       data.data?.accessToken ||
+                       data.data?.access_token ||
+                       data.data?.token ||
+                       data.result?.accessToken ||
+                       data.result?.access_token ||
+                       data.result?.token;
+    
+    const refreshToken = data.refreshToken || 
+                        data.refresh_token ||
+                        data.data?.refreshToken ||
+                        data.data?.refresh_token ||
+                        data.result?.refreshToken ||
+                        data.result?.refresh_token;
+    
+    // Log if token not found for debugging
+    if (!accessToken) {
+      console.warn("OnMeta login: Access token not found in expected fields. Response structure:", {
+        topLevelKeys: Object.keys(data),
+        hasData: !!data.data,
+        hasResult: !!data.result,
+        dataKeys: data.data ? Object.keys(data.data) : null,
+        resultKeys: data.result ? Object.keys(data.result) : null,
+      });
+    }
+    
     return {
       success: true,
-      accessToken: data.accessToken || data.access_token,
-      refreshToken: data.refreshToken || data.refresh_token,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
       message: data.message,
     };
   } catch (error: any) {
