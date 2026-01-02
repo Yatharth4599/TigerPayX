@@ -1003,6 +1003,8 @@ export interface OnMetaLinkUPIResponse {
   refNumber?: string; // Reference number needed to check status later
   error?: string;
   message?: string;
+  statusCode?: number; // HTTP status code from OnMeta API
+  onMetaError?: string; // Original error from OnMeta API
 }
 
 /**
