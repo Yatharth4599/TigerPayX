@@ -1149,8 +1149,13 @@ export default function DashboardPage() {
                 onClick={async () => {
                   // Fetch KYC status
                   const userEmail = getAuthEmail();
-                  if (!userEmail) {
-                    showToast('Please login to check KYC status', 'warning');
+                  if (!userEmail || typeof userEmail !== 'string' || !userEmail.includes('@')) {
+                    showToast('Please login with a valid email to check KYC status', 'warning');
+                    return;
+                  }
+                  
+                  if (!onMetaAccessToken) {
+                    showToast('OnMeta authentication required. Please wait for authentication to complete.', 'warning');
                     return;
                   }
                   
@@ -1161,7 +1166,7 @@ export default function DashboardPage() {
                         'Content-Type': 'application/json',
                         ...(onMetaAccessToken && { 'Authorization': `Bearer ${onMetaAccessToken}` }),
                       },
-                      body: JSON.stringify({ email: userEmail }),
+                      body: JSON.stringify({ email: String(userEmail) }),
                     });
 
                     const data = await response.json();

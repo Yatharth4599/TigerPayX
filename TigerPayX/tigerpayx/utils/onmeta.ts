@@ -745,14 +745,35 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
       let errorMessage = "Failed to login after trying all endpoints";
       
       if (lastError) {
-        if (lastError.error) {
-          errorMessage = lastError.error;
+        // Try to extract error message from various possible formats
+        if (typeof lastError === 'string') {
+          errorMessage = lastError;
+        } else if (lastError.error) {
+          errorMessage = typeof lastError.error === 'string' ? lastError.error : JSON.stringify(lastError.error);
         } else if (lastError.message) {
-          errorMessage = lastError.message;
+          errorMessage = typeof lastError.message === 'string' ? lastError.message : JSON.stringify(lastError.message);
         } else if (lastError.status) {
           errorMessage = `Login failed with status ${lastError.status}`;
+        } else if (data && data.error) {
+          errorMessage = data.error;
+        } else if (data && data.message) {
+          errorMessage = data.message;
+        }
+      } else if (data) {
+        // If we have response data but it's not ok, extract error from it
+        if (data.error) {
+          errorMessage = data.error;
+        } else if (data.message) {
+          errorMessage = data.message;
         }
       }
+      
+      console.error("OnMeta login final error:", {
+        lastError,
+        data,
+        response: response ? { status: response.status, statusText: response.statusText } : null,
+        errorMessage,
+      });
       
       return {
         success: false,
@@ -2228,7 +2249,6 @@ export async function fetchSupportedCurrencies(): Promise<SupportedCurrenciesRes
     const possibleEndpoints = [
       `${ONMETA_API_BASE_URL}/v1/currencies`,
       `${ONMETA_API_BASE_URL}/v1/currencies/`,
-      `${ONMETA_API_BASE_URL}/v1/supported-currencies`,
     ].map(url => {
       // Fix double slashes but preserve https:// protocol
       // Replace multiple slashes after the protocol with single slash

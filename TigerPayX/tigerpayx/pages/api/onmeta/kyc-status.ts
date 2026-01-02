@@ -18,7 +18,13 @@ export default async function handler(
     const { email } = req.body;
     const authHeader = req.headers.authorization;
 
-    if (!email || typeof email !== 'string' || !email.includes('@')) {
+    // Validate email - ensure it's a string and has @ symbol
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Email is required' });
+    }
+    
+    const emailStr = String(email).trim();
+    if (typeof emailStr !== 'string' || !emailStr.includes('@') || emailStr.length < 5) {
       return res.status(400).json({ success: false, error: 'Valid email is required' });
     }
 
@@ -26,10 +32,10 @@ export default async function handler(
       ? authHeader.replace('Bearer ', '') 
       : undefined;
 
-    console.log('OnMeta fetch KYC status API route called:', { email, hasAccessToken: !!accessToken });
+    console.log('OnMeta fetch KYC status API route called:', { email: emailStr, hasAccessToken: !!accessToken });
 
     const result = await fetchKYCStatus({
-      email,
+      email: emailStr,
       accessToken,
     });
 
