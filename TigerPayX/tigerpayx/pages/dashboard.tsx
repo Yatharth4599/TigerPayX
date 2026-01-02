@@ -3207,6 +3207,12 @@ export default function DashboardPage() {
                         });
 
                         const data = await response.json();
+                        console.log('Link UPI API response:', {
+                          status: response.status,
+                          success: data.success,
+                          error: data.error,
+                          fullResponse: data,
+                        });
                         
                         if (data.success) {
                           showToast(`UPI ID linking ${data.status || 'initiated'}!`, 'success');
@@ -3221,11 +3227,26 @@ export default function DashboardPage() {
                           setLinkUPIEmail('');
                           setLinkUPIId('');
                           setLinkUPIPhoneNumber('');
+                          // Refresh account status
+                          fetchOnMetaAccountStatus(onMetaAccessToken);
                         } else {
                           // Extract error message safely - ensure it's always a string
-                          const errorMsg = typeof data.error === 'string' 
-                            ? data.error 
-                            : (data.error?.message || data.message || 'Failed to link UPI ID. Please try again.');
+                          // Handle OnMeta error format: {error: {code: 400, message: "account not found for vpa"}}
+                          let errorMsg = 'Failed to link UPI ID. Please try again.';
+                          
+                          if (data.error) {
+                            if (typeof data.error === 'string') {
+                              errorMsg = data.error;
+                            } else if (typeof data.error === 'object' && data.error.message) {
+                              errorMsg = data.error.message;
+                            } else if (typeof data.error === 'object' && data.error.code) {
+                              errorMsg = data.error.message || `Error ${data.error.code}`;
+                            }
+                          } else if (data.message) {
+                            errorMsg = typeof data.message === 'string' ? data.message : String(data.message);
+                          }
+                          
+                          console.error('Link UPI error:', errorMsg, data);
                           showToast(errorMsg, 'error');
                         }
                       } catch (error: any) {
