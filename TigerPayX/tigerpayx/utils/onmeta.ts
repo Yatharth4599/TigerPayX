@@ -2360,7 +2360,8 @@ export async function fetchOrderHistory(request: OnMetaOrderHistoryRequest): Pro
         const data = await response.json();
         console.log("OnMeta fetch order history response:", {
           status: response.status,
-          orderCount: Array.isArray(data) ? data.length : (data.orders?.length || data.transactions?.length || 0),
+          orderCount: Array.isArray(data) ? data.length : (data.orders?.length || data.transactions?.length || data.data?.length || 0),
+          endpoint: apiUrl,
         });
 
         if (response.ok) {
@@ -2380,10 +2381,19 @@ export async function fetchOrderHistory(request: OnMetaOrderHistoryRequest): Pro
           };
         }
 
-        if (response.status !== 404) {
-          lastError = data;
-          break; // Don't try other endpoints if it's not a 404
+        // If 404 or 400, try next endpoint
+        if (response.status === 404 || response.status === 400) {
+          console.log(`Endpoint ${apiUrl} returned ${response.status}, trying next endpoint...`);
+          lastError = {
+            message: data.message || data.error || `Endpoint not found or invalid: ${apiUrl}`,
+            status: response.status,
+          };
+          continue; // Try next endpoint
         }
+
+        // For other errors, don't try other endpoints
+        lastError = data;
+        break;
       } catch (fetchError: any) {
         console.error(`Error trying endpoint ${apiUrl}:`, fetchError);
         lastError = fetchError;
