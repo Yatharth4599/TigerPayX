@@ -524,12 +524,14 @@ export default function DashboardPage() {
           console.log('Supported currencies loaded:', currencies.length);
         }
       } else {
-        const errorMsg = data.error || data.message || 'No currencies data';
-        console.error('Failed to fetch supported currencies:', errorMsg);
+        const errorMsg = data.error || data.message || 'Currencies endpoint not available';
+        console.log('Currencies not available:', errorMsg);
+        setSupportedCurrencies([]);
         // Don't show error toast for currencies - it's not critical, just log it
       }
-    } catch (error) {
-      console.error('Error fetching supported currencies:', error);
+    } catch (error: any) {
+      console.log('Error fetching supported currencies (non-critical):', error?.message || 'Network error');
+      setSupportedCurrencies([]);
     } finally {
       setCurrenciesLoading(false);
     }
