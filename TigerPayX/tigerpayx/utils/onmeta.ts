@@ -1391,12 +1391,28 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
         // If not OK, return error with detailed information
         if (!response.ok) {
           // Extract error message from various possible locations
-          const errorMessage = data.error || 
-                              data.message || 
-                              data.errorMessage ||
-                              (data.data && typeof data.data === 'object' && data.data.error) ||
-                              (data.data && typeof data.data === 'object' && data.data.message) ||
-                              `Failed to link UPI: ${response.status} ${response.statusText}`;
+          // OnMeta can return error as: {error: {code: 400, message: "account not found for vpa"}} or {error: "string"}
+          let errorMessage = `Failed to link UPI: ${response.status} ${response.statusText}`;
+          
+          if (data.error) {
+            if (typeof data.error === 'string') {
+              errorMessage = data.error;
+            } else if (typeof data.error === 'object' && data.error.message) {
+              errorMessage = data.error.message;
+            } else if (typeof data.error === 'object' && data.error.code) {
+              errorMessage = data.error.message || `Error ${data.error.code}`;
+            }
+          } else if (data.message) {
+            errorMessage = typeof data.message === 'string' ? data.message : (data.message.message || String(data.message));
+          } else if (data.errorMessage) {
+            errorMessage = typeof data.errorMessage === 'string' ? data.errorMessage : String(data.errorMessage);
+          } else if (data.data && typeof data.data === 'object') {
+            if (data.data.error) {
+              errorMessage = typeof data.data.error === 'string' ? data.data.error : (data.data.error.message || String(data.data.error));
+            } else if (data.data.message) {
+              errorMessage = typeof data.data.message === 'string' ? data.data.message : String(data.data.message);
+            }
+          }
           
           console.error("OnMeta link UPI error details:", {
             status: response.status,
@@ -1411,7 +1427,7 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
             success: false,
             error: errorMessage,
             statusCode: response.status,
-            onMetaError: data.error || data.message,
+            onMetaError: typeof data.error === 'object' ? data.error.message : (data.error || data.message),
           };
         }
 
