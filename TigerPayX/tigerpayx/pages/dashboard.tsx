@@ -518,28 +518,48 @@ export default function DashboardPage() {
         },
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.log('Order history fetch failed (non-critical):', {
+          status: response.status,
+          error: errorData.error || errorData.message,
+        });
+        if (!append) {
+          setOrderHistory([]);
+        }
+        return;
+      }
+
       const data = await response.json();
       
       // Handle response format: {success: true, data: [...]} or {success: true, orders: [...]}
       const orders = data.data || data.orders || [];
       
-      if (data.success && orders.length > 0) {
-        if (append) {
-          setOrderHistory(prev => [...prev, ...orders]);
+      if (data.success) {
+        if (orders.length > 0) {
+          if (append) {
+            setOrderHistory(prev => [...prev, ...orders]);
+          } else {
+            setOrderHistory(orders);
+          }
+          setOrderHistoryHasMore(data.hasMore || orders.length === 10);
+          setOrderHistorySkip(skip);
+          console.log('Order history fetched successfully:', orders.length, 'orders');
         } else {
-          setOrderHistory(orders);
+          // Empty orders is valid - user just hasn't made any orders yet
+          if (!append) {
+            setOrderHistory([]);
+          }
         }
-        setOrderHistoryHasMore(data.hasMore || orders.length === 10);
-        setOrderHistorySkip(skip);
-        console.log('Order history fetched successfully:', orders.length, 'orders');
       } else {
-        console.error('Failed to fetch order history:', data.error || 'No orders data');
+        console.log('Order history fetch returned success:false (non-critical):', data.error || data.message);
         if (!append) {
           setOrderHistory([]);
         }
       }
     } catch (error) {
-      console.error('Error fetching order history:', error);
+      // Don't break the app if order history fails
+      console.log('Error fetching order history (non-critical):', error);
       if (!append) {
         setOrderHistory([]);
     }
