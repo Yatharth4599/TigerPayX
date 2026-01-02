@@ -219,9 +219,16 @@ export default function DashboardPage() {
           });
           
           if (!refreshResponse.ok) {
-            const text = await refreshResponse.text();
-            console.error('OnMeta token refresh failed:', refreshResponse.status, text.substring(0, 100));
-            throw new Error(`Failed to refresh token: ${refreshResponse.status}`);
+            let errorText = '';
+            try {
+              const errorData = await refreshResponse.json();
+              errorText = errorData.error || errorData.message || `HTTP ${refreshResponse.status}`;
+            } catch (e) {
+              const text = await refreshResponse.text();
+              errorText = text.substring(0, 100) || `HTTP ${refreshResponse.status}`;
+            }
+            console.error('OnMeta token refresh failed:', refreshResponse.status, errorText);
+            throw new Error(`Failed to refresh token: ${errorText}`);
           }
           
           const refreshData = await refreshResponse.json();
@@ -236,9 +243,12 @@ export default function DashboardPage() {
             fetchOnMetaAccountStatus(refreshData.accessToken);
             setOnMetaAuthLoading(false);
             return;
+          } else {
+            console.error('OnMeta token refresh failed: No access token in response', refreshData);
+            throw new Error(refreshData.error || 'No access token received');
           }
-        } catch (error) {
-          console.error('OnMeta token refresh failed, will try login:', error);
+        } catch (error: any) {
+          console.error('OnMeta token refresh failed, will try login:', error?.message || error);
           // Clear invalid refresh token
           localStorage.removeItem('onmeta_refresh_token');
           // Continue to try login
