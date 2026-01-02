@@ -832,50 +832,113 @@ export async function onMetaLinkBankAccount(request: OnMetaLinkBankRequest): Pro
       phone: request.phone,
     };
 
-    // Correct endpoint for link bank account
-    const apiUrl = `${ONMETA_API_BASE_URL}/v1/users/account-link`;
-    console.log("OnMeta link bank request:", {
-      url: apiUrl,
-      email: request.email,
-      hasAccessToken: !!request.accessToken,
-    });
+    // Try the account endpoint first (as per comment), fallback to users endpoint
+    // OnMeta might use either: /v1/account/link-bank or /v1/users/account-link
+    const endpoints = [
+      `${ONMETA_API_BASE_URL}/v1/account/link-bank`,
+      `${ONMETA_API_BASE_URL}/v1/users/account-link`,
+    ];
+    
+    let lastError: any = null;
+    let data: any = null;
+    let response: Response | null = null;
 
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${request.accessToken}`,
-        "x-api-key": ONMETA_CLIENT_ID,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    // Check if response is JSON before parsing
-    const contentType = response.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-      const text = await response.text();
-      console.error("OnMeta link bank response is not JSON:", {
-        status: response.status,
-        contentType,
-        textPreview: text.substring(0, 200),
+    for (const apiUrl of endpoints) {
+      console.log("OnMeta link bank request (trying endpoint):", {
+        url: apiUrl,
+        email: request.email,
+        hasAccessToken: !!request.accessToken,
+        requestBody: JSON.stringify(requestBody, null, 2),
       });
-      return {
-        success: false,
-        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
-      };
+
+      try {
+        response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${request.accessToken}`,
+            "x-api-key": ONMETA_CLIENT_ID,
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await response.text();
+          console.error("OnMeta link bank response is not JSON:", {
+            status: response.status,
+            contentType,
+            textPreview: text.substring(0, 200),
+            endpoint: apiUrl,
+          });
+          
+          // If 404, try next endpoint
+          if (response.status === 404 && endpoints.indexOf(apiUrl) < endpoints.length - 1) {
+            lastError = { status: response.status, error: `Endpoint not found: ${apiUrl}` };
+            continue;
+          }
+          
+          return {
+            success: false,
+            error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+          };
+        }
+
+        data = await response.json();
+        console.log("OnMeta link bank response:", {
+          status: response.status,
+          statusText: response.statusText,
+          accountStatus: data.status,
+          refNumber: data.refNumber,
+          fullResponse: data,
+          endpoint: apiUrl,
+        });
+
+        // If 404, try next endpoint
+        if (response.status === 404 && endpoints.indexOf(apiUrl) < endpoints.length - 1) {
+          lastError = { status: response.status, error: data.message || data.error || `Endpoint not found: ${apiUrl}` };
+          continue;
+        }
+
+        // If not OK, return error (but don't try next endpoint for non-404 errors)
+        if (!response.ok) {
+          console.error("OnMeta link bank error details:", {
+            status: response.status,
+            statusText: response.statusText,
+            error: data.error,
+            message: data.message,
+            fullResponse: data,
+            endpoint: apiUrl,
+          });
+          return {
+            success: false,
+            error: data.message || data.error || `Failed to link bank account: ${response.status} ${response.statusText}`,
+          };
+        }
+
+        // Success! Break out of loop
+        break;
+      } catch (error: any) {
+        console.error(`OnMeta link bank error for endpoint ${apiUrl}:`, error);
+        lastError = error;
+        // If this is the last endpoint, return error
+        if (endpoints.indexOf(apiUrl) === endpoints.length - 1) {
+          return {
+            success: false,
+            error: error.message || "Network error occurred",
+          };
+        }
+        // Otherwise, try next endpoint
+        continue;
+      }
     }
 
-    const data = await response.json();
-    console.log("OnMeta link bank response:", {
-      status: response.status,
-      accountStatus: data.status,
-      refNumber: data.refNumber,
-    });
-
-    if (!response.ok) {
+    // If we got here without success, return last error
+    if (!response || !response.ok) {
       return {
         success: false,
-        error: data.message || data.error || `Failed to link bank account: ${response.status} ${response.statusText}`,
+        error: lastError?.error || lastError?.message || "Failed to link bank account after trying all endpoints",
       };
     }
 
@@ -987,50 +1050,113 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
       requestBody.phone = request.phone;
     }
 
-    // Correct endpoint for link UPI - uses different base URL
-    const apiUrl = `${ONMETA_API_BASE_URL_ALT}/v1/users/upi-link`;
-    console.log("OnMeta link UPI request:", {
-      url: apiUrl,
-      email: request.email,
-      upiId: request.upiId,
-    });
+    // Try the account endpoint first (as per comment), fallback to users endpoint
+    // OnMeta might use either: /v1/account/link-upi or /v1/users/upi-link
+    const endpoints = [
+      `${ONMETA_API_BASE_URL}/v1/account/link-upi`,
+      `${ONMETA_API_BASE_URL}/v1/users/upi-link`,
+    ];
+    
+    let lastError: any = null;
+    let data: any = null;
+    let response: Response | null = null;
 
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${request.accessToken}`,
-        "x-api-key": ONMETA_CLIENT_ID,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    // Check if response is JSON before parsing
-    const contentType = response.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-      const text = await response.text();
-      console.error("OnMeta link UPI response is not JSON:", {
-        status: response.status,
-        contentType,
-        textPreview: text.substring(0, 200),
+    for (const apiUrl of endpoints) {
+      console.log("OnMeta link UPI request (trying endpoint):", {
+        url: apiUrl,
+        email: request.email,
+        upiId: request.upiId,
+        requestBody: JSON.stringify(requestBody, null, 2),
       });
-      return {
-        success: false,
-        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
-      };
+
+      try {
+        response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${request.accessToken}`,
+            "x-api-key": ONMETA_CLIENT_ID,
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await response.text();
+          console.error("OnMeta link UPI response is not JSON:", {
+            status: response.status,
+            contentType,
+            textPreview: text.substring(0, 200),
+            endpoint: apiUrl,
+          });
+          
+          // If 404, try next endpoint
+          if (response.status === 404 && endpoints.indexOf(apiUrl) < endpoints.length - 1) {
+            lastError = { status: response.status, error: `Endpoint not found: ${apiUrl}` };
+            continue;
+          }
+          
+          return {
+            success: false,
+            error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+          };
+        }
+
+        data = await response.json();
+        console.log("OnMeta link UPI response:", {
+          status: response.status,
+          statusText: response.statusText,
+          upiStatus: data.status,
+          refNumber: data.refNumber,
+          fullResponse: data,
+          endpoint: apiUrl,
+        });
+
+        // If 404, try next endpoint
+        if (response.status === 404 && endpoints.indexOf(apiUrl) < endpoints.length - 1) {
+          lastError = { status: response.status, error: data.message || data.error || `Endpoint not found: ${apiUrl}` };
+          continue;
+        }
+
+        // If not OK, return error (but don't try next endpoint for non-404 errors)
+        if (!response.ok) {
+          console.error("OnMeta link UPI error details:", {
+            status: response.status,
+            statusText: response.statusText,
+            error: data.error,
+            message: data.message,
+            fullResponse: data,
+            endpoint: apiUrl,
+          });
+          return {
+            success: false,
+            error: data.message || data.error || `Failed to link UPI: ${response.status} ${response.statusText}`,
+          };
+        }
+
+        // Success! Break out of loop
+        break;
+      } catch (error: any) {
+        console.error(`OnMeta link UPI error for endpoint ${apiUrl}:`, error);
+        lastError = error;
+        // If this is the last endpoint, return error
+        if (endpoints.indexOf(apiUrl) === endpoints.length - 1) {
+          return {
+            success: false,
+            error: error.message || "Network error occurred",
+          };
+        }
+        // Otherwise, try next endpoint
+        continue;
+      }
     }
 
-    const data = await response.json();
-    console.log("OnMeta link UPI response:", {
-      status: response.status,
-      upiStatus: data.status,
-      refNumber: data.refNumber,
-    });
-
-    if (!response.ok) {
+    // If we got here without success, return last error
+    if (!response || !response.ok) {
       return {
         success: false,
-        error: data.message || data.error || `Failed to link UPI: ${response.status} ${response.statusText}`,
+        error: lastError?.error || lastError?.message || "Failed to link UPI after trying all endpoints",
       };
     }
 
@@ -1065,8 +1191,8 @@ export async function onMetaGetUPIStatus(accessToken: string, refNumber?: string
     // UPI status endpoint requires refNumber in path
     // Note: If refNumber is not provided, this will fail - refNumber should come from upi-link response
     const apiUrl = refNumber
-      ? `${ONMETA_API_BASE_URL_ALT}/v1/users/get-upi-status/${refNumber}`
-      : `${ONMETA_API_BASE_URL_ALT}/v1/users/get-upi-status`; // Try without refNumber (might fail)
+      ? `${ONMETA_API_BASE_URL}/v1/users/get-upi-status/${refNumber}`
+      : `${ONMETA_API_BASE_URL}/v1/users/get-upi-status`; // Try without refNumber (might fail)
     console.log("OnMeta get UPI status request:", { url: apiUrl, refNumber: refNumber || 'not provided' });
     
     const response = await fetch(apiUrl, {
