@@ -2401,6 +2401,20 @@ export async function fetchOrderHistory(request: OnMetaOrderHistoryRequest): Pro
       }
     }
 
+    // If all endpoints failed with 404/400, return empty array instead of error (order history is optional)
+    // This allows the app to continue working even if order history endpoint doesn't exist
+    if (lastError && (lastError.status === 404 || lastError.status === 400)) {
+      console.warn("OnMeta order history endpoint not found, returning empty array");
+      return {
+        success: true,
+        orders: [],
+        transactions: [],
+        hasMore: false,
+        skip: skip,
+        message: "Order history endpoint not available",
+      };
+    }
+    
     return {
       success: false,
       error: lastError?.message || lastError?.error || "Failed to fetch order history. Please check the API endpoint.",
