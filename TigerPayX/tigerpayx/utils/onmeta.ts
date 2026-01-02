@@ -1008,11 +1008,11 @@ export async function onMetaLinkBankAccount(request: OnMetaLinkBankRequest): Pro
       phone: request.phone,
     };
 
-    // Try the account endpoint first (as per comment), fallback to users endpoint
-    // OnMeta might use either: /v1/account/link-bank or /v1/users/account-link
+    // OnMeta endpoint: POST /v1/users/account-link
+    // Response: { success: true, data: { status: "SUCCESS", referenceNumber: "89822" }, error: {} }
     const endpoints = [
-      `${ONMETA_API_BASE_URL}/v1/account/link-bank`,
       `${ONMETA_API_BASE_URL}/v1/users/account-link`,
+      `${ONMETA_API_BASE_URL}/v1/account/link-bank`, // Fallback
     ];
     
     let lastError: any = null;
@@ -1065,8 +1065,8 @@ export async function onMetaLinkBankAccount(request: OnMetaLinkBankRequest): Pro
         console.log("OnMeta link bank response:", {
           status: response.status,
           statusText: response.statusText,
-          accountStatus: data.status,
-          refNumber: data.refNumber,
+          accountStatus: data.data?.status || data.status,
+          referenceNumber: data.data?.referenceNumber || data.referenceNumber || data.refNumber,
           fullResponse: data,
           endpoint: apiUrl,
         });
@@ -1118,11 +1118,12 @@ export async function onMetaLinkBankAccount(request: OnMetaLinkBankRequest): Pro
       };
     }
 
+    // OnMeta response: { success: true, data: { status: "SUCCESS", referenceNumber: "89822" }, error: {} }
     return {
       success: true,
-      status: data.status || data.accountStatus,
-      refNumber: data.refNumber || data.ref_number || data.referenceNumber,
-      message: data.message,
+      status: data.data?.status || data.status || data.accountStatus,
+      refNumber: data.data?.referenceNumber || data.referenceNumber || data.refNumber || data.ref_number,
+      message: data.message || data.data?.message,
     };
   } catch (error: any) {
     console.error("OnMeta link bank error:", error);
@@ -1208,15 +1209,17 @@ export async function onMetaGetBankStatus(accessToken: string, refNumber?: strin
         data = await response.json();
         console.log("OnMeta get bank status response:", {
           status: response.status,
-          accountStatus: data.status || data.accountStatus,
+          bankStatus: data.data?.bankStatus || data.bankStatus || data.status || data.accountStatus,
           endpoint: apiUrl,
+          fullResponse: data,
         });
 
         if (response.ok) {
+          // OnMeta response: { success: true, data: { bankStatus: "SUCCESS", transactionId: "1212", referenceId: "89822" }, error: {} }
           return {
             success: true,
-            status: data.status || data.accountStatus || data.data?.status,
-            refNumber: data.refNumber || data.data?.refNumber || refNumber,
+            status: data.data?.bankStatus || data.bankStatus || data.status || data.accountStatus,
+            refNumber: data.data?.referenceId || data.data?.refNumber || data.referenceId || data.refNumber || refNumber,
           };
         }
 
@@ -1282,11 +1285,11 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
       requestBody.phone = request.phone;
     }
 
-    // Try the account endpoint first (as per comment), fallback to users endpoint
-    // OnMeta might use either: /v1/account/link-upi or /v1/users/upi-link
+    // OnMeta endpoint: POST /v1/users/upi-link
+    // Response: { success: true, data: { status: "SUCCESS", referenceId: "89822" }, error: {} }
     const endpoints = [
-      `${ONMETA_API_BASE_URL}/v1/account/link-upi`,
       `${ONMETA_API_BASE_URL}/v1/users/upi-link`,
+      `${ONMETA_API_BASE_URL}/v1/account/link-upi`, // Fallback
     ];
     
     let lastError: any = null;
@@ -1339,8 +1342,8 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
         console.log("OnMeta link UPI response:", {
           status: response.status,
           statusText: response.statusText,
-          upiStatus: data.status,
-          refNumber: data.refNumber,
+          upiStatus: data.data?.status || data.status,
+          referenceId: data.data?.referenceId || data.referenceId || data.refNumber,
           fullResponse: data,
           endpoint: apiUrl,
         });
@@ -1392,11 +1395,12 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
       };
     }
 
+    // OnMeta response: { success: true, data: { status: "SUCCESS", referenceId: "89822" }, error: {} }
     return {
       success: true,
-      status: data.status || data.upiStatus,
-      refNumber: data.refNumber || data.ref_number || data.referenceNumber,
-      message: data.message,
+      status: data.data?.status || data.status || data.upiStatus,
+      refNumber: data.data?.referenceId || data.referenceId || data.refNumber || data.ref_number || data.referenceNumber,
+      message: data.message || data.data?.message,
     };
   } catch (error: any) {
     console.error("OnMeta link UPI error:", error);
@@ -1480,15 +1484,17 @@ export async function onMetaGetUPIStatus(accessToken: string, refNumber?: string
         data = await response.json();
         console.log("OnMeta get UPI status response:", {
           status: response.status,
-          upiStatus: data.status || data.upiStatus,
+          upiStatus: data.data?.upiStatus || data.upiStatus || data.status,
           endpoint: apiUrl,
+          fullResponse: data,
         });
 
         if (response.ok) {
+          // OnMeta response: { success: true, data: { upiStatus: "SUCCESS", referenceId: "89822" }, error: {} }
           return {
             success: true,
-            status: data.status || data.upiStatus || data.data?.status,
-            refNumber: data.refNumber || data.data?.refNumber || refNumber,
+            status: data.data?.upiStatus || data.upiStatus || data.status,
+            refNumber: data.data?.referenceId || data.data?.refNumber || data.referenceId || data.refNumber || refNumber,
           };
         }
 
