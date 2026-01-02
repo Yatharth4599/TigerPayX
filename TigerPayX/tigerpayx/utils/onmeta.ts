@@ -744,8 +744,19 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
     if (!response || !response.ok) {
       let errorMessage = "Failed to login after trying all endpoints";
       
-      if (lastError) {
-        // Try to extract error message from various possible formats
+      // First, try to get error from the last response data
+      if (data) {
+        if (data.error) {
+          errorMessage = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+        } else if (data.message) {
+          errorMessage = typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
+        } else if (data.statusCode || data.status) {
+          errorMessage = `Login failed with status ${data.statusCode || data.status}`;
+        }
+      }
+      
+      // Then try lastError
+      if (lastError && errorMessage === "Failed to login after trying all endpoints") {
         if (typeof lastError === 'string') {
           errorMessage = lastError;
         } else if (lastError.error) {
@@ -754,18 +765,12 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
           errorMessage = typeof lastError.message === 'string' ? lastError.message : JSON.stringify(lastError.message);
         } else if (lastError.status) {
           errorMessage = `Login failed with status ${lastError.status}`;
-        } else if (data && data.error) {
-          errorMessage = data.error;
-        } else if (data && data.message) {
-          errorMessage = data.message;
         }
-      } else if (data) {
-        // If we have response data but it's not ok, extract error from it
-        if (data.error) {
-          errorMessage = data.error;
-        } else if (data.message) {
-          errorMessage = data.message;
-        }
+      }
+      
+      // If we have response status, include it
+      if (response && errorMessage === "Failed to login after trying all endpoints") {
+        errorMessage = `Login failed: ${response.status} ${response.statusText || ''}`.trim();
       }
       
       console.error("OnMeta login final error:", {
@@ -2245,10 +2250,10 @@ export async function fetchSupportedCurrencies(): Promise<SupportedCurrenciesRes
 
     // Try different endpoint patterns - start with the most likely one
     // Ensure no double slashes by removing trailing slash from base URL (already done above)
-    // Note: /v1/payment-modes doesn't exist, removed from list
+    // Note: Based on testing, currencies endpoint might not exist or require different auth
+    // Try only the main endpoint, if it fails, return empty array instead of error
     const possibleEndpoints = [
       `${ONMETA_API_BASE_URL}/v1/currencies`,
-      `${ONMETA_API_BASE_URL}/v1/currencies/`,
     ].map(url => {
       // Fix double slashes but preserve https:// protocol
       // Replace multiple slashes after the protocol with single slash
