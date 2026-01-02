@@ -823,21 +823,22 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
       };
     }
 
-    // Extract tokens from multiple possible locations
-    const accessToken = data.accessToken || 
+    // Extract tokens from OnMeta response structure:
+    // { success: true, data: { accessToken: "...", refreshToken: "..." }, error: {} }
+    // Priority: data.data.accessToken (OnMeta format) > data.accessToken (fallback)
+    const accessToken = data.data?.accessToken || 
+                       data.data?.access_token || 
+                       data.accessToken || 
                        data.access_token || 
                        data.token ||
-                       data.data?.accessToken ||
-                       data.data?.access_token ||
-                       data.data?.token ||
                        data.result?.accessToken ||
                        data.result?.access_token ||
                        data.result?.token;
     
-    const refreshToken = data.refreshToken || 
-                        data.refresh_token ||
-                        data.data?.refreshToken ||
+    const refreshToken = data.data?.refreshToken || 
                         data.data?.refresh_token ||
+                        data.refreshToken || 
+                        data.refresh_token ||
                         data.result?.refreshToken ||
                         data.result?.refresh_token;
     
@@ -849,6 +850,13 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
         hasResult: !!data.result,
         dataKeys: data.data ? Object.keys(data.data) : null,
         resultKeys: data.result ? Object.keys(data.result) : null,
+        fullResponse: data,
+      });
+    } else {
+      console.log("OnMeta login: Access token found successfully", {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        tokenLength: accessToken.length,
       });
     }
     

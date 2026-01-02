@@ -274,31 +274,37 @@ export default function DashboardPage() {
           const data = await response.json();
           console.log('OnMeta login API response:', data);
           
-          // Check for access token in multiple possible fields and nested structures
-          const accessToken = data.accessToken || 
+          // Check for access token in OnMeta response structure:
+          // { success: true, data: { accessToken: "...", refreshToken: "..." }, error: {} }
+          // Priority: data.data.accessToken (OnMeta format) > data.accessToken (fallback)
+          const accessToken = data.data?.accessToken || 
+                            data.data?.access_token || 
+                            data.accessToken || 
                             data.access_token || 
                             data.token ||
-                            data.data?.accessToken ||
-                            data.data?.access_token ||
-                            data.data?.token ||
                             data.result?.accessToken ||
                             data.result?.access_token ||
                             data.result?.token;
           
-          const refreshToken = data.refreshToken || 
-                              data.refresh_token ||
-                              data.data?.refreshToken ||
+          const refreshToken = data.data?.refreshToken || 
                               data.data?.refresh_token ||
+                              data.refreshToken || 
+                              data.refresh_token ||
                               data.result?.refreshToken ||
                               data.result?.refresh_token;
           
           // Log all possible token fields for debugging
           if (!accessToken) {
-            console.log('Access token not found. Checking response structure:', {
+            console.error('Access token not found. Response structure:', {
               keys: Object.keys(data),
               dataKeys: data.data ? Object.keys(data.data) : null,
               resultKeys: data.result ? Object.keys(data.result) : null,
               fullData: data,
+            });
+          } else {
+            console.log('Access token found successfully:', {
+              hasAccessToken: !!accessToken,
+              hasRefreshToken: !!refreshToken,
             });
           }
           
