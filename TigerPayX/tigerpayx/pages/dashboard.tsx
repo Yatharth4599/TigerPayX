@@ -337,7 +337,31 @@ export default function DashboardPage() {
             showToast(`OnMeta authentication failed: ${errorMsg}`, 'error');
           }
         } catch (error: any) {
-          const errorMsg = error?.message || error?.error || 'Network error occurred';
+          // Better error extraction from fetch errors
+          let errorMsg = 'Network error occurred';
+          
+          // Try to extract error from response if available
+          if (error?.response) {
+            try {
+              const errorData = await error.response.json();
+              errorMsg = errorData.error || errorData.message || errorMsg;
+            } catch (e) {
+              // If response is not JSON, try to get text
+              try {
+                const text = await error.response.text();
+                errorMsg = text.substring(0, 200) || errorMsg;
+              } catch (e2) {
+                // Ignore
+              }
+            }
+          } else if (error?.message) {
+            errorMsg = error.message;
+          } else if (error?.error) {
+            errorMsg = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+          } else if (typeof error === 'string') {
+            errorMsg = error;
+          }
+          
           console.error('OnMeta login error:', errorMsg, error);
           showToast(`OnMeta authentication failed: ${errorMsg}`, 'error');
     } finally {
@@ -1388,7 +1412,7 @@ export default function DashboardPage() {
               </div>
             </div>
               <button
-              onClick={async () => {
+              onClick={() => {
                 if (!onMetaAccessToken) {
                   if (onMetaAuthLoading) {
                     showToast('Please wait for OnMeta authentication to complete', 'warning');
@@ -1397,64 +1421,9 @@ export default function DashboardPage() {
                   }
                   return;
                 }
-
-                // Check KYC status before allowing UPI linking
-                const userEmail = getAuthEmail();
-                if (!userEmail || typeof userEmail !== 'string' || !userEmail.includes('@')) {
-                  showToast('Please login with a valid email to link UPI', 'warning');
-                  return;
-                }
-
-                // Fetch KYC status if not already known
-                if (!onMetaKYCStatus || onMetaKYCStatus === 'Unknown' || onMetaKYCStatus === 'UNKNOWN') {
-                  try {
-                    const response = await fetch('/api/onmeta/kyc-status', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${onMetaAccessToken}`,
-                      },
-                      body: JSON.stringify({ email: userEmail }),
-                    });
-
-                    const data = await response.json();
-                    if (data.success) {
-                      const status = data.kycStatus || data.status || 'Unknown';
-                      const isVerified = data.isVerified || 
-                                         status === 'VERIFIED' || 
-                                         status === 'verified' || 
-                                         status === 'VERIFIED_SUCCESS' ||
-                                         status === 'SUCCESS';
-                      setOnMetaKYCStatus(isVerified ? 'VERIFIED' : status);
-                      
-                      if (!isVerified && status !== 'VERIFIED' && status !== 'verified' && status !== 'VERIFIED_SUCCESS' && status !== 'SUCCESS') {
-                        showToast('KYC verification is required before linking UPI. Please complete KYC first.', 'warning');
-                        return;
-                      }
-                    } else {
-                      // If KYC check fails, show warning but allow proceeding (in case KYC is done but status check fails)
-                      console.warn('KYC status check failed, but allowing UPI linking to proceed:', data.error);
-                    }
-                  } catch (error: any) {
-                    console.error('KYC status check error:', error);
-                    // Allow proceeding if KYC check fails (graceful degradation)
-                  }
-                } else {
-                  // Check if KYC is verified
-                  const isVerified = onMetaKYCStatus === 'VERIFIED' || 
-                                    onMetaKYCStatus === 'verified' || 
-                                    onMetaKYCStatus === 'VERIFIED_SUCCESS' ||
-                                    onMetaKYCStatus === 'SUCCESS';
-                  
-                  if (!isVerified) {
-                    showToast('KYC verification is required before linking UPI. Please complete KYC first.', 'warning');
-                    return;
-                  }
-                }
-
                 // Pre-fill form with user data
                 setLinkUPIName(userProfile?.name || '');
-                setLinkUPIEmail(userEmail);
+                setLinkUPIEmail(getAuthEmail() || '');
                 setShowLinkUPIModal(true);
               }}
               disabled={onMetaAuthLoading}
