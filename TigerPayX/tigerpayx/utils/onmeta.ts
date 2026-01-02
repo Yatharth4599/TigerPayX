@@ -2341,6 +2341,19 @@ export async function fetchSupportedCurrencies(): Promise<SupportedCurrenciesRes
     }
 
     // If we tried all endpoints and none worked
+    // If it's a 404, the endpoint might not exist - return empty array instead of error
+    // This allows the app to continue working even if currencies endpoint is unavailable
+    if (lastResponse && lastResponse.status === 404) {
+      console.warn("OnMeta currencies endpoint not found, returning empty array");
+      return {
+        success: true,
+        currencies: [],
+        supportedCurrencies: [],
+        message: "Currencies endpoint not available",
+      };
+    }
+    
+    // For other errors, return error
     let errorMessage = `Failed to fetch supported currencies. Tried ${possibleEndpoints.length} endpoints`;
     if (lastResponse) {
       errorMessage += `, last status: ${lastResponse.status}`;
