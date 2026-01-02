@@ -663,12 +663,17 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
       });
 
       try {
+        // Match OnMeta API requirements exactly:
+        // - Accept: application/json
+        // - x-api-key: API key
+        // - Content-Type: application/json (for POST with body)
+        // - Body: JSON string with email
         response = await fetch(apiUrl, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             "Accept": "application/json",
             "x-api-key": ONMETA_CLIENT_ID,
+            "Content-Type": "application/json",
           },
           body: JSON.stringify(requestBody),
         });
