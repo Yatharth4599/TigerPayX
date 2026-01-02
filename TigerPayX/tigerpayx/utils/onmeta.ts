@@ -742,9 +742,12 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
 
     // If we got here without success, return last error
     if (!response || !response.ok) {
+      const errorMessage = lastError?.error || lastError?.message || lastError?.status 
+        ? `Login failed (${lastError.status || 'unknown status'})` 
+        : "Failed to login after trying all endpoints";
       return {
         success: false,
-        error: lastError?.error || lastError?.message || "Failed to login after trying all endpoints",
+        error: errorMessage,
       };
     }
 
@@ -2217,7 +2220,11 @@ export async function fetchSupportedCurrencies(): Promise<SupportedCurrenciesRes
       `${ONMETA_API_BASE_URL}/v1/currencies/`,
       `${ONMETA_API_BASE_URL}/v1/supported-currencies`,
       `${ONMETA_API_BASE_URL}/v1/payment-modes`,
-    ].map(url => url.replace(/\/+/g, '/')); // Remove any double slashes
+    ].map(url => {
+      // Fix double slashes but preserve https:// protocol
+      // Replace multiple slashes after the protocol with single slash
+      return url.replace(/(https?:\/\/[^\/]+)\/+/g, '$1/');
+    });
 
     let lastError: any = null;
     let lastResponse: Response | null = null;
@@ -2443,21 +2450,34 @@ export async function fetchKYCStatus(request: OnMetaKYCStatusRequest): Promise<O
     const data = await response.json();
     console.log("OnMeta fetch KYC status response:", {
       status: response.status,
-      kycStatus: data.kycStatus || data.status,
+      kycStatus: data.kycStatus || data.status || data.kyc_status,
+      fullResponse: data,
     });
 
     if (!response.ok) {
+      console.error("OnMeta fetch KYC status error:", {
+        status: response.status,
+        statusText: response.statusText,
+        error: data.error,
+        message: data.message,
+        fullResponse: data,
+      });
       return {
         success: false,
         error: data.message || data.error || `Failed to fetch KYC status: ${response.status} ${response.statusText}`,
       };
     }
 
+    // Handle different response formats from OnMeta
+    const kycStatus = data.kycStatus || data.status || data.kyc_status || data.data?.status;
+    const isVerified = data.isVerified || data.is_verified || data.data?.isVerified || 
+                       kycStatus === 'VERIFIED' || kycStatus === 'verified' || kycStatus === 'VERIFIED_SUCCESS';
+
     return {
       success: true,
-      kycStatus: data.kycStatus || data.status || data.kyc_status,
-      isVerified: data.isVerified || data.is_verified || (data.kycStatus === 'VERIFIED' || data.status === 'VERIFIED'),
-      message: data.message,
+      kycStatus: kycStatus,
+      isVerified: isVerified,
+      message: data.message || data.data?.message,
     };
   } catch (error: any) {
     console.error("OnMeta fetch KYC status error:", error);

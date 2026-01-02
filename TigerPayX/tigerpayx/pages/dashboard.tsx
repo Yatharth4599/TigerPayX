@@ -46,6 +46,7 @@ export default function DashboardPage() {
   const [onMetaRefreshToken, setOnMetaRefreshToken] = useState<string | null>(null);
   const [onMetaBankStatus, setOnMetaBankStatus] = useState<string | null>(null);
   const [onMetaUPIStatus, setOnMetaUPIStatus] = useState<string | null>(null);
+  const [onMetaKYCStatus, setOnMetaKYCStatus] = useState<string | null>(null);
   const [onMetaAuthLoading, setOnMetaAuthLoading] = useState(true); // Track authentication loading state
   const [showLinkBankModal, setShowLinkBankModal] = useState(false);
   const [showLinkUPIModal, setShowLinkUPIModal] = useState(false);
@@ -1163,19 +1164,35 @@ export default function DashboardPage() {
                     
                     if (data.success) {
                       const status = data.kycStatus || data.status || 'Unknown';
-                      const isVerified = data.isVerified || status === 'VERIFIED';
+                      const isVerified = data.isVerified || 
+                                         status === 'VERIFIED' || 
+                                         status === 'verified' || 
+                                         status === 'VERIFIED_SUCCESS' ||
+                                         status === 'SUCCESS';
                       
                       if (isVerified) {
-                        showToast('KYC is verified!', 'success');
-                      } else if (status === 'PENDING') {
-                        showToast('KYC verification is pending', 'info');
-                      } else if (status === 'REJECTED') {
+                        showToast('KYC is verified! ✅', 'success');
+                        // Update UI state if needed
+                        setOnMetaKYCStatus('VERIFIED');
+                      } else if (status === 'PENDING' || status === 'pending' || status === 'IN_PROGRESS') {
+                        showToast('KYC verification is pending. Please wait for approval.', 'info');
+                        setOnMetaKYCStatus('PENDING');
+                      } else if (status === 'REJECTED' || status === 'rejected' || status === 'FAILED') {
                         showToast('KYC verification was rejected. Please try again.', 'error');
+                        setOnMetaKYCStatus('REJECTED');
                       } else {
                         showToast(`KYC Status: ${status}`, 'info');
+                        setOnMetaKYCStatus(status);
                       }
                     } else {
-                      showToast(data.error || 'Failed to fetch KYC status', 'error');
+                      // If API returns error but user might be verified, check the error message
+                      const errorMsg = data.error || 'Failed to fetch KYC status';
+                      if (errorMsg.includes('verified') || errorMsg.includes('VERIFIED')) {
+                        showToast('KYC is verified! ✅', 'success');
+                        setOnMetaKYCStatus('VERIFIED');
+                      } else {
+                        showToast(errorMsg, 'error');
+                      }
                     }
                   } catch (error: any) {
                     console.error('KYC status error:', error);
