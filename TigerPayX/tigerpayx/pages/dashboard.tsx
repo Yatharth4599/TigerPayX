@@ -274,9 +274,33 @@ export default function DashboardPage() {
           const data = await response.json();
           console.log('OnMeta login API response:', data);
           
-          // Check for access token in multiple possible fields
-          const accessToken = data.accessToken || data.access_token || data.token;
-          const refreshToken = data.refreshToken || data.refresh_token;
+          // Check for access token in multiple possible fields and nested structures
+          const accessToken = data.accessToken || 
+                            data.access_token || 
+                            data.token ||
+                            data.data?.accessToken ||
+                            data.data?.access_token ||
+                            data.data?.token ||
+                            data.result?.accessToken ||
+                            data.result?.access_token ||
+                            data.result?.token;
+          
+          const refreshToken = data.refreshToken || 
+                              data.refresh_token ||
+                              data.data?.refreshToken ||
+                              data.data?.refresh_token ||
+                              data.result?.refreshToken ||
+                              data.result?.refresh_token;
+          
+          // Log all possible token fields for debugging
+          if (!accessToken) {
+            console.log('Access token not found. Checking response structure:', {
+              keys: Object.keys(data),
+              dataKeys: data.data ? Object.keys(data.data) : null,
+              resultKeys: data.result ? Object.keys(data.result) : null,
+              fullData: data,
+            });
+          }
           
           if (accessToken) {
             setOnMetaAccessToken(accessToken);
@@ -296,12 +320,13 @@ export default function DashboardPage() {
                            data.errorMessage || 
                            data.msg ||
                            (data.errors && Array.isArray(data.errors) ? data.errors.join(', ') : null) ||
-                           (data.success === false ? 'Login failed: No access token received' : `Login failed (Status: ${response.status})`);
+                           (data.success === false ? 'Login failed: No access token received' : 'Login failed: Access token not found in response');
             console.error('OnMeta login failed:', {
               error: errorMsg,
               fullResponse: data,
               status: response.status,
               hasAccessToken: !!accessToken,
+              responseKeys: Object.keys(data),
             });
             showToast(`OnMeta authentication failed: ${errorMsg}`, 'error');
           }
