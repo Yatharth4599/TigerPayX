@@ -709,22 +709,40 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
         data = await response.json();
         console.log("OnMeta login response:", {
           status: response.status,
+          statusText: response.statusText,
           hasAccessToken: !!data.accessToken,
           hasRefreshToken: !!data.refreshToken,
           endpoint: apiUrl,
+          fullResponse: data,
         });
 
         if (!response.ok) {
+          // Log the full error for debugging
+          console.error("OnMeta login error response:", {
+            status: response.status,
+            statusText: response.statusText,
+            data: data,
+            endpoint: apiUrl,
+          });
+          
           // If 404/405, try next endpoint
           if (response.status === 404 || response.status === 405) {
-            lastError = { status: response.status, error: data.message || data.error || `Endpoint not found or method not allowed: ${apiUrl}` };
+            lastError = { 
+              status: response.status, 
+              error: data.message || data.error || data.errorMessage || `Endpoint not found or method not allowed: ${apiUrl}`,
+              data: data,
+            };
             continue;
           }
           
-          // For other errors, return immediately
+          // For other errors, extract the actual error message
+          const errorMsg = data.message || data.error || data.errorMessage || data.msg || 
+                          (data.errors && Array.isArray(data.errors) ? data.errors.join(', ') : null) ||
+                          `Login failed: ${response.status} ${response.statusText}`;
+          
           return {
             success: false,
-            error: data.message || data.error || `Login failed: ${response.status} ${response.statusText}`,
+            error: errorMsg,
           };
         }
 
@@ -749,12 +767,22 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
     if (!response || !response.ok) {
       let errorMessage = "Failed to login after trying all endpoints";
       
-      // First, try to get error from the last response data
+      // First, try to get error from the last response data (most reliable)
       if (data) {
-        if (data.error) {
-          errorMessage = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
-        } else if (data.message) {
-          errorMessage = typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
+        // Try multiple possible error field names
+        const possibleErrors = [
+          data.error,
+          data.message,
+          data.errorMessage,
+          data.msg,
+          data.description,
+          data.detail,
+        ].filter(Boolean);
+        
+        if (possibleErrors.length > 0) {
+          errorMessage = typeof possibleErrors[0] === 'string' ? possibleErrors[0] : JSON.stringify(possibleErrors[0]);
+        } else if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+          errorMessage = data.errors.map((e: any) => typeof e === 'string' ? e : e.message || JSON.stringify(e)).join(', ');
         } else if (data.statusCode || data.status) {
           errorMessage = `Login failed with status ${data.statusCode || data.status}`;
         }
@@ -768,21 +796,25 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
           errorMessage = typeof lastError.error === 'string' ? lastError.error : JSON.stringify(lastError.error);
         } else if (lastError.message) {
           errorMessage = typeof lastError.message === 'string' ? lastError.message : JSON.stringify(lastError.message);
+        } else if (lastError.data) {
+          // If lastError has data, try to extract from it
+          const errorData = lastError.data;
+          errorMessage = errorData.message || errorData.error || errorData.errorMessage || errorMessage;
         } else if (lastError.status) {
           errorMessage = `Login failed with status ${lastError.status}`;
         }
       }
       
-      // If we have response status, include it
+      // If we have response status, include it as fallback
       if (response && errorMessage === "Failed to login after trying all endpoints") {
         errorMessage = `Login failed: ${response.status} ${response.statusText || ''}`.trim();
       }
       
-      console.error("OnMeta login final error:", {
+      console.error("OnMeta login final error (all attempts failed):", {
         lastError,
-        data,
+        lastResponseData: data,
         response: response ? { status: response.status, statusText: response.statusText } : null,
-        errorMessage,
+        extractedErrorMessage: errorMessage,
       });
       
       return {
