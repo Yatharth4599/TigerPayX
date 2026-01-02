@@ -79,8 +79,10 @@ export default async function handler(
       return res.status(200).json(result);
     } else {
       // Return the actual error from OnMeta API
-      const statusCode = result.error?.includes('401') || result.error?.includes('unauthorized') ? 401 :
-                         result.error?.includes('404') || result.error?.includes('not found') ? 404 : 400;
+      // Convert error to string before checking includes
+      const errorStr = typeof result.error === 'string' ? result.error : String(result.error || '');
+      const statusCode = errorStr.includes('401') || errorStr.includes('unauthorized') ? 401 :
+                         errorStr.includes('404') || errorStr.includes('not found') ? 404 : 400;
       return res.status(statusCode).json(result);
     }
   } catch (error: any) {

@@ -1326,6 +1326,15 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
       });
 
       try {
+        // Validate API base URL and client ID before making request
+        if (!ONMETA_API_BASE_URL || ONMETA_API_BASE_URL.includes('undefined')) {
+          throw new Error(`Invalid ONMETA_API_BASE_URL: ${ONMETA_API_BASE_URL}`);
+        }
+        
+        if (!ONMETA_CLIENT_ID || ONMETA_CLIENT_ID.trim() === '') {
+          throw new Error('ONMETA_CLIENT_ID is not configured');
+        }
+
         response = await fetch(apiUrl, {
           method: "POST",
           headers: {
@@ -1336,10 +1345,13 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
           body: JSON.stringify(requestBody),
         });
 
+        // Clone response for text reading (in case we need to read it as text)
+        const responseClone = response.clone();
+
         // Check if response is JSON before parsing
         const contentType = response.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
-          const text = await response.text();
+          const text = await responseClone.text();
           console.error("OnMeta link UPI response is not JSON:", {
             status: response.status,
             contentType,
@@ -1359,6 +1371,7 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
           };
         }
 
+        // Parse JSON from original response
         data = await response.json();
         console.log("OnMeta link UPI response:", {
           status: response.status,
