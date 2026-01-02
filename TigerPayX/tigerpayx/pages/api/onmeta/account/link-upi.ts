@@ -46,10 +46,20 @@ export default async function handler(
       phone,
     });
 
+    console.log('OnMeta link UPI API route result:', {
+      success: result.success,
+      error: result.error,
+      status: result.status,
+      refNumber: result.refNumber,
+    });
+
     if (result.success) {
       return res.status(200).json(result);
     } else {
-      return res.status(400).json(result);
+      // Return the actual error from OnMeta API
+      const statusCode = result.error?.includes('401') || result.error?.includes('unauthorized') ? 401 :
+                         result.error?.includes('404') || result.error?.includes('not found') ? 404 : 400;
+      return res.status(statusCode).json(result);
     }
   } catch (error: any) {
     console.error('OnMeta link UPI API route error:', error);

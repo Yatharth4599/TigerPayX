@@ -1373,19 +1373,30 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
           continue;
         }
 
-        // If not OK, return error (but don't try next endpoint for non-404 errors)
+        // If not OK, return error with detailed information
         if (!response.ok) {
+          // Extract error message from various possible locations
+          const errorMessage = data.error || 
+                              data.message || 
+                              data.errorMessage ||
+                              (data.data && typeof data.data === 'object' && data.data.error) ||
+                              (data.data && typeof data.data === 'object' && data.data.message) ||
+                              `Failed to link UPI: ${response.status} ${response.statusText}`;
+          
           console.error("OnMeta link UPI error details:", {
             status: response.status,
             statusText: response.statusText,
-            error: data.error,
-            message: data.message,
+            error: errorMessage,
             fullResponse: data,
             endpoint: apiUrl,
+            requestBody: requestBody,
           });
+          
           return {
             success: false,
-            error: data.message || data.error || `Failed to link UPI: ${response.status} ${response.statusText}`,
+            error: errorMessage,
+            statusCode: response.status,
+            onMetaError: data.error || data.message,
           };
         }
 
