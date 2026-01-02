@@ -24,8 +24,16 @@ export default async function handler(
     const { name, email, upiId, phone } = req.body;
 
     // Validation
-    if (!name || !email || !upiId) {
-      return res.status(400).json({ success: false, error: 'Missing required fields: name, email, upiId' });
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).json({ success: false, error: 'Missing or invalid name field' });
+    }
+    
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return res.status(400).json({ success: false, error: 'Missing or invalid email field' });
+    }
+    
+    if (!upiId || typeof upiId !== 'string' || upiId.trim() === '') {
+      return res.status(400).json({ success: false, error: 'Missing or invalid upiId field' });
     }
 
     // Validate UPI ID format (should contain @)
@@ -33,17 +41,31 @@ export default async function handler(
       return res.status(400).json({ success: false, error: 'Invalid UPI ID format. Should be like: bank@upi' });
     }
 
+    // Validate phone if provided
+    let phoneObj = undefined;
+    if (phone) {
+      if (typeof phone === 'object' && phone.countryCode && phone.number) {
+        phoneObj = {
+          countryCode: String(phone.countryCode),
+          number: String(phone.number),
+        };
+      } else {
+        return res.status(400).json({ success: false, error: 'Invalid phone format. Should be { countryCode: string, number: string }' });
+      }
+    }
+
     console.log('OnMeta link UPI API route called:', {
       email,
       upiId,
+      hasPhone: !!phoneObj,
     });
 
     const result = await onMetaLinkUPI({
       accessToken,
-      name,
-      email,
-      upiId,
-      phone,
+      name: name.trim(),
+      email: email.trim(),
+      upiId: upiId.trim(),
+      phone: phoneObj,
     });
 
     console.log('OnMeta link UPI API route result:', {
