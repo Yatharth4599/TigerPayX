@@ -275,11 +275,15 @@ export default function DashboardPage() {
             
             // Fetch bank and UPI status
             fetchOnMetaAccountStatus(data.accessToken);
-        } else {
-            console.error('OnMeta login failed:', data.error);
+          } else {
+            const errorMsg = data.error || data.message || 'Unknown error';
+            console.error('OnMeta login failed:', errorMsg);
+            showToast(`OnMeta authentication failed: ${errorMsg}`, 'error');
           }
-        } catch (error) {
-          console.error('OnMeta login error:', error);
+        } catch (error: any) {
+          const errorMsg = error?.message || error?.error || 'Network error occurred';
+          console.error('OnMeta login error:', errorMsg, error);
+          showToast(`OnMeta authentication failed: ${errorMsg}`, 'error');
     } finally {
           setOnMetaAuthLoading(false);
         }

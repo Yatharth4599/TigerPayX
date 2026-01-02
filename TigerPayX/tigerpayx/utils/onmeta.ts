@@ -742,9 +742,18 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
 
     // If we got here without success, return last error
     if (!response || !response.ok) {
-      const errorMessage = lastError?.error || lastError?.message || lastError?.status 
-        ? `Login failed (${lastError.status || 'unknown status'})` 
-        : "Failed to login after trying all endpoints";
+      let errorMessage = "Failed to login after trying all endpoints";
+      
+      if (lastError) {
+        if (lastError.error) {
+          errorMessage = lastError.error;
+        } else if (lastError.message) {
+          errorMessage = lastError.message;
+        } else if (lastError.status) {
+          errorMessage = `Login failed with status ${lastError.status}`;
+        }
+      }
+      
       return {
         success: false,
         error: errorMessage,
@@ -2215,11 +2224,11 @@ export async function fetchSupportedCurrencies(): Promise<SupportedCurrenciesRes
 
     // Try different endpoint patterns - start with the most likely one
     // Ensure no double slashes by removing trailing slash from base URL (already done above)
+    // Note: /v1/payment-modes doesn't exist, removed from list
     const possibleEndpoints = [
       `${ONMETA_API_BASE_URL}/v1/currencies`,
       `${ONMETA_API_BASE_URL}/v1/currencies/`,
       `${ONMETA_API_BASE_URL}/v1/supported-currencies`,
-      `${ONMETA_API_BASE_URL}/v1/payment-modes`,
     ].map(url => {
       // Fix double slashes but preserve https:// protocol
       // Replace multiple slashes after the protocol with single slash
@@ -2307,9 +2316,19 @@ export async function fetchSupportedCurrencies(): Promise<SupportedCurrenciesRes
     }
 
     // If we tried all endpoints and none worked
+    let errorMessage = `Failed to fetch supported currencies. Tried ${possibleEndpoints.length} endpoints`;
+    if (lastResponse) {
+      errorMessage += `, last status: ${lastResponse.status}`;
+    }
+    if (lastError?.message) {
+      errorMessage = lastError.message;
+    } else if (lastError?.error) {
+      errorMessage = lastError.error;
+    }
+    
     return {
       success: false,
-      error: lastError?.message || lastError?.error || `Failed to fetch supported currencies. Tried ${possibleEndpoints.length} endpoints, last status: ${lastResponse?.status || 'unknown'}`,
+      error: errorMessage,
     };
   } catch (error: any) {
     console.error("OnMeta fetch supported currencies error:", error);
