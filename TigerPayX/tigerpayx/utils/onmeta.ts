@@ -4,13 +4,20 @@
  */
 
 // OnMeta API Configuration
-// These should be set via environment variables in .env.local
+// These should be set via environment variables in .env.local or Vercel
+// 
+// PRODUCTION URL (REQUIRED): https://api.platform.onmeta.in
+// STAGING URL (DO NOT USE IN PRODUCTION): https://stg.api.onmeta.in
+//
+// IMPORTANT: Always use production URL in production environment!
+// Set ONMETA_API_BASE_URL=https://api.platform.onmeta.in in Vercel environment variables
+//
 // Production API base URL (default for production API keys)
-const ONMETA_API_BASE_URL = process.env.ONMETA_API_BASE_URL || "https://api.platform.onmeta.in";
-// Staging API base URL (for staging API keys)
-const ONMETA_API_BASE_URL_STAGING = process.env.ONMETA_API_BASE_URL_STAGING || "https://stg.api.onmeta.in";
-// Some endpoints (like UPI) use a different base URL
-const ONMETA_API_BASE_URL_ALT = process.env.ONMETA_API_BASE_URL_ALT || "https://api.platform.onmeta.in";
+const ONMETA_API_BASE_URL = (process.env.ONMETA_API_BASE_URL || "https://api.platform.onmeta.in").replace(/\/$/, ""); // Remove trailing slash
+// Staging API base URL (for staging API keys) - NOT USED IN PRODUCTION - ONLY FOR TESTING
+const ONMETA_API_BASE_URL_STAGING = (process.env.ONMETA_API_BASE_URL_STAGING || "https://stg.api.onmeta.in").replace(/\/$/, ""); // Remove trailing slash
+// Some endpoints (like UPI) use a different base URL - use production (same as main base URL)
+const ONMETA_API_BASE_URL_ALT = (process.env.ONMETA_API_BASE_URL_ALT || "https://api.platform.onmeta.in").replace(/\/$/, ""); // Remove trailing slash
 const ONMETA_CLIENT_ID = process.env.ONMETA_CLIENT_ID || "";
 const ONMETA_CLIENT_SECRET = process.env.ONMETA_CLIENT_SECRET || "";
 
@@ -638,50 +645,106 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
       email: request.email,
     };
 
-    // Correct endpoint for customer login
-    const apiUrl = `${ONMETA_API_BASE_URL}/v1/users/login`;
+    // Try different login endpoint patterns - OnMeta might use different paths
+    const possibleEndpoints = [
+      `${ONMETA_API_BASE_URL}/v1/users/login`,
+      `${ONMETA_API_BASE_URL}/v1/auth/login`,
+      `${ONMETA_API_BASE_URL}/v1/user/login`,
+    ];
 
-    console.log("OnMeta login request:", {
-      url: apiUrl,
-      email: request.email,
-    });
+    let lastError: any = null;
+    let data: any = null;
+    let response: Response | null = null;
 
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "x-api-key": ONMETA_CLIENT_ID,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    // Check if response is JSON before parsing
-    const contentType = response.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-      const text = await response.text();
-      console.error("OnMeta login response is not JSON:", {
-        status: response.status,
-        contentType,
-        textPreview: text.substring(0, 200),
+    for (const apiUrl of possibleEndpoints) {
+      console.log("OnMeta login request (trying endpoint):", {
+        url: apiUrl,
+        email: request.email,
       });
-      return {
-        success: false,
-        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
-      };
+
+      try {
+        response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "x-api-key": ONMETA_CLIENT_ID,
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        // If 404 or 405, try next endpoint
+        if (response.status === 404 || response.status === 405) {
+          console.log(`Endpoint ${apiUrl} returned ${response.status}, trying next endpoint...`);
+          lastError = { status: response.status, error: `Endpoint not found or method not allowed: ${apiUrl}` };
+          continue; // Try next endpoint
+        }
+
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await response.text();
+          console.error("OnMeta login response is not JSON:", {
+            status: response.status,
+            contentType,
+            textPreview: text.substring(0, 200),
+            endpoint: apiUrl,
+          });
+          
+          // If not 404/405, this is a real error
+          if (response.status !== 404 && response.status !== 405) {
+            return {
+              success: false,
+              error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+            };
+          }
+          continue; // Try next endpoint for 404/405
+        }
+
+        data = await response.json();
+        console.log("OnMeta login response:", {
+          status: response.status,
+          hasAccessToken: !!data.accessToken,
+          hasRefreshToken: !!data.refreshToken,
+          endpoint: apiUrl,
+        });
+
+        if (!response.ok) {
+          // If 404/405, try next endpoint
+          if (response.status === 404 || response.status === 405) {
+            lastError = { status: response.status, error: data.message || data.error || `Endpoint not found or method not allowed: ${apiUrl}` };
+            continue;
+          }
+          
+          // For other errors, return immediately
+          return {
+            success: false,
+            error: data.message || data.error || `Login failed: ${response.status} ${response.statusText}`,
+          };
+        }
+
+        // Success! Break out of loop
+        break;
+      } catch (error: any) {
+        console.error(`OnMeta login error for endpoint ${apiUrl}:`, error);
+        lastError = error;
+        // If this is the last endpoint, return error
+        if (possibleEndpoints.indexOf(apiUrl) === possibleEndpoints.length - 1) {
+          return {
+            success: false,
+            error: error.message || "Network error occurred",
+          };
+        }
+        // Otherwise, try next endpoint
+        continue;
+      }
     }
 
-    const data = await response.json();
-    console.log("OnMeta login response:", {
-      status: response.status,
-      hasAccessToken: !!data.accessToken,
-      hasRefreshToken: !!data.refreshToken,
-    });
-
-    if (!response.ok) {
+    // If we got here without success, return last error
+    if (!response || !response.ok) {
       return {
         success: false,
-        error: data.message || data.error || `Login failed: ${response.status} ${response.statusText}`,
+        error: lastError?.error || lastError?.message || "Failed to login after trying all endpoints",
       };
     }
 
@@ -2148,12 +2211,13 @@ export async function fetchSupportedCurrencies(): Promise<SupportedCurrenciesRes
     }
 
     // Try different endpoint patterns - start with the most likely one
+    // Ensure no double slashes by removing trailing slash from base URL (already done above)
     const possibleEndpoints = [
       `${ONMETA_API_BASE_URL}/v1/currencies`,
       `${ONMETA_API_BASE_URL}/v1/currencies/`,
       `${ONMETA_API_BASE_URL}/v1/supported-currencies`,
       `${ONMETA_API_BASE_URL}/v1/payment-modes`,
-    ];
+    ].map(url => url.replace(/\/+/g, '/')); // Remove any double slashes
 
     let lastError: any = null;
     let lastResponse: Response | null = null;
