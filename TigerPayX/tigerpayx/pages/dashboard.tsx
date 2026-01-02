@@ -3289,11 +3289,17 @@ export default function DashboardPage() {
                           setLinkUPIId('');
                           setLinkUPIPhoneNumber('');
                         } else {
-                          showToast(data.error || 'Failed to link UPI ID. Please try again.', 'error');
+                          // Extract error message safely - ensure it's always a string
+                          const errorMsg = typeof data.error === 'string' 
+                            ? data.error 
+                            : (data.error?.message || data.message || 'Failed to link UPI ID. Please try again.');
+                          showToast(errorMsg, 'error');
                         }
                       } catch (error: any) {
                         console.error('Link UPI error:', error);
-                        showToast(`Error: ${error.message || 'Failed to link UPI ID. Please try again.'}`, 'error');
+                        // Ensure we always show a string error message, not an object
+                        const errorMsg = error?.message || error?.error || (typeof error === 'string' ? error : 'Failed to link UPI ID. Please try again.');
+                        showToast(`Error: ${errorMsg}`, 'error');
                       } finally {
                         setLinkUPILoading(false);
                       }
