@@ -916,6 +916,10 @@ export async function onMetaRefreshToken(refreshToken: string): Promise<OnMetaRe
     }
 
     const data = await response.json();
+    console.log("OnMeta refresh token response:", {
+      status: response.status,
+      fullResponse: data,
+    });
 
     if (!response.ok) {
       return {
@@ -924,10 +928,25 @@ export async function onMetaRefreshToken(refreshToken: string): Promise<OnMetaRe
       };
     }
 
+    // OnMeta response structure: { success: true, data: { accessToken: "..." }, error: {} }
+    const accessToken = data.data?.accessToken || data.accessToken || data.access_token || data.token;
+
+    if (!accessToken) {
+      console.error("OnMeta refresh token: Access token not found in response", {
+        topLevelKeys: Object.keys(data),
+        hasData: !!data.data,
+        dataKeys: data.data ? Object.keys(data.data) : null,
+      });
+      return {
+        success: false,
+        error: "Access token not found in refresh token response",
+      };
+    }
+
     return {
       success: true,
-      accessToken: data.accessToken || data.access_token,
-      refreshToken: data.refreshToken || data.refresh_token,
+      accessToken: accessToken,
+      refreshToken: data.data?.refreshToken || data.refreshToken || data.refresh_token,
     };
   } catch (error: any) {
     console.error("OnMeta refresh token error:", error);
