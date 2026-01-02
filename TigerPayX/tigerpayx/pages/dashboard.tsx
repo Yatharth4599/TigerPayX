@@ -351,6 +351,11 @@ export default function DashboardPage() {
 
   // Fetch OnMeta account status (bank and UPI)
   const fetchOnMetaAccountStatus = async (accessToken: string) => {
+    if (!accessToken) {
+      console.log('Skipping account status fetch - no access token');
+      return;
+    }
+    
     try {
       // Fetch bank status
       const bankResponse = await fetch('/api/onmeta/account/bank-status', {
@@ -358,11 +363,16 @@ export default function DashboardPage() {
           'Authorization': `Bearer ${accessToken}`,
         },
       });
+      
       if (bankResponse.ok) {
         const bankData = await bankResponse.json();
         if (bankData.success) {
           setOnMetaBankStatus(bankData.status);
-            }
+        }
+      } else {
+        // Don't show error for bank status - it's optional
+        const bankData = await bankResponse.json().catch(() => ({}));
+        console.log('Bank status not available:', bankData.error || bankResponse.status);
       }
 
       // Fetch UPI status
@@ -371,14 +381,20 @@ export default function DashboardPage() {
           'Authorization': `Bearer ${accessToken}`,
         },
       });
+      
       if (upiResponse.ok) {
         const upiData = await upiResponse.json();
         if (upiData.success) {
           setOnMetaUPIStatus(upiData.status);
         }
+      } else {
+        // Don't show error for UPI status - it's optional
+        const upiData = await upiResponse.json().catch(() => ({}));
+        console.log('UPI status not available:', upiData.error || upiResponse.status);
       }
     } catch (error) {
-      console.error('Error fetching OnMeta account status:', error);
+      // Don't break the app if account status fetch fails
+      console.error('Error fetching OnMeta account status (non-critical):', error);
     }
   };
 
