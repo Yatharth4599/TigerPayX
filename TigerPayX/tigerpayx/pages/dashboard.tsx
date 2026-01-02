@@ -432,13 +432,20 @@ export default function DashboardPage() {
       const data = await response.json();
       
       // Handle response format: {success: true, data: [...]} or {success: true, currencies: [...]}
-      const currencies = data.data || data.currencies || [];
+      const currencies = data.data || data.currencies || data.supportedCurrencies || [];
       
-      if (data.success && currencies.length > 0) {
+      if (data.success) {
+        // Handle empty currencies array (when endpoint returns 404, we return success with empty array)
         setSupportedCurrencies(currencies);
-        console.log('Supported currencies loaded:', currencies.length);
+        if (currencies.length === 0) {
+          console.log('No currencies available (endpoint may not exist)');
+        } else {
+          console.log('Supported currencies loaded:', currencies.length);
+        }
       } else {
-        console.error('Failed to fetch supported currencies:', data.error || 'No currencies data');
+        const errorMsg = data.error || data.message || 'No currencies data';
+        console.error('Failed to fetch supported currencies:', errorMsg);
+        // Don't show error toast for currencies - it's not critical, just log it
       }
     } catch (error) {
       console.error('Error fetching supported currencies:', error);
