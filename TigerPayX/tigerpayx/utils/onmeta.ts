@@ -649,6 +649,7 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
+        "Content-Type": "application/json",
         "Accept": "application/json",
         "x-api-key": ONMETA_CLIENT_ID,
       },
@@ -2146,16 +2147,16 @@ export async function fetchSupportedCurrencies(): Promise<SupportedCurrenciesRes
       };
     }
 
-    // Try different endpoint patterns
+    // Try different endpoint patterns - start with the most likely one
     const possibleEndpoints = [
       `${ONMETA_API_BASE_URL}/v1/currencies`,
       `${ONMETA_API_BASE_URL}/v1/currencies/`,
       `${ONMETA_API_BASE_URL}/v1/supported-currencies`,
       `${ONMETA_API_BASE_URL}/v1/payment-modes`,
-      `${ONMETA_API_BASE_URL}/api/v1/currencies`,
     ];
 
     let lastError: any = null;
+    let lastResponse: Response | null = null;
 
     for (const apiUrl of possibleEndpoints) {
       try {
@@ -2169,6 +2170,15 @@ export async function fetchSupportedCurrencies(): Promise<SupportedCurrenciesRes
           },
         });
 
+        lastResponse = response;
+
+        // If 404, try next endpoint
+        if (response.status === 404) {
+          console.log(`Endpoint ${apiUrl} returned 404, trying next endpoint...`);
+          lastError = { message: `Endpoint not found: ${apiUrl}` };
+          continue; // Try next endpoint
+        }
+
         // Check if response is JSON before parsing
         const contentType = response.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
@@ -2178,14 +2188,20 @@ export async function fetchSupportedCurrencies(): Promise<SupportedCurrenciesRes
             contentType,
             textPreview: text.substring(0, 200),
           });
-          lastError = { message: `Invalid response format: ${response.status} ${response.statusText}` };
-          continue; // Try next endpoint
+          
+          // If not 404, this is a real error
+          if (response.status !== 404) {
+            lastError = { message: `Invalid response format: ${response.status} ${response.statusText}` };
+            break; // Don't try other endpoints
+          }
+          continue; // Try next endpoint for 404
         }
 
         const data = await response.json();
         console.log("OnMeta fetch supported currencies response:", {
           status: response.status,
           currencyCount: Array.isArray(data) ? data.length : (data.currencies?.length || data.data?.length || 0),
+          endpoint: apiUrl,
         });
 
         if (response.ok) {
@@ -2202,20 +2218,27 @@ export async function fetchSupportedCurrencies(): Promise<SupportedCurrenciesRes
           };
         }
 
+        // If not 404, this is a real error - don't try other endpoints
         if (response.status !== 404) {
-          lastError = data;
+          lastError = {
+            message: data.message || data.error || `Failed to fetch currencies: ${response.status} ${response.statusText}`,
+            status: response.status,
+            data: data,
+          };
           break; // Don't try other endpoints if it's not a 404
         }
       } catch (fetchError: any) {
         console.error(`Error trying endpoint ${apiUrl}:`, fetchError);
         lastError = fetchError;
-        continue; // Try next endpoint
+        // Continue to try next endpoint
+        continue;
       }
     }
 
+    // If we tried all endpoints and none worked
     return {
       success: false,
-      error: lastError?.message || lastError?.error || "Failed to fetch supported currencies. Please check the API endpoint.",
+      error: lastError?.message || lastError?.error || `Failed to fetch supported currencies. Tried ${possibleEndpoints.length} endpoints, last status: ${lastResponse?.status || 'unknown'}`,
     };
   } catch (error: any) {
     console.error("OnMeta fetch supported currencies error:", error);
