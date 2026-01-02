@@ -1435,10 +1435,26 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
       message: data.message || data.data?.message,
     };
   } catch (error: any) {
-    console.error("OnMeta link UPI error:", error);
+    console.error("OnMeta link UPI error:", {
+      error: error,
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+    });
+    
+    // Extract error message
+    let errorMessage = "Network error occurred";
+    if (error?.message) {
+      errorMessage = error.message;
+    } else if (error?.error) {
+      errorMessage = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    
     return {
       success: false,
-      error: error.message || "Network error occurred",
+      error: errorMessage,
     };
   }
 }

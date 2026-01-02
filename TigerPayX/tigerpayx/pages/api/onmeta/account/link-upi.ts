@@ -62,10 +62,34 @@ export default async function handler(
       return res.status(statusCode).json(result);
     }
   } catch (error: any) {
-    console.error('OnMeta link UPI API route error:', error);
+    console.error('OnMeta link UPI API route error:', {
+      error: error,
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+      fullError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+    });
+    
+    // Extract error message from various possible sources
+    let errorMessage = 'Internal server error';
+    if (error?.message) {
+      errorMessage = error.message;
+    } else if (error?.error) {
+      errorMessage = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    } else if (error?.toString) {
+      errorMessage = error.toString();
+    }
+    
     return res.status(500).json({
       success: false,
-      error: error.message || 'Internal server error',
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name,
+      } : undefined,
     });
   }
 }
