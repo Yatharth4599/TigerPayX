@@ -257,12 +257,22 @@ export default function DashboardPage() {
           });
 
           if (!response.ok) {
-            const text = await response.text();
-            console.error('OnMeta login failed:', response.status, text.substring(0, 100));
-            throw new Error(`Failed to login: ${response.status}`);
+            // Try to parse error from response
+            let errorText = '';
+            try {
+              const errorData = await response.json();
+              errorText = errorData.error || errorData.message || errorData.errorMessage || `HTTP ${response.status}`;
+              console.error('OnMeta login failed:', response.status, errorData);
+            } catch (e) {
+              const text = await response.text();
+              errorText = text.substring(0, 200) || `HTTP ${response.status}`;
+              console.error('OnMeta login failed (non-JSON):', response.status, text.substring(0, 100));
+            }
+            throw new Error(errorText || `Failed to login: ${response.status}`);
           }
 
           const data = await response.json();
+          console.log('OnMeta login API response:', data);
           
           if (data.success && data.accessToken) {
             setOnMetaAccessToken(data.accessToken);
@@ -276,8 +286,18 @@ export default function DashboardPage() {
             // Fetch bank and UPI status
             fetchOnMetaAccountStatus(data.accessToken);
           } else {
-            const errorMsg = data.error || data.message || 'Unknown error';
-            console.error('OnMeta login failed:', errorMsg);
+            // Extract error message from multiple possible fields
+            const errorMsg = data.error || 
+                           data.message || 
+                           data.errorMessage || 
+                           data.msg ||
+                           (data.errors && Array.isArray(data.errors) ? data.errors.join(', ') : null) ||
+                           `Login failed (Status: ${response.status})`;
+            console.error('OnMeta login failed:', {
+              error: errorMsg,
+              fullResponse: data,
+              status: response.status,
+            });
             showToast(`OnMeta authentication failed: ${errorMsg}`, 'error');
           }
         } catch (error: any) {
