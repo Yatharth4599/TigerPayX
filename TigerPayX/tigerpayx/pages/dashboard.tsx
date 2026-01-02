@@ -274,17 +274,21 @@ export default function DashboardPage() {
           const data = await response.json();
           console.log('OnMeta login API response:', data);
           
-          if (data.success && data.accessToken) {
-            setOnMetaAccessToken(data.accessToken);
-            if (data.refreshToken) {
-              setOnMetaRefreshToken(data.refreshToken);
+          // Check for access token in multiple possible fields
+          const accessToken = data.accessToken || data.access_token || data.token;
+          const refreshToken = data.refreshToken || data.refresh_token;
+          
+          if (accessToken) {
+            setOnMetaAccessToken(accessToken);
+            if (refreshToken) {
+              setOnMetaRefreshToken(refreshToken);
               // Store refresh token in localStorage for persistence
-              localStorage.setItem('onmeta_refresh_token', data.refreshToken);
+              localStorage.setItem('onmeta_refresh_token', refreshToken);
             }
             console.log('OnMeta login successful');
             
             // Fetch bank and UPI status
-            fetchOnMetaAccountStatus(data.accessToken);
+            fetchOnMetaAccountStatus(accessToken);
           } else {
             // Extract error message from multiple possible fields
             const errorMsg = data.error || 
@@ -292,11 +296,12 @@ export default function DashboardPage() {
                            data.errorMessage || 
                            data.msg ||
                            (data.errors && Array.isArray(data.errors) ? data.errors.join(', ') : null) ||
-                           `Login failed (Status: ${response.status})`;
+                           (data.success === false ? 'Login failed: No access token received' : `Login failed (Status: ${response.status})`);
             console.error('OnMeta login failed:', {
               error: errorMsg,
               fullResponse: data,
               status: response.status,
+              hasAccessToken: !!accessToken,
             });
             showToast(`OnMeta authentication failed: ${errorMsg}`, 'error');
           }
