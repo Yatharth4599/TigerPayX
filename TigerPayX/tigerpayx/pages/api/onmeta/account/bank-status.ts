@@ -30,7 +30,13 @@ export default async function handler(
     if (result.success) {
       return res.status(200).json(result);
     } else {
-      return res.status(400).json(result);
+      // Bank status is optional - return 200 with empty data instead of 400
+      // This prevents errors when the endpoint doesn't exist or refNumber is missing
+      return res.status(200).json({
+        success: false,
+        status: null,
+        error: result.error || 'Bank status not available',
+      });
     }
   } catch (error: any) {
     console.error('OnMeta get bank status API route error:', error);

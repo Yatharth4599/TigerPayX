@@ -40,7 +40,16 @@ export default async function handler(
     if (result.success) {
       return res.status(200).json(result);
     } else {
-      return res.status(400).json(result);
+      // Order history is optional - return 200 with empty array instead of 400
+      // This prevents errors when the endpoint doesn't exist
+      return res.status(200).json({
+        success: true,
+        orders: [],
+        transactions: [],
+        hasMore: false,
+        skip: skip,
+        error: result.error || 'Order history not available',
+      });
     }
   } catch (error: any) {
     console.error('OnMeta fetch order history API route error:', error);
