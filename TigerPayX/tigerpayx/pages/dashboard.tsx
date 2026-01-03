@@ -3325,7 +3325,7 @@ export default function DashboardPage() {
                           fetchOnMetaAccountStatus(onMetaAccessToken);
                         } else {
                           // Extract error message safely - ensure it's always a string
-                          // Handle OnMeta error format: {error: {code: 400, message: "account not found for vpa"}}
+                          // Handle OnMeta error format: {error: {code: 400, message: "account not found for vpa"}} or {error: "KYC not verified"}
                           let errorMsg = 'Failed to link UPI ID. Please try again.';
                           
                           if (data.error) {
@@ -3338,6 +3338,14 @@ export default function DashboardPage() {
                             }
                           } else if (data.message) {
                             errorMsg = typeof data.message === 'string' ? data.message : String(data.message);
+                          }
+                          
+                          // If error is about KYC, clear stored KYC status and show helpful message
+                          if (errorMsg.toLowerCase().includes('kyc') || errorMsg.toLowerCase().includes('not verified')) {
+                            localStorage.removeItem('onmeta_kyc_verified');
+                            localStorage.removeItem('onmeta_kyc_verified_timestamp');
+                            setOnMetaKYCStatus(null);
+                            errorMsg = 'KYC verification is required before linking UPI. Please complete KYC verification first, then try again.';
                           }
                           
                           console.error('Link UPI error:', errorMsg, data);
