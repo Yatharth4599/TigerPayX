@@ -152,10 +152,14 @@ export default function DashboardPage() {
         if (type === 'kyc') {
           if (status === 'success' || status === 'completed') {
             showToast('KYC verification completed successfully!', 'success');
-            // Optionally fetch KYC status to update UI
+            // Store KYC verification status in localStorage
+            localStorage.setItem('onmeta_kyc_verified', 'true');
+            localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
+            setOnMetaKYCStatus('VERIFIED');
+            
+            // Fetch updated KYC status from API to confirm
             const userEmail = getAuthEmail();
             if (userEmail && onMetaAccessToken) {
-              // Fetch updated KYC status
               fetch('/api/onmeta/kyc-status', {
                 method: 'POST',
                 headers: {
@@ -163,10 +167,21 @@ export default function DashboardPage() {
                   'Authorization': `Bearer ${onMetaAccessToken}`,
                 },
                 body: JSON.stringify({ email: userEmail }),
-              }).catch(err => console.error('Failed to fetch KYC status:', err));
+              })
+              .then(res => res.json())
+              .then(data => {
+                if (data.success && (data.isVerified || data.kycStatus === 'VERIFIED' || data.kycStatus === 'verified')) {
+                  // Confirm KYC is verified
+                  localStorage.setItem('onmeta_kyc_verified', 'true');
+                  setOnMetaKYCStatus('VERIFIED');
+                }
+              })
+              .catch(err => console.error('Failed to fetch KYC status:', err));
             }
           } else if (error || status === 'failure') {
             showToast(`KYC verification failed: ${error || 'Please try again'}`, 'error');
+            localStorage.removeItem('onmeta_kyc_verified');
+            localStorage.removeItem('onmeta_kyc_verified_timestamp');
           }
         } else if (type === 'withdrawal' || urlParams.get('withdrawal') === 'true') {
           if (status === 'success' || status === 'completed') {
