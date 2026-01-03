@@ -1034,22 +1034,25 @@ export default function DashboardPage() {
     }
   }, [authChecked]);
 
-  // Fetch SOL price in USD
+  // Fetch SOL price in USD via backend API (avoids CORS and rate limiting)
   useEffect(() => {
     const fetchSolPrice = async () => {
-    try {
-        const response = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd");
+      try {
+        const response = await fetch("/api/crypto/price?ids=solana&vs_currencies=usd");
+        if (!response.ok) {
+          throw new Error(`Failed to fetch SOL price: ${response.status}`);
+        }
         const data = await response.json();
         if (data.solana?.usd) {
           setSolPrice(data.solana.usd);
-      }
-    } catch (error) {
+        }
+      } catch (error) {
         console.error("Failed to fetch SOL price:", error);
         // Keep default price if fetch fails
-    }
-  };
+      }
+    };
     fetchSolPrice();
-    // Refresh price every 60 seconds
+    // Refresh price every 60 seconds (backend has caching to reduce rate limit issues)
     const interval = setInterval(fetchSolPrice, 60000);
     return () => clearInterval(interval);
   }, []);
