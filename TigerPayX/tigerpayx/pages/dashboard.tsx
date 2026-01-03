@@ -3654,7 +3654,7 @@ export default function DashboardPage() {
                   <button
                     onClick={async () => {
                       if (!onMetaAccessToken) {
-                        alert('OnMeta authentication required. Please refresh the page.');
+                        showToast('OnMeta authentication required. Please refresh the page.', 'error');
                         return;
                       }
 
