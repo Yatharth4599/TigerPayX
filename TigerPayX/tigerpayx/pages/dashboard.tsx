@@ -3241,19 +3241,31 @@ export default function DashboardPage() {
                             });
                             
                             const kycData = await kycResponse.json();
+                            console.log('KYC status check result:', kycData);
+                            
                             const isVerified = kycData.success && (
                               kycData.isVerified || 
                               kycData.kycStatus === 'VERIFIED' || 
-                              kycData.kycStatus === 'verified'
+                              kycData.kycStatus === 'verified' ||
+                              kycData.kycStatus === 'VERIFIED_SUCCESS' ||
+                              kycData.kycStatus === 'SUCCESS'
                             );
                             
                             if (!isVerified) {
-                              showToast('KYC verification is required before linking UPI. Please complete KYC first.', 'warning');
+                              // Clear any stored KYC status if not verified
+                              localStorage.removeItem('onmeta_kyc_verified');
+                              localStorage.removeItem('onmeta_kyc_verified_timestamp');
+                              setOnMetaKYCStatus(null);
+                              
+                              const kycErrorMsg = kycData.error || kycData.message || 'KYC verification is required';
+                              showToast(`KYC verification is required before linking UPI. ${kycErrorMsg}. Please complete KYC first.`, 'warning');
                               return;
                             } else {
                               // Store KYC verification status
                               localStorage.setItem('onmeta_kyc_verified', 'true');
+                              localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
                               setOnMetaKYCStatus('VERIFIED');
+                              console.log('KYC verified, proceeding with UPI linking');
                             }
                           } catch (kycError) {
                             console.error('KYC status check error:', kycError);
