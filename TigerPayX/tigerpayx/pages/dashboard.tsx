@@ -3094,6 +3094,7 @@ export default function DashboardPage() {
                         if (data.success) {
                           showToast(`Bank account linking ${data.status || 'initiated'}!`, 'success');
                           setOnMetaBankStatus(data.status);
+                          
                           // Store bank details for order creation
                           if (data.status === 'SUCCESS') {
                             setLinkedBankDetails({
@@ -3102,6 +3103,13 @@ export default function DashboardPage() {
                               accountHolderName: linkBankAccountHolder,
                             });
                           }
+                          
+                          // Store reference number (refNumber) for status checks
+                          if (data.refNumber) {
+                            localStorage.setItem('onmeta_bank_ref_number', data.refNumber);
+                            console.log('Stored bank reference number:', data.refNumber);
+                          }
+                          
                           setShowLinkBankModal(false);
                           // Reset form
                           setLinkBankName('');
@@ -3112,6 +3120,12 @@ export default function DashboardPage() {
                           setLinkBankIFSC('');
                           setLinkBankAccountHolder('');
                           setLinkBankPhoneNumber('');
+                          // Refresh account status with reference number
+                          if (data.refNumber) {
+                            fetchOnMetaAccountStatus(onMetaAccessToken, undefined, data.refNumber);
+                          } else {
+                            fetchOnMetaAccountStatus(onMetaAccessToken);
+                          }
                         } else {
                           showToast(data.error || 'Failed to link bank account. Please try again.', 'error');
                         }
