@@ -3323,18 +3323,30 @@ export default function DashboardPage() {
                         if (data.success) {
                           showToast(`UPI ID linking ${data.status || 'initiated'}!`, 'success');
                           setOnMetaUPIStatus(data.status);
-                          // Store UPI ID for order creation
+                          
+                          // Store UPI ID and reference ID for future status checks
                           if (data.status === 'SUCCESS') {
                             setLinkedUPIId(linkUPIId);
                           }
+                          
+                          // Store reference ID (refNumber) for status checks
+                          if (data.refNumber) {
+                            localStorage.setItem('onmeta_upi_ref_number', data.refNumber);
+                            console.log('Stored UPI reference number:', data.refNumber);
+                          }
+                          
                           setShowLinkUPIModal(false);
                           // Reset form
                           setLinkUPIName('');
                           setLinkUPIEmail('');
                           setLinkUPIId('');
                           setLinkUPIPhoneNumber('');
-                          // Refresh account status
-                          fetchOnMetaAccountStatus(onMetaAccessToken);
+                          // Refresh account status with reference number
+                          if (data.refNumber) {
+                            fetchOnMetaAccountStatus(onMetaAccessToken, data.refNumber);
+                          } else {
+                            fetchOnMetaAccountStatus(onMetaAccessToken);
+                          }
                         } else {
                           // Extract error message safely - ensure it's always a string
                           // Handle OnMeta error format: {error: {code: 400, message: "account not found for vpa"}} or {error: "KYC not verified"}
