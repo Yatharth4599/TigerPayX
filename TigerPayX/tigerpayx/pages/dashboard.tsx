@@ -441,7 +441,7 @@ export default function DashboardPage() {
   }, [authChecked]);
 
   // Fetch OnMeta account status (bank and UPI)
-  const fetchOnMetaAccountStatus = async (accessToken: string) => {
+  const fetchOnMetaAccountStatus = async (accessToken: string, upiRefNumber?: string) => {
     if (!accessToken) {
       console.log('Skipping account status fetch - no access token');
       return;
@@ -449,7 +449,12 @@ export default function DashboardPage() {
     
     try {
       // Fetch bank status
-      const bankResponse = await fetch('/api/onmeta/account/bank-status', {
+      const bankRefNumber = localStorage.getItem('onmeta_bank_ref_number');
+      const bankStatusUrl = bankRefNumber 
+        ? `/api/onmeta/account/bank-status?refNumber=${encodeURIComponent(bankRefNumber)}`
+        : '/api/onmeta/account/bank-status';
+      
+      const bankResponse = await fetch(bankStatusUrl, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
@@ -466,8 +471,13 @@ export default function DashboardPage() {
         console.log('Bank status not available:', bankData.error || bankResponse.status);
       }
 
-      // Fetch UPI status
-      const upiResponse = await fetch('/api/onmeta/account/upi-status', {
+      // Fetch UPI status - use provided refNumber or get from localStorage
+      const storedUPIRefNumber = upiRefNumber || localStorage.getItem('onmeta_upi_ref_number');
+      const upiStatusUrl = storedUPIRefNumber
+        ? `/api/onmeta/account/upi-status?refNumber=${encodeURIComponent(storedUPIRefNumber)}`
+        : '/api/onmeta/account/upi-status';
+      
+      const upiResponse = await fetch(upiStatusUrl, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
@@ -477,6 +487,10 @@ export default function DashboardPage() {
         const upiData = await upiResponse.json();
         if (upiData.success) {
           setOnMetaUPIStatus(upiData.status);
+          // Update stored reference number if we get a new one
+          if (upiData.refNumber && !storedUPIRefNumber) {
+            localStorage.setItem('onmeta_upi_ref_number', upiData.refNumber);
+          }
         }
       } else {
         // Don't show error for UPI status - it's optional
