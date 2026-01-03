@@ -3219,12 +3219,55 @@ export default function DashboardPage() {
                   <button
                     onClick={async () => {
                       if (!onMetaAccessToken) {
-                        alert('OnMeta authentication required. Please refresh the page.');
+                        showToast('OnMeta authentication required. Please refresh the page.', 'error');
                         return;
                       }
 
+                      // Check if KYC is verified before allowing UPI linking
+                      // OnMeta requires KYC to be verified before linking UPI
+                      const storedKYCVerified = localStorage.getItem('onmeta_kyc_verified');
+                      if (storedKYCVerified !== 'true' && onMetaKYCStatus !== 'VERIFIED') {
+                        // Try to verify KYC status with OnMeta API
+                        const userEmail = getAuthEmail();
+                        if (userEmail) {
+                          try {
+                            const kycResponse = await fetch('/api/onmeta/kyc-status', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${onMetaAccessToken}`,
+                              },
+                              body: JSON.stringify({ email: userEmail }),
+                            });
+                            
+                            const kycData = await kycResponse.json();
+                            const isVerified = kycData.success && (
+                              kycData.isVerified || 
+                              kycData.kycStatus === 'VERIFIED' || 
+                              kycData.kycStatus === 'verified'
+                            );
+                            
+                            if (!isVerified) {
+                              showToast('KYC verification is required before linking UPI. Please complete KYC first.', 'warning');
+                              return;
+                            } else {
+                              // Store KYC verification status
+                              localStorage.setItem('onmeta_kyc_verified', 'true');
+                              setOnMetaKYCStatus('VERIFIED');
+                            }
+                          } catch (kycError) {
+                            console.error('KYC status check error:', kycError);
+                            // If KYC check fails, allow proceeding (graceful degradation)
+                            // OnMeta API will return an error if KYC is not verified
+                          }
+                        } else {
+                          showToast('KYC verification is required before linking UPI. Please complete KYC first.', 'warning');
+                          return;
+                        }
+                      }
+
                       if (!linkUPIName || !linkUPIEmail || !linkUPIId) {
-                        alert('Please fill in all required fields');
+                        showToast('Please fill in all required fields', 'error');
                         return;
                       }
 
