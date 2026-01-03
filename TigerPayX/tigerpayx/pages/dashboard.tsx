@@ -430,6 +430,14 @@ export default function DashboardPage() {
     } else {
       setOnMetaAuthLoading(false);
     }
+    
+    // Load KYC verification status from localStorage on mount
+    if (typeof window !== 'undefined') {
+      const storedKYCVerified = localStorage.getItem('onmeta_kyc_verified');
+      if (storedKYCVerified === 'true') {
+        setOnMetaKYCStatus('VERIFIED');
+      }
+    }
   }, [authChecked]);
 
   // Fetch OnMeta account status (bank and UPI)
