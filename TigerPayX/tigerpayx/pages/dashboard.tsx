@@ -342,6 +342,34 @@ export default function DashboardPage() {
             }
             console.log('OnMeta login successful');
             
+            // Check and store KYC verification status after successful login
+            const storedKYCVerified = localStorage.getItem('onmeta_kyc_verified');
+            if (storedKYCVerified === 'true') {
+              setOnMetaKYCStatus('VERIFIED');
+            } else {
+              // Optionally verify KYC status with OnMeta API
+              const userEmail = getAuthEmail();
+              if (userEmail) {
+                fetch('/api/onmeta/kyc-status', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`,
+                  },
+                  body: JSON.stringify({ email: userEmail }),
+                })
+                .then(res => res.json())
+                .then(data => {
+                  if (data.success && (data.isVerified || data.kycStatus === 'VERIFIED' || data.kycStatus === 'verified')) {
+                    localStorage.setItem('onmeta_kyc_verified', 'true');
+                    localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
+                    setOnMetaKYCStatus('VERIFIED');
+                  }
+                })
+                .catch(err => console.error('Failed to check KYC status:', err));
+              }
+            }
+            
             // Fetch bank and UPI status
             fetchOnMetaAccountStatus(accessToken);
           } else {
