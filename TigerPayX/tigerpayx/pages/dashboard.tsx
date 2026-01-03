@@ -441,17 +441,17 @@ export default function DashboardPage() {
   }, [authChecked]);
 
   // Fetch OnMeta account status (bank and UPI)
-  const fetchOnMetaAccountStatus = async (accessToken: string, upiRefNumber?: string) => {
+  const fetchOnMetaAccountStatus = async (accessToken: string, upiRefNumber?: string, bankRefNumber?: string) => {
     if (!accessToken) {
       console.log('Skipping account status fetch - no access token');
       return;
     }
     
     try {
-      // Fetch bank status
-      const bankRefNumber = localStorage.getItem('onmeta_bank_ref_number');
-      const bankStatusUrl = bankRefNumber 
-        ? `/api/onmeta/account/bank-status?refNumber=${encodeURIComponent(bankRefNumber)}`
+      // Fetch bank status - use provided refNumber or get from localStorage
+      const storedBankRefNumber = bankRefNumber || localStorage.getItem('onmeta_bank_ref_number');
+      const bankStatusUrl = storedBankRefNumber 
+        ? `/api/onmeta/account/bank-status?refNumber=${encodeURIComponent(storedBankRefNumber)}`
         : '/api/onmeta/account/bank-status';
       
       const bankResponse = await fetch(bankStatusUrl, {
