@@ -3750,6 +3750,7 @@ export default function DashboardPage() {
                             try {
                               console.log('Checking UPI status for refNumber:', data.refNumber);
                               const statusResponse = await fetch(`/api/onmeta/account/upi-status?refNumber=${encodeURIComponent(data.refNumber)}`, {
+                                method: 'GET',
                                 headers: {
                                   'Authorization': `Bearer ${accessToken}`,
                                 },
