@@ -3699,16 +3699,25 @@ export default function DashboardPage() {
                         console.log('Link UPI API response:', {
                           status: response.status,
                           success: data.success,
+                          upiStatus: data.status,
                           error: data.error,
+                          refNumber: data.refNumber,
                           fullResponse: data,
                         });
                         
-                        if (data.success) {
-                          showToast(`UPI ID linking ${data.status || 'initiated'}!`, 'success');
-                          setOnMetaUPIStatus(data.status);
+                        // Check both success flag and status field
+                        // OnMeta can return success: true but status: "FAILED"
+                        const upiStatus = data.status || data.data?.status;
+                        const isSuccess = data.success && (upiStatus === 'SUCCESS' || upiStatus === 'PENDING');
+                        
+                        if (isSuccess) {
+                          // Success or Pending - show success message
+                          const statusMessage = upiStatus === 'SUCCESS' ? 'linked successfully' : 'initiated';
+                          showToast(`UPI ID linking ${statusMessage}!`, 'success');
+                          setOnMetaUPIStatus(upiStatus);
                           
                           // Store UPI ID and reference ID for future status checks
-                          if (data.status === 'SUCCESS') {
+                          if (upiStatus === 'SUCCESS') {
                             setLinkedUPIId(linkUPIId);
                           }
                           
@@ -3733,10 +3742,38 @@ export default function DashboardPage() {
                             }
                           }
                         } else {
-                          // Extract error message safely - ensure it's always a string
-                          // Handle OnMeta error format: {error: {code: 400, message: "account not found for vpa"}} or {error: "KYC not verified"}
+                          // Failed - check UPI status using refNumber to get more details
                           let errorMsg = 'Failed to link UPI ID. Please try again.';
                           
+                          // If we have a refNumber, try to get detailed status
+                          if (data.refNumber && accessToken) {
+                            try {
+                              console.log('Checking UPI status for refNumber:', data.refNumber);
+                              const statusResponse = await fetch(`/api/onmeta/account/upi-status?refNumber=${encodeURIComponent(data.refNumber)}`, {
+                                headers: {
+                                  'Authorization': `Bearer ${accessToken}`,
+                                },
+                              });
+                              
+                              if (statusResponse.ok) {
+                                const statusData = await statusResponse.json();
+                                console.log('UPI status check result:', statusData);
+                                
+                                // Extract error message from status response
+                                if (statusData.error) {
+                                  errorMsg = typeof statusData.error === 'string' ? statusData.error : (statusData.error.message || errorMsg);
+                                } else if (statusData.message) {
+                                  errorMsg = statusData.message;
+                                } else if (statusData.status === 'FAILED') {
+                                  errorMsg = 'UPI linking failed. Please verify your UPI ID and try again.';
+                                }
+                              }
+                            } catch (statusError) {
+                              console.error('Failed to check UPI status:', statusError);
+                            }
+                          }
+                          
+                          // Extract error message from response
                           if (data.error) {
                             if (typeof data.error === 'string') {
                               errorMsg = data.error;
@@ -3747,7 +3784,18 @@ export default function DashboardPage() {
                             }
                           } else if (data.message) {
                             errorMsg = typeof data.message === 'string' ? data.message : String(data.message);
+                          } else if (upiStatus === 'FAILED') {
+                            errorMsg = 'UPI linking failed. Please verify your UPI ID and try again.';
                           }
+                          
+                          // Store refNumber even if failed, so user can check status later
+                          if (data.refNumber) {
+                            localStorage.setItem('onmeta_upi_ref_number', data.refNumber);
+                            console.log('Stored UPI reference number (failed):', data.refNumber);
+                          }
+                          
+                          setOnMetaUPIStatus(upiStatus || 'FAILED');
+                          console.error('Link UPI failed:', errorMsg, data);
                           
                           // If error is about KYC, clear stored KYC status and show helpful message
                           if (errorMsg.toLowerCase().includes('kyc') || errorMsg.toLowerCase().includes('not verified')) {
@@ -3760,7 +3808,6 @@ export default function DashboardPage() {
                             }
                           }
                           
-                          console.error('Link UPI error:', errorMsg, data);
                           showToast(errorMsg, 'error');
                         }
                       } catch (error: any) {
