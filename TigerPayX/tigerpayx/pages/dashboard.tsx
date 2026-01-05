@@ -489,6 +489,86 @@ export default function DashboardPage() {
     }
   }, [authChecked]);
 
+  // Helper function to ensure we have a valid access token
+  // Tries to refresh token if needed, or login if refresh fails
+  const ensureValidAccessToken = async (): Promise<string | null> => {
+    // If we have a valid access token, return it
+    if (onMetaAccessToken) {
+      return onMetaAccessToken;
+    }
+
+    // Try to refresh token
+    const storedRefreshToken = localStorage.getItem('onmeta_refresh_token');
+    if (storedRefreshToken) {
+      try {
+        console.log('🔄 Access token missing, attempting to refresh...');
+        const refreshResponse = await fetch('/api/onmeta/auth/refresh', {
+          headers: {
+            'Authorization': `Bearer ${storedRefreshToken}`,
+          },
+        });
+
+        if (refreshResponse.ok) {
+          const refreshData = await refreshResponse.json();
+          if (refreshData.success && refreshData.accessToken) {
+            setOnMetaAccessToken(refreshData.accessToken);
+            if (refreshData.refreshToken) {
+              setOnMetaRefreshToken(refreshData.refreshToken);
+              localStorage.setItem('onmeta_refresh_token', refreshData.refreshToken);
+            }
+            console.log('✅ Token refreshed successfully');
+            return refreshData.accessToken;
+          }
+        }
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+      }
+    }
+
+    // If refresh failed, try to login
+    const userEmail = getAuthEmail();
+    if (userEmail) {
+      try {
+        console.log('🔄 Attempting to login to get new access token...');
+        const loginResponse = await fetch('/api/onmeta/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: userEmail }),
+        });
+
+        if (loginResponse.ok) {
+          const loginData = await loginResponse.json();
+          const accessToken = loginData.data?.accessToken || 
+                            loginData.data?.access_token || 
+                            loginData.accessToken || 
+                            loginData.access_token || 
+                            loginData.token;
+          
+          const refreshToken = loginData.data?.refreshToken || 
+                              loginData.data?.refresh_token ||
+                              loginData.refreshToken || 
+                              loginData.refresh_token;
+
+          if (accessToken) {
+            setOnMetaAccessToken(accessToken);
+            if (refreshToken) {
+              setOnMetaRefreshToken(refreshToken);
+              localStorage.setItem('onmeta_refresh_token', refreshToken);
+            }
+            console.log('✅ Login successful, new access token obtained');
+            return accessToken;
+          }
+        }
+      } catch (error) {
+        console.error('Login failed:', error);
+      }
+    }
+
+    return null;
+  };
+
   // Fetch OnMeta account status (bank and UPI)
   const fetchOnMetaAccountStatus = async (accessToken: string, upiRefNumber?: string, bankRefNumber?: string) => {
     if (!accessToken) {
@@ -1407,13 +1487,6 @@ export default function DashboardPage() {
                   // Check browser console filter settings
                   console.warn('If you don\'t see logs, check console filter settings (make sure "All levels" or "Verbose" is selected)');
                   
-                  if (!onMetaAccessToken) {
-                    console.error('❌ No access token available');
-                    alert('No OnMeta access token found. Please login first.');
-                    showToast('Please login to OnMeta first', 'warning');
-                    return;
-                  }
-
                   const userEmail = getAuthEmail();
                   if (!userEmail) {
                     console.error('❌ No user email found');
@@ -1422,17 +1495,26 @@ export default function DashboardPage() {
                   }
 
                   console.log('✅ User Email:', userEmail);
-                  console.log('✅ Has Access Token:', !!onMetaAccessToken);
                   
                   setKycStatusCheckLoading(true);
                   try {
+                    // Ensure we have a valid access token
+                    let accessToken = await ensureValidAccessToken();
+                    if (!accessToken) {
+                      console.error('❌ Failed to obtain access token');
+                      showToast('Failed to authenticate. Please try logging in again.', 'error');
+                      setKycStatusCheckLoading(false);
+                      return;
+                    }
+
+                    console.log('✅ Has Access Token:', !!accessToken);
                     console.log('📡 Making API request to /api/onmeta/kyc-status...');
                     
                     const response = await fetch('/api/onmeta/kyc-status', {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${onMetaAccessToken}`,
+                        'Authorization': `Bearer ${accessToken}`,
                       },
                       body: JSON.stringify({ email: userEmail }),
                     });
@@ -3565,6 +3647,14 @@ export default function DashboardPage() {
 
                       setLinkUPILoading(true);
                       try {
+                        // Ensure we have a valid access token before making the request
+                        let accessToken = await ensureValidAccessToken();
+                        if (!accessToken) {
+                          showToast('Failed to authenticate. Please try logging in again.', 'error');
+                          setLinkUPILoading(false);
+                          return;
+                        }
+
                         const requestBody: any = {
                           name: linkUPIName,
                           email: linkUPIEmail,
@@ -3578,16 +3668,34 @@ export default function DashboardPage() {
                           };
                         }
 
-                        const response = await fetch('/api/onmeta/account/link-upi', {
+                        let response = await fetch('/api/onmeta/account/link-upi', {
                           method: 'POST',
                           headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${onMetaAccessToken}`,
+                            'Authorization': `Bearer ${accessToken}`,
                           },
                           body: JSON.stringify(requestBody),
                         });
 
-                        const data = await response.json();
+                        let data = await response.json();
+
+                        // If we get 401, try refreshing token and retry once
+                        if (response.status === 401) {
+                          console.log('🔄 Got 401, refreshing token and retrying...');
+                          accessToken = await ensureValidAccessToken();
+                          if (accessToken) {
+                            // Retry the request with new token
+                            response = await fetch('/api/onmeta/account/link-upi', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${accessToken}`,
+                              },
+                              body: JSON.stringify(requestBody),
+                            });
+                            data = await response.json();
+                          }
+                        }
                         console.log('Link UPI API response:', {
                           status: response.status,
                           success: data.success,
@@ -3617,10 +3725,12 @@ export default function DashboardPage() {
                           setLinkUPIId('');
                           setLinkUPIPhoneNumber('');
                           // Refresh account status with reference number
-                          if (data.refNumber) {
-                            fetchOnMetaAccountStatus(onMetaAccessToken, data.refNumber);
-                          } else {
-                            fetchOnMetaAccountStatus(onMetaAccessToken);
+                          if (accessToken) {
+                            if (data.refNumber) {
+                              fetchOnMetaAccountStatus(accessToken, data.refNumber);
+                            } else {
+                              fetchOnMetaAccountStatus(accessToken);
+                            }
                           }
                         } else {
                           // Extract error message safely - ensure it's always a string
