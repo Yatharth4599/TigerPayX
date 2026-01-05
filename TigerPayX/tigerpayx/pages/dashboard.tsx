@@ -1412,6 +1412,10 @@ export default function DashboardPage() {
 
                   setKycStatusCheckLoading(true);
                   try {
+                    console.log('=== KYC Status Check Started ===');
+                    console.log('User Email:', userEmail);
+                    console.log('Has Access Token:', !!onMetaAccessToken);
+                    
                     const response = await fetch('/api/onmeta/kyc-status', {
                       method: 'POST',
                       headers: {
@@ -1421,23 +1425,48 @@ export default function DashboardPage() {
                       body: JSON.stringify({ email: userEmail }),
                     });
 
+                    console.log('Response Status:', response.status, response.statusText);
+                    
                     const data = await response.json();
-                    console.log('KYC status check result:', data);
+                    console.log('=== Full KYC Status API Response ===');
+                    console.log('Raw Response Data:', JSON.stringify(data, null, 2));
+                    console.log('Response Keys:', Object.keys(data));
+                    console.log('data.success:', data.success);
+                    console.log('data.isVerified:', data.isVerified);
+                    console.log('data.kycStatus:', data.kycStatus);
+                    console.log('data.status:', data.status);
+                    console.log('data.data:', data.data);
+                    console.log('data.error:', data.error);
+                    console.log('data.message:', data.message);
 
                     // Check if KYC is verified - handle various response formats
-                    const isVerified = data.success && (
-                      data.isVerified === true || 
-                      data.kycStatus === 'VERIFIED' || 
-                      data.kycStatus === 'verified' ||
-                      data.kycStatus === 'VERIFIED_SUCCESS' ||
-                      data.kycStatus === 'SUCCESS'
-                    );
+                    // Check all possible locations for verification status
+                    const kycStatus = data.kycStatus || data.status || data.kyc_status || data.data?.kycStatus || data.data?.status;
+                    const isVerifiedFlag = data.isVerified === true || 
+                                         data.is_verified === true || 
+                                         data.data?.isVerified === true ||
+                                         data.data?.is_verified === true;
+                    const isVerifiedStatus = kycStatus === 'VERIFIED' || 
+                                            kycStatus === 'verified' ||
+                                            kycStatus === 'VERIFIED_SUCCESS' ||
+                                            kycStatus === 'SUCCESS';
+                    
+                    // Check verification even if success is false - OnMeta might return status even if success: false
+                    const isVerified = isVerifiedFlag || isVerifiedStatus;
+                    
+                    console.log('=== Verification Check ===');
+                    console.log('kycStatus value:', kycStatus);
+                    console.log('isVerifiedFlag:', isVerifiedFlag);
+                    console.log('isVerifiedStatus:', isVerifiedStatus);
+                    console.log('data.success:', data.success);
+                    console.log('Final isVerified:', isVerified);
 
                     if (isVerified) {
                       // Store KYC verification status
                       localStorage.setItem('onmeta_kyc_verified', 'true');
                       localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
                       setOnMetaKYCStatus('VERIFIED');
+                      console.log('✓ KYC is VERIFIED - stored in localStorage');
                       showToast('KYC Status: VERIFIED ✓', 'success');
                     } else {
                       // Clear stored KYC status if not verified
@@ -1445,17 +1474,26 @@ export default function DashboardPage() {
                       localStorage.removeItem('onmeta_kyc_verified_timestamp');
                       setOnMetaKYCStatus(null);
                       
-                      // Show status message
-                      const status = data.kycStatus || data.status || 'Not Verified';
+                      // Show status message with detailed info
+                      const status = kycStatus || data.status || 'Not Verified';
                       const errorMsg = data.error || data.message || '';
+                      
+                      console.log('✗ KYC is NOT VERIFIED');
+                      console.log('Status:', status);
+                      console.log('Error/Message:', errorMsg);
+                      
                       if (errorMsg) {
                         showToast(`KYC Status: ${status} - ${errorMsg}`, 'warning');
                       } else {
                         showToast(`KYC Status: ${status}`, 'warning');
                       }
                     }
+                    console.log('=== KYC Status Check Completed ===');
                   } catch (error: any) {
-                    console.error('KYC status check error:', error);
+                    console.error('=== KYC Status Check Error ===');
+                    console.error('Error:', error);
+                    console.error('Error Message:', error?.message);
+                    console.error('Error Stack:', error?.stack);
                     showToast('Failed to check KYC status. Please try again.', 'error');
                   } finally {
                     setKycStatusCheckLoading(false);

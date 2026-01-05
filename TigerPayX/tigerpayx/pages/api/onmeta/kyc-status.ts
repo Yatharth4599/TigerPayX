@@ -39,10 +39,19 @@ export default async function handler(
       accessToken,
     });
 
+    console.log('=== KYC Status API Route Result ===');
+    console.log('Result:', JSON.stringify(result, null, 2));
+    console.log('result.success:', result.success);
+    console.log('result.kycStatus:', result.kycStatus);
+    console.log('result.isVerified:', result.isVerified);
+    console.log('result.error:', result.error);
+
     if (result.success) {
       return res.status(200).json(result);
     } else {
-      return res.status(400).json(result);
+      // Return 200 even if success is false, so frontend can see the status
+      // OnMeta might return success: false but still have kycStatus
+      return res.status(200).json(result);
     }
   } catch (error: any) {
     console.error('OnMeta fetch KYC status API route error:', error);
