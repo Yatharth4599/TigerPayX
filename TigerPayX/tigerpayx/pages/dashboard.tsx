@@ -3320,39 +3320,66 @@ export default function DashboardPage() {
                             });
                             
                             const kycData = await kycResponse.json();
-                            console.log('KYC status check result:', kycData);
+                            console.log('KYC status check result:', { status: kycResponse.status, data: kycData });
                             
-                            const isVerified = kycData.success && (
-                              kycData.isVerified || 
-                              kycData.kycStatus === 'VERIFIED' || 
-                              kycData.kycStatus === 'verified' ||
-                              kycData.kycStatus === 'VERIFIED_SUCCESS' ||
-                              kycData.kycStatus === 'SUCCESS'
-                            );
-                            
-                            if (!isVerified) {
-                              // Clear any stored KYC status if not verified
-                              localStorage.removeItem('onmeta_kyc_verified');
-                              localStorage.removeItem('onmeta_kyc_verified_timestamp');
-                              setOnMetaKYCStatus(null);
+                            // Only block if we get a successful response that explicitly says KYC is not verified
+                            // If API returns error (400/500), allow proceeding - let OnMeta handle validation
+                            if (kycResponse.ok && kycData.success) {
+                              // Check if KYC is verified - handle various response formats
+                              const isVerified = (
+                                kycData.isVerified === true || 
+                                kycData.kycStatus === 'VERIFIED' || 
+                                kycData.kycStatus === 'verified' ||
+                                kycData.kycStatus === 'VERIFIED_SUCCESS' ||
+                                kycData.kycStatus === 'SUCCESS'
+                              );
                               
-                              const kycErrorMsg = kycData.error || kycData.message || 'KYC verification is required';
-                              showToast(`KYC verification is required before linking UPI. ${kycErrorMsg}. Please complete KYC first.`, 'warning');
-                              return;
+                              if (isVerified) {
+                                // Store KYC verification status
+                                localStorage.setItem('onmeta_kyc_verified', 'true');
+                                localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
+                                setOnMetaKYCStatus('VERIFIED');
+                                console.log('KYC verified, proceeding with UPI linking');
+                              } else {
+                                // KYC explicitly not verified - show clear message
+                                localStorage.removeItem('onmeta_kyc_verified');
+                                localStorage.removeItem('onmeta_kyc_verified_timestamp');
+                                setOnMetaKYCStatus(null);
+                                
+                                // Extract error message without duplication
+                                let kycErrorMsg = '';
+                                if (kycData.error) {
+                                  if (typeof kycData.error === 'string') {
+                                    kycErrorMsg = kycData.error;
+                                  } else if (kycData.error.message) {
+                                    kycErrorMsg = kycData.error.message;
+                                  }
+                                } else if (kycData.message) {
+                                  kycErrorMsg = kycData.message;
+                                }
+                                
+                                // Show clear, non-duplicated message
+                                if (kycErrorMsg && !kycErrorMsg.toLowerCase().includes('kyc')) {
+                                  showToast(`KYC verification required: ${kycErrorMsg}. Please complete KYC verification first.`, 'warning');
+                                } else {
+                                  showToast('KYC verification is required before linking UPI. Please complete KYC verification first.', 'warning');
+                                }
+                                return;
+                              }
                             } else {
-                              // Store KYC verification status
-                              localStorage.setItem('onmeta_kyc_verified', 'true');
-                              localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
-                              setOnMetaKYCStatus('VERIFIED');
-                              console.log('KYC verified, proceeding with UPI linking');
+                              // API returned error or unsuccessful response
+                              // Allow proceeding - OnMeta will validate KYC when linking UPI
+                              console.log('KYC status API returned error or unsuccessful response, allowing UPI link attempt - OnMeta will validate');
                             }
                           } catch (kycError) {
                             console.error('KYC status check error:', kycError);
                             // If KYC check fails, allow proceeding (graceful degradation)
                             // OnMeta API will return an error if KYC is not verified
+                            // Don't block the user - let OnMeta API handle the validation
+                            console.log('KYC check failed, allowing UPI link attempt - OnMeta will validate');
                           }
                         } else {
-                          showToast('KYC verification is required before linking UPI. Please complete KYC first.', 'warning');
+                          showToast('KYC verification is required before linking UPI. Please complete KYC verification first.', 'warning');
                           return;
                         }
                       }
@@ -3448,7 +3475,10 @@ export default function DashboardPage() {
                             localStorage.removeItem('onmeta_kyc_verified');
                             localStorage.removeItem('onmeta_kyc_verified_timestamp');
                             setOnMetaKYCStatus(null);
-                            errorMsg = 'KYC verification is required before linking UPI. Please complete KYC verification first, then try again.';
+                            // Only show KYC message if the error doesn't already contain it
+                            if (!errorMsg.toLowerCase().includes('kyc verification is required')) {
+                              errorMsg = 'KYC verification is required. Please complete KYC verification first, then try again.';
+                            }
                           }
                           
                           console.error('Link UPI error:', errorMsg, data);
