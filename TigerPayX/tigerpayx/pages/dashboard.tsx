@@ -48,6 +48,7 @@ export default function DashboardPage() {
   const [onMetaUPIStatus, setOnMetaUPIStatus] = useState<string | null>(null);
   const [onMetaKYCStatus, setOnMetaKYCStatus] = useState<string | null>(null);
   const [onMetaAuthLoading, setOnMetaAuthLoading] = useState(true); // Track authentication loading state
+  const [kycStatusCheckLoading, setKycStatusCheckLoading] = useState(false); // Track KYC status check loading
   const [showLinkBankModal, setShowLinkBankModal] = useState(false);
   const [showLinkUPIModal, setShowLinkUPIModal] = useState(false);
   
@@ -1396,6 +1397,88 @@ export default function DashboardPage() {
                 </svg>
                 Start KYC Verification
               </button>
+              <button 
+                onClick={async () => {
+                  if (!onMetaAccessToken) {
+                    showToast('Please login to OnMeta first', 'warning');
+                    return;
+                  }
+
+                  const userEmail = getAuthEmail();
+                  if (!userEmail) {
+                    showToast('User email not found', 'error');
+                    return;
+                  }
+
+                  setKycStatusCheckLoading(true);
+                  try {
+                    const response = await fetch('/api/onmeta/kyc-status', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${onMetaAccessToken}`,
+                      },
+                      body: JSON.stringify({ email: userEmail }),
+                    });
+
+                    const data = await response.json();
+                    console.log('KYC status check result:', data);
+
+                    // Check if KYC is verified - handle various response formats
+                    const isVerified = data.success && (
+                      data.isVerified === true || 
+                      data.kycStatus === 'VERIFIED' || 
+                      data.kycStatus === 'verified' ||
+                      data.kycStatus === 'VERIFIED_SUCCESS' ||
+                      data.kycStatus === 'SUCCESS'
+                    );
+
+                    if (isVerified) {
+                      // Store KYC verification status
+                      localStorage.setItem('onmeta_kyc_verified', 'true');
+                      localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
+                      setOnMetaKYCStatus('VERIFIED');
+                      showToast('KYC Status: VERIFIED ✓', 'success');
+                    } else {
+                      // Clear stored KYC status if not verified
+                      localStorage.removeItem('onmeta_kyc_verified');
+                      localStorage.removeItem('onmeta_kyc_verified_timestamp');
+                      setOnMetaKYCStatus(null);
+                      
+                      // Show status message
+                      const status = data.kycStatus || data.status || 'Not Verified';
+                      const errorMsg = data.error || data.message || '';
+                      if (errorMsg) {
+                        showToast(`KYC Status: ${status} - ${errorMsg}`, 'warning');
+                      } else {
+                        showToast(`KYC Status: ${status}`, 'warning');
+                      }
+                    }
+                  } catch (error: any) {
+                    console.error('KYC status check error:', error);
+                    showToast('Failed to check KYC status. Please try again.', 'error');
+                  } finally {
+                    setKycStatusCheckLoading(false);
+                  }
+                }}
+                disabled={kycStatusCheckLoading || !onMetaAccessToken || onMetaAuthLoading}
+                className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                {kycStatusCheckLoading ? 'Checking...' : 'Check KYC Status'}
+              </button>
+              {onMetaKYCStatus === 'VERIFIED' && (
+                <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-700 font-medium flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    KYC Verified
+                  </p>
+                </div>
+              )}
             </div>
                     </motion.div>
 
