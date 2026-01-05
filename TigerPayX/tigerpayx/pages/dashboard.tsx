@@ -1506,22 +1506,34 @@ export default function DashboardPage() {
                       setOnMetaKYCStatus(null);
                       
                       // Show status message with detailed info
-                      const status = kycStatus || data.status || 'Not Verified';
+                      const status = kycStatus || data.status || (data.isVerified === false ? 'Not Verified' : 'Unknown');
                       const errorMsg = data.error || data.message || '';
                       
                       console.log('%c❌ KYC IS NOT VERIFIED', 'color: red; font-size: 16px; font-weight: bold;');
                       console.log('📊 Status:', status);
+                      console.log('📊 isVerified:', data.isVerified);
                       console.log('📊 Error/Message:', errorMsg);
                       console.log('📊 Full data object:', data);
                       
-                      // Show alert for debugging
-                      alert(`KYC Status Check Result:\n\nStatus: ${status}\nError: ${errorMsg || 'None'}\n\nCheck console for full details.`);
-                      
-                      if (errorMsg) {
-                        showToast(`KYC Status: ${status} - ${errorMsg}`, 'warning');
+                      // Determine the reason and show helpful message
+                      let statusMessage = '';
+                      if (data.isVerified === false) {
+                        if (kycStatus) {
+                          statusMessage = `KYC Status: ${kycStatus}. Please complete KYC verification to proceed.`;
+                        } else if (errorMsg) {
+                          statusMessage = `KYC not verified: ${errorMsg}. Please complete KYC verification.`;
+                        } else {
+                          statusMessage = 'KYC is not verified. Please complete KYC verification to link UPI or bank accounts.';
+                        }
                       } else {
-                        showToast(`KYC Status: ${status}`, 'warning');
+                        statusMessage = `KYC Status: ${status || 'Unknown'}`;
+                        if (errorMsg) {
+                          statusMessage += ` - ${errorMsg}`;
+                        }
                       }
+                      
+                      showToast(statusMessage, 'warning');
+                      console.log('📢 Toast message shown:', statusMessage);
                     }
                     console.log('%c=== KYC STATUS CHECK COMPLETED ===', 'color: blue; font-size: 16px; font-weight: bold;');
                   } catch (error: any) {
