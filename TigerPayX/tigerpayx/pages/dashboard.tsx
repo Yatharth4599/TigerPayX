@@ -1399,22 +1399,34 @@ export default function DashboardPage() {
               </button>
               <button 
                 onClick={async () => {
+                  // Force console to show logs - clear any filters
+                  console.clear();
+                  console.log('%c=== KYC STATUS CHECK STARTED ===', 'color: blue; font-size: 16px; font-weight: bold;');
+                  console.log('Button clicked - function executing');
+                  
+                  // Check browser console filter settings
+                  console.warn('If you don\'t see logs, check console filter settings (make sure "All levels" or "Verbose" is selected)');
+                  
                   if (!onMetaAccessToken) {
+                    console.error('❌ No access token available');
+                    alert('No OnMeta access token found. Please login first.');
                     showToast('Please login to OnMeta first', 'warning');
                     return;
                   }
 
                   const userEmail = getAuthEmail();
                   if (!userEmail) {
+                    console.error('❌ No user email found');
                     showToast('User email not found', 'error');
                     return;
                   }
 
+                  console.log('✅ User Email:', userEmail);
+                  console.log('✅ Has Access Token:', !!onMetaAccessToken);
+                  
                   setKycStatusCheckLoading(true);
                   try {
-                    console.log('=== KYC Status Check Started ===');
-                    console.log('User Email:', userEmail);
-                    console.log('Has Access Token:', !!onMetaAccessToken);
+                    console.log('📡 Making API request to /api/onmeta/kyc-status...');
                     
                     const response = await fetch('/api/onmeta/kyc-status', {
                       method: 'POST',
@@ -1425,19 +1437,24 @@ export default function DashboardPage() {
                       body: JSON.stringify({ email: userEmail }),
                     });
 
-                    console.log('Response Status:', response.status, response.statusText);
+                    console.log('📥 Response Status:', response.status, response.statusText);
                     
                     const data = await response.json();
-                    console.log('=== Full KYC Status API Response ===');
-                    console.log('Raw Response Data:', JSON.stringify(data, null, 2));
-                    console.log('Response Keys:', Object.keys(data));
-                    console.log('data.success:', data.success);
-                    console.log('data.isVerified:', data.isVerified);
-                    console.log('data.kycStatus:', data.kycStatus);
-                    console.log('data.status:', data.status);
-                    console.log('data.data:', data.data);
-                    console.log('data.error:', data.error);
-                    console.log('data.message:', data.message);
+                    console.log('%c=== FULL KYC STATUS API RESPONSE ===', 'color: green; font-size: 14px; font-weight: bold;');
+                    console.log('📋 Raw Response Data (JSON):', JSON.stringify(data, null, 2));
+                    console.log('🔑 Response Keys:', Object.keys(data));
+                    console.table({
+                      'success': data.success,
+                      'isVerified': data.isVerified,
+                      'kycStatus': data.kycStatus,
+                      'status': data.status,
+                      'error': data.error,
+                      'message': data.message,
+                      'hasData': !!data.data,
+                      'data.kycStatus': data.data?.kycStatus,
+                      'data.status': data.data?.status,
+                      'data.isVerified': data.data?.isVerified,
+                    });
 
                     // Check if KYC is verified - handle various response formats
                     // Check all possible locations for verification status
@@ -1454,19 +1471,18 @@ export default function DashboardPage() {
                     // Check verification even if success is false - OnMeta might return status even if success: false
                     const isVerified = isVerifiedFlag || isVerifiedStatus;
                     
-                    console.log('=== Verification Check ===');
-                    console.log('kycStatus value:', kycStatus);
-                    console.log('isVerifiedFlag:', isVerifiedFlag);
-                    console.log('isVerifiedStatus:', isVerifiedStatus);
-                    console.log('data.success:', data.success);
-                    console.log('Final isVerified:', isVerified);
+                    console.log('%c=== VERIFICATION CHECK ===', 'color: orange; font-size: 14px; font-weight: bold;');
+                    console.log('🔍 kycStatus value:', kycStatus);
+                    console.log('🔍 isVerifiedFlag:', isVerifiedFlag);
+                    console.log('🔍 isVerifiedStatus:', isVerifiedStatus);
+                    console.log('🔍 Final isVerified:', isVerified);
 
                     if (isVerified) {
                       // Store KYC verification status
                       localStorage.setItem('onmeta_kyc_verified', 'true');
                       localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
                       setOnMetaKYCStatus('VERIFIED');
-                      console.log('✓ KYC is VERIFIED - stored in localStorage');
+                      console.log('%c✅ KYC IS VERIFIED - Stored in localStorage', 'color: green; font-size: 16px; font-weight: bold;');
                       showToast('KYC Status: VERIFIED ✓', 'success');
                     } else {
                       // Clear stored KYC status if not verified
@@ -1478,9 +1494,13 @@ export default function DashboardPage() {
                       const status = kycStatus || data.status || 'Not Verified';
                       const errorMsg = data.error || data.message || '';
                       
-                      console.log('✗ KYC is NOT VERIFIED');
-                      console.log('Status:', status);
-                      console.log('Error/Message:', errorMsg);
+                      console.log('%c❌ KYC IS NOT VERIFIED', 'color: red; font-size: 16px; font-weight: bold;');
+                      console.log('📊 Status:', status);
+                      console.log('📊 Error/Message:', errorMsg);
+                      console.log('📊 Full data object:', data);
+                      
+                      // Show alert for debugging
+                      alert(`KYC Status Check Result:\n\nStatus: ${status}\nError: ${errorMsg || 'None'}\n\nCheck console for full details.`);
                       
                       if (errorMsg) {
                         showToast(`KYC Status: ${status} - ${errorMsg}`, 'warning');
@@ -1488,12 +1508,13 @@ export default function DashboardPage() {
                         showToast(`KYC Status: ${status}`, 'warning');
                       }
                     }
-                    console.log('=== KYC Status Check Completed ===');
+                    console.log('%c=== KYC STATUS CHECK COMPLETED ===', 'color: blue; font-size: 16px; font-weight: bold;');
                   } catch (error: any) {
-                    console.error('=== KYC Status Check Error ===');
-                    console.error('Error:', error);
-                    console.error('Error Message:', error?.message);
-                    console.error('Error Stack:', error?.stack);
+                    console.error('%c=== KYC STATUS CHECK ERROR ===', 'color: red; font-size: 16px; font-weight: bold;');
+                    console.error('❌ Error Object:', error);
+                    console.error('❌ Error Message:', error?.message);
+                    console.error('❌ Error Stack:', error?.stack);
+                    alert(`KYC Status Check Failed:\n\n${error?.message || 'Unknown error'}\n\nCheck console for details.`);
                     showToast('Failed to check KYC status. Please try again.', 'error');
                   } finally {
                     setKycStatusCheckLoading(false);
