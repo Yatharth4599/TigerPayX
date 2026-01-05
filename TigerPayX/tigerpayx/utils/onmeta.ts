@@ -2704,9 +2704,12 @@ export async function fetchKYCStatus(request: OnMetaKYCStatusRequest): Promise<O
       "Accept": "application/json",
     };
 
-    // Add Authorization header if access token is provided
+    // Authorization header is required for KYC status check
+    // Use access token if provided, otherwise API call may fail
     if (request.accessToken) {
       headers["Authorization"] = `Bearer ${request.accessToken}`;
+    } else {
+      console.warn("OnMeta KYC status check: Access token not provided. API may return error.");
     }
 
     const response = await fetch(apiUrl, {
@@ -2733,28 +2736,48 @@ export async function fetchKYCStatus(request: OnMetaKYCStatusRequest): Promise<O
     const data = await response.json();
     console.log("OnMeta fetch KYC status response:", {
       status: response.status,
-      kycStatus: data.kycStatus || data.status || data.kyc_status,
-      fullResponse: data,
+      statusText: response.statusText,
+      kycStatus: data.kycStatus || data.status || data.kyc_status || data.data?.kycStatus,
+      isVerified: data.isVerified || data.is_verified || data.data?.isVerified,
+      fullResponse: JSON.stringify(data, null, 2),
     });
 
     if (!response.ok) {
+      // Extract error message from various possible formats
+      let errorMessage = `Failed to fetch KYC status: ${response.status} ${response.statusText}`;
+      if (data.error) {
+        if (typeof data.error === 'string') {
+          errorMessage = data.error;
+        } else if (data.error.message) {
+          errorMessage = data.error.message;
+        }
+      } else if (data.message) {
+        errorMessage = data.message;
+      }
+      
       console.error("OnMeta fetch KYC status error:", {
         status: response.status,
         statusText: response.statusText,
-        error: data.error,
-        message: data.message,
+        error: errorMessage,
         fullResponse: data,
       });
       return {
         success: false,
-        error: data.message || data.error || `Failed to fetch KYC status: ${response.status} ${response.statusText}`,
+        error: errorMessage,
       };
     }
 
     // Handle different response formats from OnMeta
-    const kycStatus = data.kycStatus || data.status || data.kyc_status || data.data?.status;
-    const isVerified = data.isVerified || data.is_verified || data.data?.isVerified || 
-                       kycStatus === 'VERIFIED' || kycStatus === 'verified' || kycStatus === 'VERIFIED_SUCCESS';
+    // OnMeta may return: { kycStatus: "VERIFIED" } or { status: "VERIFIED" } or { data: { kycStatus: "VERIFIED" } }
+    const kycStatus = data.kycStatus || data.status || data.kyc_status || data.data?.kycStatus || data.data?.status;
+    const isVerified = data.isVerified === true || 
+                       data.is_verified === true || 
+                       data.data?.isVerified === true ||
+                       data.data?.is_verified === true ||
+                       kycStatus === 'VERIFIED' || 
+                       kycStatus === 'verified' || 
+                       kycStatus === 'VERIFIED_SUCCESS' ||
+                       kycStatus === 'SUCCESS';
 
     return {
       success: true,
