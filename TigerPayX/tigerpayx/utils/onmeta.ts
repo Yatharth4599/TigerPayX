@@ -1281,153 +1281,121 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
       requestBody.phone = request.phone;
     }
 
-    // OnMeta endpoint: POST /v1/users/upi-link
+    // OnMeta endpoint: POST /v1/users/upi-link (confirmed by OnMeta documentation)
     // Response: { success: true, data: { status: "SUCCESS", referenceId: "89822" }, error: {} }
-    const endpoints = [
-      `${ONMETA_API_BASE_URL}/v1/users/upi-link`,
-      `${ONMETA_API_BASE_URL}/v1/account/link-upi`, // Fallback
-    ];
+    const apiUrl = `${ONMETA_API_BASE_URL}/v1/users/upi-link`;
     
-    let lastError: any = null;
-    let data: any = null;
-    let response: Response | null = null;
-
-    for (const apiUrl of endpoints) {
-      console.log("OnMeta link UPI request (trying endpoint):", {
-        url: apiUrl,
-        email: request.email,
-        upiId: request.upiId,
-        requestBody: JSON.stringify(requestBody, null, 2),
-      });
-
-      try {
-        // Validate API base URL and client ID before making request
-        if (!ONMETA_API_BASE_URL || ONMETA_API_BASE_URL.includes('undefined')) {
-          throw new Error(`Invalid ONMETA_API_BASE_URL: ${ONMETA_API_BASE_URL}`);
-        }
-        
-        if (!ONMETA_CLIENT_ID || ONMETA_CLIENT_ID.trim() === '') {
-          throw new Error('ONMETA_CLIENT_ID is not configured');
-        }
-
-        response = await fetch(apiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${request.accessToken}`,
-            "x-api-key": ONMETA_CLIENT_ID,
-          },
-          body: JSON.stringify(requestBody),
-        });
-
-        // Clone response for text reading (in case we need to read it as text)
-        const responseClone = response.clone();
-
-        // Check if response is JSON before parsing
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const text = await responseClone.text();
-          console.error("OnMeta link UPI response is not JSON:", {
-            status: response.status,
-            contentType,
-            textPreview: text.substring(0, 200),
-            endpoint: apiUrl,
-          });
-          
-          // If 404, try next endpoint
-          if (response.status === 404 && endpoints.indexOf(apiUrl) < endpoints.length - 1) {
-            lastError = { status: response.status, error: `Endpoint not found: ${apiUrl}` };
-            continue;
-          }
-          
-          return {
-            success: false,
-            error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
-          };
-        }
-
-        // Parse JSON from original response
-        data = await response.json();
-        console.log("OnMeta link UPI response:", {
-          status: response.status,
-          statusText: response.statusText,
-          upiStatus: data.data?.status || data.status,
-          referenceId: data.data?.referenceId || data.referenceId || data.refNumber,
-          fullResponse: data,
-          endpoint: apiUrl,
-        });
-
-        // If 404, try next endpoint
-        if (response.status === 404 && endpoints.indexOf(apiUrl) < endpoints.length - 1) {
-          lastError = { status: response.status, error: data.message || data.error || `Endpoint not found: ${apiUrl}` };
-          continue;
-        }
-
-        // If not OK, return error with detailed information
-        if (!response.ok) {
-          // Extract error message from various possible locations
-          // OnMeta can return error as: {error: {code: 400, message: "account not found for vpa"}} or {error: "string"}
-          let errorMessage = `Failed to link UPI: ${response.status} ${response.statusText}`;
-          
-          if (data.error) {
-            if (typeof data.error === 'string') {
-              errorMessage = data.error;
-            } else if (typeof data.error === 'object' && data.error.message) {
-              errorMessage = data.error.message;
-            } else if (typeof data.error === 'object' && data.error.code) {
-              errorMessage = data.error.message || `Error ${data.error.code}`;
-            }
-          } else if (data.message) {
-            errorMessage = typeof data.message === 'string' ? data.message : (data.message.message || String(data.message));
-          } else if (data.errorMessage) {
-            errorMessage = typeof data.errorMessage === 'string' ? data.errorMessage : String(data.errorMessage);
-          } else if (data.data && typeof data.data === 'object') {
-            if (data.data.error) {
-              errorMessage = typeof data.data.error === 'string' ? data.data.error : (data.data.error.message || String(data.data.error));
-            } else if (data.data.message) {
-              errorMessage = typeof data.data.message === 'string' ? data.data.message : String(data.data.message);
-            }
-          }
-          
-          console.error("OnMeta link UPI error details:", {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorMessage,
-            fullResponse: data,
-            endpoint: apiUrl,
-            requestBody: requestBody,
-          });
-          
-          return {
-            success: false,
-            error: errorMessage,
-            statusCode: response.status,
-            onMetaError: typeof data.error === 'object' ? data.error.message : (data.error || data.message),
-          };
-        }
-
-        // Success! Break out of loop
-        break;
-      } catch (error: any) {
-        console.error(`OnMeta link UPI error for endpoint ${apiUrl}:`, error);
-        lastError = error;
-        // If this is the last endpoint, return error
-        if (endpoints.indexOf(apiUrl) === endpoints.length - 1) {
-          return {
-            success: false,
-            error: error.message || "Network error occurred",
-          };
-        }
-        // Otherwise, try next endpoint
-        continue;
-      }
-    }
-
-    // If we got here without success, return last error
-    if (!response || !response.ok) {
+    // Validate API base URL and client ID before making request
+    if (!ONMETA_API_BASE_URL || ONMETA_API_BASE_URL.includes('undefined')) {
       return {
         success: false,
-        error: lastError?.error || lastError?.message || "Failed to link UPI after trying all endpoints",
+        error: `Invalid ONMETA_API_BASE_URL: ${ONMETA_API_BASE_URL}`,
+      };
+    }
+    
+    if (!ONMETA_CLIENT_ID || ONMETA_CLIENT_ID.trim() === '') {
+      return {
+        success: false,
+        error: 'ONMETA_CLIENT_ID is not configured',
+      };
+    }
+
+    console.log("OnMeta link UPI request:", {
+      url: apiUrl,
+      email: request.email,
+      upiId: request.upiId,
+      requestBody: JSON.stringify(requestBody, null, 2),
+    });
+
+    let response: Response;
+    let data: any;
+
+    try {
+      response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${request.accessToken}`,
+          "x-api-key": ONMETA_CLIENT_ID,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error("OnMeta link UPI response is not JSON:", {
+          status: response.status,
+          contentType,
+          textPreview: text.substring(0, 200),
+          endpoint: apiUrl,
+        });
+        
+        return {
+          success: false,
+          error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+        };
+      }
+
+      // Parse JSON response
+      data = await response.json();
+      console.log("OnMeta link UPI response:", {
+        status: response.status,
+        statusText: response.statusText,
+        upiStatus: data.data?.status || data.status,
+        referenceId: data.data?.referenceId || data.referenceId || data.refNumber,
+        fullResponse: JSON.stringify(data, null, 2),
+        endpoint: apiUrl,
+      });
+
+      // If not OK, return error with detailed information
+      if (!response.ok) {
+        // Extract error message from various possible locations
+        // OnMeta can return error as: {error: {code: 400, message: "KYC not verified"}} or {error: "KYC not verified"}
+        let errorMessage = `Failed to link UPI: ${response.status} ${response.statusText}`;
+        
+        if (data.error) {
+          if (typeof data.error === 'string') {
+            errorMessage = data.error;
+          } else if (typeof data.error === 'object' && data.error.message) {
+            errorMessage = data.error.message;
+          } else if (typeof data.error === 'object' && data.error.code) {
+            errorMessage = data.error.message || `Error ${data.error.code}`;
+          }
+        } else if (data.message) {
+          errorMessage = typeof data.message === 'string' ? data.message : (data.message.message || String(data.message));
+        } else if (data.errorMessage) {
+          errorMessage = typeof data.errorMessage === 'string' ? data.errorMessage : String(data.errorMessage);
+        } else if (data.data && typeof data.data === 'object') {
+          if (data.data.error) {
+            errorMessage = typeof data.data.error === 'string' ? data.data.error : (data.data.error.message || String(data.data.error));
+          } else if (data.data.message) {
+            errorMessage = typeof data.data.message === 'string' ? data.data.message : String(data.data.message);
+          }
+        }
+        
+        console.error("OnMeta link UPI error details:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorMessage,
+          fullResponse: JSON.stringify(data, null, 2),
+          endpoint: apiUrl,
+          requestBody: requestBody,
+        });
+        
+        return {
+          success: false,
+          error: errorMessage,
+          statusCode: response.status,
+          onMetaError: typeof data.error === 'object' ? data.error.message : (data.error || data.message),
+        };
+      }
+    } catch (error: any) {
+      console.error("OnMeta link UPI error:", error);
+      return {
+        success: false,
+        error: error.message || "Network error occurred",
       };
     }
 
