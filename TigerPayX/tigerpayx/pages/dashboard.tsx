@@ -1438,8 +1438,23 @@ export default function DashboardPage() {
                     });
 
                     console.log('📥 Response Status:', response.status, response.statusText);
+                    console.log('📥 Response Headers:', Object.fromEntries(response.headers.entries()));
                     
-                    const data = await response.json();
+                    // Get response as text first to see raw response
+                    const responseText = await response.text();
+                    console.log('📥 Raw Response Text:', responseText);
+                    console.log('📥 Response Length:', responseText.length);
+                    
+                    // Parse as JSON
+                    let data;
+                    try {
+                      data = JSON.parse(responseText);
+                    } catch (parseError) {
+                      console.error('❌ Failed to parse response as JSON:', parseError);
+                      console.error('Raw response:', responseText);
+                      alert(`Failed to parse API response:\n\n${responseText}\n\nCheck console for details.`);
+                      return;
+                    }
                     console.log('%c=== FULL KYC STATUS API RESPONSE ===', 'color: green; font-size: 14px; font-weight: bold;');
                     console.log('📋 Raw Response Data (JSON):', JSON.stringify(data, null, 2));
                     console.log('🔑 Response Keys:', Object.keys(data));
