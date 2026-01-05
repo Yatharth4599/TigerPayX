@@ -3320,56 +3320,56 @@ export default function DashboardPage() {
                             });
                             
                             const kycData = await kycResponse.json();
-                            console.log('KYC status check result:', { status: kycResponse.status, data: kycData });
+                            console.log('KYC status check result:', { 
+                              status: kycResponse.status, 
+                              ok: kycResponse.ok,
+                              data: kycData,
+                              isVerified: kycData.isVerified,
+                              kycStatus: kycData.kycStatus,
+                              success: kycData.success,
+                              error: kycData.error,
+                              message: kycData.message
+                            });
                             
-                            // Only block if we get a successful response that explicitly says KYC is not verified
-                            // If API returns error (400/500), allow proceeding - let OnMeta handle validation
-                            if (kycResponse.ok && kycData.success) {
-                              // Check if KYC is verified - handle various response formats
-                              const isVerified = (
-                                kycData.isVerified === true || 
-                                kycData.kycStatus === 'VERIFIED' || 
-                                kycData.kycStatus === 'verified' ||
-                                kycData.kycStatus === 'VERIFIED_SUCCESS' ||
-                                kycData.kycStatus === 'SUCCESS'
-                              );
+                            // Check if KYC is verified - handle various response formats
+                            const isVerified = (
+                              kycData.isVerified === true || 
+                              kycData.kycStatus === 'VERIFIED' || 
+                              kycData.kycStatus === 'verified' ||
+                              kycData.kycStatus === 'VERIFIED_SUCCESS' ||
+                              kycData.kycStatus === 'SUCCESS'
+                            );
+                            
+                            if (isVerified) {
+                              // Store KYC verification status
+                              localStorage.setItem('onmeta_kyc_verified', 'true');
+                              localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
+                              setOnMetaKYCStatus('VERIFIED');
+                              console.log('KYC verified, proceeding with UPI linking');
+                            } else {
+                              // KYC status not explicitly verified
+                              // Check if API explicitly says "KYC not verified" - only then block
+                              // Otherwise, allow proceeding and let OnMeta handle validation
+                              const errorMsg = kycData.error || kycData.message || '';
+                              const errorMsgStr = typeof errorMsg === 'string' ? errorMsg : (errorMsg.message || '');
+                              const explicitlyNotVerified = errorMsgStr.toLowerCase().includes('kyc not verified') || 
+                                                           errorMsgStr.toLowerCase().includes('kyc verification required') ||
+                                                           errorMsgStr.toLowerCase().includes('kyc is not verified');
                               
-                              if (isVerified) {
-                                // Store KYC verification status
-                                localStorage.setItem('onmeta_kyc_verified', 'true');
-                                localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
-                                setOnMetaKYCStatus('VERIFIED');
-                                console.log('KYC verified, proceeding with UPI linking');
-                              } else {
-                                // KYC explicitly not verified - show clear message
+                              if (explicitlyNotVerified && kycResponse.ok && kycData.success === false) {
+                                // API explicitly says KYC is not verified - block and show message
                                 localStorage.removeItem('onmeta_kyc_verified');
                                 localStorage.removeItem('onmeta_kyc_verified_timestamp');
                                 setOnMetaKYCStatus(null);
-                                
-                                // Extract error message without duplication
-                                let kycErrorMsg = '';
-                                if (kycData.error) {
-                                  if (typeof kycData.error === 'string') {
-                                    kycErrorMsg = kycData.error;
-                                  } else if (kycData.error.message) {
-                                    kycErrorMsg = kycData.error.message;
-                                  }
-                                } else if (kycData.message) {
-                                  kycErrorMsg = kycData.message;
-                                }
-                                
-                                // Show clear, non-duplicated message
-                                if (kycErrorMsg && !kycErrorMsg.toLowerCase().includes('kyc')) {
-                                  showToast(`KYC verification required: ${kycErrorMsg}. Please complete KYC verification first.`, 'warning');
-                                } else {
-                                  showToast('KYC verification is required before linking UPI. Please complete KYC verification first.', 'warning');
-                                }
+                                console.log('KYC explicitly not verified by API, blocking UPI link');
+                                showToast('KYC verification is required before linking UPI. Please complete KYC verification first.', 'warning');
                                 return;
+                              } else {
+                                // KYC status unclear or API didn't explicitly say not verified
+                                // Allow proceeding - OnMeta will validate KYC when linking UPI
+                                console.log('KYC status unclear or not explicitly denied, allowing UPI link attempt - OnMeta will validate');
+                                // Don't block - continue to UPI linking
                               }
-                            } else {
-                              // API returned error or unsuccessful response
-                              // Allow proceeding - OnMeta will validate KYC when linking UPI
-                              console.log('KYC status API returned error or unsuccessful response, allowing UPI link attempt - OnMeta will validate');
                             }
                           } catch (kycError) {
                             console.error('KYC status check error:', kycError);
