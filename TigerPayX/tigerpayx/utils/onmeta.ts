@@ -922,9 +922,25 @@ export async function onMetaRefreshToken(refreshToken: string): Promise<OnMetaRe
     });
 
     if (!response.ok) {
+      // Extract readable error message from various possible formats
+      let errorMessage = "Failed to refresh token";
+      if (data.error) {
+        if (typeof data.error === 'string') {
+          errorMessage = data.error;
+        } else if (data.error.message) {
+          errorMessage = data.error.message;
+        } else if (data.error.code) {
+          errorMessage = data.error.message || `Error ${data.error.code}`;
+        }
+      } else if (data.message) {
+        errorMessage = typeof data.message === 'string' ? data.message : String(data.message);
+      } else if (data.errorMessage) {
+        errorMessage = typeof data.errorMessage === 'string' ? data.errorMessage : String(data.errorMessage);
+      }
+      
       return {
         success: false,
-        error: data.message || data.error || "Failed to refresh token",
+        error: errorMessage,
       };
     }
 

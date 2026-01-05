@@ -234,36 +234,84 @@ export default function DashboardPage() {
           });
           
           if (!refreshResponse.ok) {
-            let errorText = '';
-            try {
-              const errorData = await refreshResponse.json();
-              errorText = errorData.error || errorData.message || `HTTP ${refreshResponse.status}`;
-            } catch (e) {
-              const text = await refreshResponse.text();
-              errorText = text.substring(0, 100) || `HTTP ${refreshResponse.status}`;
+            // 401 is expected when refresh token is expired - handle gracefully
+            if (refreshResponse.status === 401) {
+              console.log('OnMeta refresh token expired or invalid, will login instead');
+              // Clear invalid refresh token
+              localStorage.removeItem('onmeta_refresh_token');
+              // Continue to login flow below (don't throw error)
+            } else {
+              // For other errors, extract readable error message
+              let errorText = '';
+              try {
+                const errorData = await refreshResponse.json();
+                // Extract error message from various possible formats
+                if (typeof errorData.error === 'string') {
+                  errorText = errorData.error;
+                } else if (errorData.error?.message) {
+                  errorText = errorData.error.message;
+                } else if (typeof errorData.message === 'string') {
+                  errorText = errorData.message;
+                } else {
+                  errorText = `HTTP ${refreshResponse.status}`;
+                }
+              } catch (e) {
+                try {
+                  const text = await refreshResponse.text();
+                  errorText = text.substring(0, 100) || `HTTP ${refreshResponse.status}`;
+                } catch (textError) {
+                  errorText = `HTTP ${refreshResponse.status}`;
+                }
+              }
+              console.error('OnMeta token refresh failed:', refreshResponse.status, errorText);
+              // For non-401 errors, still clear token and continue to login
+              localStorage.removeItem('onmeta_refresh_token');
+              // Throw error for non-401 errors
+              throw new Error(`Failed to refresh token: ${errorText}`);
             }
-            console.error('OnMeta token refresh failed:', refreshResponse.status, errorText);
-            throw new Error(`Failed to refresh token: ${errorText}`);
-          }
-          
-          const refreshData = await refreshResponse.json();
-          
-          if (refreshData.success && refreshData.accessToken) {
-            setOnMetaAccessToken(refreshData.accessToken);
-            if (refreshData.refreshToken) {
-              setOnMetaRefreshToken(refreshData.refreshToken);
-              localStorage.setItem('onmeta_refresh_token', refreshData.refreshToken);
-            }
-            console.log('OnMeta token refreshed successfully');
-            fetchOnMetaAccountStatus(refreshData.accessToken);
-            setOnMetaAuthLoading(false);
-            return;
           } else {
-            console.error('OnMeta token refresh failed: No access token in response', refreshData);
-            throw new Error(refreshData.error || 'No access token received');
+            // Success - parse response
+            const refreshData = await refreshResponse.json();
+            
+            if (refreshData.success && refreshData.accessToken) {
+              setOnMetaAccessToken(refreshData.accessToken);
+              if (refreshData.refreshToken) {
+                setOnMetaRefreshToken(refreshData.refreshToken);
+                localStorage.setItem('onmeta_refresh_token', refreshData.refreshToken);
+              }
+              console.log('OnMeta token refreshed successfully');
+              fetchOnMetaAccountStatus(refreshData.accessToken);
+              setOnMetaAuthLoading(false);
+              return;
+            } else {
+              // Extract readable error message
+              let errorMsg = 'No access token received';
+              if (refreshData.error) {
+                if (typeof refreshData.error === 'string') {
+                  errorMsg = refreshData.error;
+                } else if (refreshData.error?.message) {
+                  errorMsg = refreshData.error.message;
+                }
+              } else if (refreshData.message) {
+                errorMsg = refreshData.message;
+              }
+              console.error('OnMeta token refresh failed: No access token in response', refreshData);
+              throw new Error(errorMsg);
+            }
           }
         } catch (error: any) {
-          console.error('OnMeta token refresh failed, will try login:', error?.message || error);
+          // Extract readable error message
+          let errorMessage = 'Token refresh failed';
+          if (error?.message) {
+            errorMessage = error.message;
+          } else if (typeof error === 'string') {
+            errorMessage = error;
+          } else if (error?.error) {
+            errorMessage = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+          } else if (error) {
+            errorMessage = JSON.stringify(error);
+          }
+          console.log('OnMeta token refresh failed, will try login:', errorMessage);
           // Clear invalid refresh token
           localStorage.removeItem('onmeta_refresh_token');
           // Continue to try login
