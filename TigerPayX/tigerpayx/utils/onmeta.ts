@@ -1314,6 +1314,7 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
       response = await fetch(apiUrl, {
         method: "POST",
         headers: {
+          "Accept": "application/json",
           "Content-Type": "application/json",
           "Authorization": `Bearer ${request.accessToken}`,
           "x-api-key": ONMETA_CLIENT_ID,
