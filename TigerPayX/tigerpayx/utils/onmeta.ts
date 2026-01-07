@@ -1273,7 +1273,7 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
 
     const requestBody: any = {
       name: request.name,
-      email: request.email,
+      email: request.email.toLowerCase(), // Ensure email is lowercase
       upiId: request.upiId,
     };
 
