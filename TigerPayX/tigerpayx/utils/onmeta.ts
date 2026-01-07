@@ -2659,7 +2659,7 @@ export async function fetchKYCStatus(request: OnMetaKYCStatusRequest): Promise<O
     }
 
     const requestBody = {
-      email: request.email,
+      email: request.email.toLowerCase(), // Ensure email is lowercase
     };
 
     // Production endpoint for KYC status

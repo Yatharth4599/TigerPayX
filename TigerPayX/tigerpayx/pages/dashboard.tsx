@@ -167,7 +167,7 @@ export default function DashboardPage() {
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${onMetaAccessToken}`,
                 },
-                body: JSON.stringify({ email: userEmail }),
+                body: JSON.stringify({ email: userEmail.toLowerCase() }), // Convert email to lowercase
               })
               .then(res => res.json())
               .then(data => {
@@ -258,7 +258,7 @@ export default function DashboardPage() {
                 }
               } catch (e) {
                 try {
-                  const text = await refreshResponse.text();
+            const text = await refreshResponse.text();
                   errorText = text.substring(0, 100) || `HTTP ${refreshResponse.status}`;
                 } catch (textError) {
                   errorText = `HTTP ${refreshResponse.status}`;
@@ -272,18 +272,18 @@ export default function DashboardPage() {
             }
           } else {
             // Success - parse response
-            const refreshData = await refreshResponse.json();
-            
-            if (refreshData.success && refreshData.accessToken) {
-              setOnMetaAccessToken(refreshData.accessToken);
-              if (refreshData.refreshToken) {
-                setOnMetaRefreshToken(refreshData.refreshToken);
-                localStorage.setItem('onmeta_refresh_token', refreshData.refreshToken);
-              }
-              console.log('OnMeta token refreshed successfully');
-              fetchOnMetaAccountStatus(refreshData.accessToken);
-              setOnMetaAuthLoading(false);
-              return;
+          const refreshData = await refreshResponse.json();
+          
+          if (refreshData.success && refreshData.accessToken) {
+            setOnMetaAccessToken(refreshData.accessToken);
+            if (refreshData.refreshToken) {
+              setOnMetaRefreshToken(refreshData.refreshToken);
+              localStorage.setItem('onmeta_refresh_token', refreshData.refreshToken);
+            }
+            console.log('OnMeta token refreshed successfully');
+            fetchOnMetaAccountStatus(refreshData.accessToken);
+            setOnMetaAuthLoading(false);
+            return;
             } else {
               // Extract readable error message
               let errorMsg = 'No access token received';
@@ -338,7 +338,7 @@ export default function DashboardPage() {
               errorText = errorData.error || errorData.message || errorData.errorMessage || `HTTP ${response.status}`;
               console.error('OnMeta login failed:', response.status, errorData);
             } catch (e) {
-              const text = await response.text();
+            const text = await response.text();
               errorText = text.substring(0, 200) || `HTTP ${response.status}`;
               console.error('OnMeta login failed (non-JSON):', response.status, text.substring(0, 100));
             }
@@ -421,7 +421,7 @@ export default function DashboardPage() {
             
             // Fetch bank and UPI status
             fetchOnMetaAccountStatus(accessToken);
-          } else {
+        } else {
             // Extract error message from multiple possible fields
             const errorMsg = data.error || 
                            data.message || 
@@ -593,7 +593,7 @@ export default function DashboardPage() {
         const bankData = await bankResponse.json();
         if (bankData.success) {
           setOnMetaBankStatus(bankData.status);
-        }
+            }
       } else {
         // Don't show error for bank status - it's optional
         const bankData = await bankResponse.json().catch(() => ({}));
@@ -619,7 +619,7 @@ export default function DashboardPage() {
           // Update stored reference number if we get a new one
           if (upiData.refNumber && !storedUPIRefNumber) {
             localStorage.setItem('onmeta_upi_ref_number', upiData.refNumber);
-          }
+        }
         }
       } else {
         // Don't show error for UPI status - it's optional
@@ -714,7 +714,7 @@ export default function DashboardPage() {
         setSupportedCurrencies(currencies);
         if (currencies.length === 0) {
           console.log('No currencies available (endpoint may not exist)');
-        } else {
+      } else {
           console.log('Supported currencies loaded:', currencies.length);
         }
       } else {
@@ -773,15 +773,15 @@ export default function DashboardPage() {
       
       if (data.success) {
         if (orders.length > 0) {
-          if (append) {
+        if (append) {
             setOrderHistory(prev => [...prev, ...orders]);
-          } else {
-            setOrderHistory(orders);
-          }
-          setOrderHistoryHasMore(data.hasMore || orders.length === 10);
-          setOrderHistorySkip(skip);
-          console.log('Order history fetched successfully:', orders.length, 'orders');
         } else {
+            setOrderHistory(orders);
+        }
+          setOrderHistoryHasMore(data.hasMore || orders.length === 10);
+        setOrderHistorySkip(skip);
+          console.log('Order history fetched successfully:', orders.length, 'orders');
+      } else {
           // Empty orders is valid - user just hasn't made any orders yet
           if (!append) {
             setOrderHistory([]);
@@ -1166,7 +1166,7 @@ export default function DashboardPage() {
   // Fetch SOL price in USD via backend API (avoids CORS and rate limiting)
   useEffect(() => {
     const fetchSolPrice = async () => {
-      try {
+    try {
         const response = await fetch("/api/crypto/price?ids=solana&vs_currencies=usd");
         if (!response.ok) {
           throw new Error(`Failed to fetch SOL price: ${response.status}`);
@@ -1174,12 +1174,12 @@ export default function DashboardPage() {
         const data = await response.json();
         if (data.solana?.usd) {
           setSolPrice(data.solana.usd);
-        }
-      } catch (error) {
+      }
+    } catch (error) {
         console.error("Failed to fetch SOL price:", error);
         // Keep default price if fetch fails
-      }
-    };
+    }
+  };
     fetchSolPrice();
     // Refresh price every 60 seconds (backend has caching to reduce rate limit issues)
     const interval = setInterval(fetchSolPrice, 60000);
@@ -1258,7 +1258,7 @@ export default function DashboardPage() {
                 <div className="h-6 bg-gray-200 rounded w-32 mb-2"></div>
                 <div className="h-4 bg-gray-200 rounded w-48"></div>
               </div>
-            </div>
+          </div>
           ) : userProfile ? (
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -1478,7 +1478,7 @@ export default function DashboardPage() {
                 Start KYC Verification
               </button>
               <button 
-                onClick={async () => {
+                      onClick={async () => {
                   // Force console to show logs - clear any filters
                   console.clear();
                   console.log('%c=== KYC STATUS CHECK STARTED ===', 'color: blue; font-size: 16px; font-weight: bold;');
@@ -1516,7 +1516,7 @@ export default function DashboardPage() {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${accessToken}`,
                       },
-                      body: JSON.stringify({ email: userEmail }),
+                      body: JSON.stringify({ email: userEmail.toLowerCase() }), // Convert email to lowercase
                     });
 
                     console.log('📥 Response Status:', response.status, response.statusText);
@@ -1647,7 +1647,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
               )}
-            </div>
+                        </div>
                     </motion.div>
 
           {/* Link Bank Account */}
@@ -1789,9 +1789,9 @@ export default function DashboardPage() {
                     </div>
                     {token.address && (
                       <div className="flex items-center gap-1">
-                        <p className="text-xs text-gray-400 font-mono truncate max-w-[100px]">
-                          {token.address.slice(0, 6)}...{token.address.slice(-4)}
-                        </p>
+                      <p className="text-xs text-gray-400 font-mono truncate max-w-[100px]">
+                        {token.address.slice(0, 6)}...{token.address.slice(-4)}
+                      </p>
                         <CopyButton text={token.address} size="sm" />
                       </div>
                     )}
@@ -1850,8 +1850,8 @@ export default function DashboardPage() {
                     <div key={limit.chainId || index} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                       <div className="flex items-center justify-between mb-3">
                         <p className="font-semibold text-gray-900 text-base">
-                          {limit.chain || `Chain ${limit.chainId}`}
-                        </p>
+                        {limit.chain || `Chain ${limit.chainId}`}
+                      </p>
                         <span className="text-xs text-gray-500 font-mono">ID: {limit.chainId}</span>
                       </div>
                       {currencies.length > 0 ? (
@@ -1865,27 +1865,27 @@ export default function DashboardPage() {
                               <div key={currency} className="p-2 bg-white rounded border border-gray-100">
                                 <div className="flex items-center justify-between mb-1">
                                   <span className="text-xs font-medium text-gray-600">{currency}</span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                  <div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
                                     <p className="text-gray-500 text-xs">Min</p>
-                                    <p className="font-semibold text-gray-900">
+                          <p className="font-semibold text-gray-900">
                                       {symbol}{min.toLocaleString()}
-                                    </p>
-                                  </div>
-                                  <div>
+                          </p>
+                        </div>
+                        <div>
                                     <p className="text-gray-500 text-xs">Max</p>
-                                    <p className="font-semibold text-gray-900">
+                          <p className="font-semibold text-gray-900">
                                       {symbol}{max.toLocaleString()}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
+                          </p>
+                        </div>
+                    </div>
+                  </div>
                             );
                           })}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-500">No limits available</p>
+              </div>
+            ) : (
+                <p className="text-sm text-gray-500">No limits available</p>
                       )}
                     </div>
                   );
@@ -1899,13 +1899,13 @@ export default function DashboardPage() {
                   </svg>
                 </div>
                 <p className="text-sm text-gray-500 mb-3">No limits available</p>
-                <button
+                  <button
                   onClick={fetchChainLimits}
                   className="text-sm text-[#ff6b00] hover:text-[#e55a00] font-medium"
-                >
+                  >
                   Retry
-                </button>
-              </div>
+                  </button>
+            </div>
             )}
           </motion.div>
           </div>
@@ -2073,7 +2073,7 @@ export default function DashboardPage() {
                 </div>
                     <div className="flex-1">
                 <div className="flex items-center gap-3 mb-1">
-                  <h3 className="text-lg font-bold text-gray-900">Order History</h3>
+                <h3 className="text-lg font-bold text-gray-900">Order History</h3>
                   {orderHistory.some((order: any) => {
                     const status = order.status || order.orderStatus || '';
                     return status === 'pending' || status === 'PENDING' || status === 'fiatPending' || 
@@ -2120,18 +2120,18 @@ export default function DashboardPage() {
                             : 'bg-gray-400'
                         }`}></div>
                         <div className="flex items-center gap-2">
-                          <div>
-                            <p className="font-semibold text-gray-900">
-                              Order #{order.orderId || order.id || 'N/A'}
-                            </p>
-                            <p className="text-xs text-gray-500 font-mono">
-                              {order.orderId || order.id || 'N/A'}
-                            </p>
-                          </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">
+                            Order #{order.orderId || order.id || 'N/A'}
+                          </p>
+                          <p className="text-xs text-gray-500 font-mono">
+                            {order.orderId || order.id || 'N/A'}
+                          </p>
+                        </div>
                           {(order.orderId || order.id) && (
                             <CopyButton text={order.orderId || order.id} />
                           )}
-                        </div>
+                      </div>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                         order.status === 'completed' || order.status === 'SUCCESS' || order.status === 'transferred'
@@ -2268,7 +2268,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-gray-700 text-sm font-mono">
-                      {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Unknown"}
+                    {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Unknown"}
                     </span>
                     {walletAddress && <CopyButton text={walletAddress} size="sm" />}
                   </div>
@@ -2781,9 +2781,9 @@ export default function DashboardPage() {
                           if (!targetWalletAddress || targetWalletAddress.trim() === '') {
                             errors.address = 'Please enter a wallet address or connect your wallet';
                           } else {
-                            // Basic wallet address validation (Solana addresses are base58 encoded, 32-44 chars)
-                            const trimmedAddress = targetWalletAddress.trim();
-                            if (trimmedAddress.length < 32 || trimmedAddress.length > 44) {
+                          // Basic wallet address validation (Solana addresses are base58 encoded, 32-44 chars)
+                          const trimmedAddress = targetWalletAddress.trim();
+                          if (trimmedAddress.length < 32 || trimmedAddress.length > 44) {
                               errors.address = 'Wallet address must be 32-44 characters';
                             }
                           }
@@ -3425,7 +3425,7 @@ export default function DashboardPage() {
                           // Refresh account status with reference number
                           if (data.refNumber) {
                             fetchOnMetaAccountStatus(onMetaAccessToken, undefined, data.refNumber);
-                          } else {
+                        } else {
                             fetchOnMetaAccountStatus(onMetaAccessToken);
                           }
                         } else {
@@ -3737,7 +3737,7 @@ export default function DashboardPage() {
                           if (accessToken) {
                             if (data.refNumber) {
                               fetchOnMetaAccountStatus(accessToken, data.refNumber);
-                            } else {
+                        } else {
                               fetchOnMetaAccountStatus(accessToken);
                             }
                           }
