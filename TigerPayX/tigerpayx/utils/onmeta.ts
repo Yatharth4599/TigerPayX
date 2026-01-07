@@ -2740,12 +2740,16 @@ export async function fetchKYCStatus(request: OnMetaKYCStatusRequest): Promise<O
 
     // Handle different response formats from OnMeta
     // OnMeta may return: 
+    // - { success: true, data: { isKycVerified: "true" } } - KYC verified (string "true")
     // - { success: true, isVerified: false } - KYC not verified
     // - { success: true, isVerified: true } - KYC verified
     // - { kycStatus: "VERIFIED" } or { status: "VERIFIED" } or { data: { kycStatus: "VERIFIED" } }
     const kycStatus = data.kycStatus || data.status || data.kyc_status || data.data?.kycStatus || data.data?.status;
     
-    // Check isVerified flag first (most reliable)
+    // Check isKycVerified in data (OnMeta format: data.isKycVerified: "true")
+    const isKycVerifiedString = data.data?.isKycVerified === "true" || data.data?.isKycVerified === true;
+    
+    // Check isVerified flag (boolean)
     const isVerifiedFlag = data.isVerified === true || 
                           data.is_verified === true || 
                           data.data?.isVerified === true ||
@@ -2757,15 +2761,17 @@ export async function fetchKYCStatus(request: OnMetaKYCStatusRequest): Promise<O
                             kycStatus === 'VERIFIED_SUCCESS' ||
                             kycStatus === 'SUCCESS';
     
-    const isVerified = isVerifiedFlag || isVerifiedStatus;
+    const isVerified = isKycVerifiedString || isVerifiedFlag || isVerifiedStatus;
 
     console.log("OnMeta KYC status parsing:", {
       kycStatus,
+      isKycVerifiedString: data.data?.isKycVerified,
       isVerifiedFlag,
       isVerifiedStatus,
       isVerified,
       hasIsVerified: 'isVerified' in data,
       isVerifiedValue: data.isVerified,
+      fullData: JSON.stringify(data, null, 2),
     });
 
     return {

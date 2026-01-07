@@ -1548,25 +1548,33 @@ export default function DashboardPage() {
                       'error': data.error,
                       'message': data.message,
                       'hasData': !!data.data,
+                      'data.isKycVerified': data.data?.isKycVerified,
                       'data.kycStatus': data.data?.kycStatus,
                       'data.status': data.data?.status,
                       'data.isVerified': data.data?.isVerified,
                     });
 
                     // Check if KYC is verified - handle various response formats
-                    // Check all possible locations for verification status
+                    // OnMeta can return: { success: true, data: { isKycVerified: "true" } }
                     const kycStatus = data.kycStatus || data.status || data.kyc_status || data.data?.kycStatus || data.data?.status;
+                    
+                    // Check isKycVerified in data (OnMeta format: data.isKycVerified: "true")
+                    const isKycVerifiedString = data.data?.isKycVerified === "true" || data.data?.isKycVerified === true;
+                    
+                    // Check isVerified flag (boolean)
                     const isVerifiedFlag = data.isVerified === true || 
                                          data.is_verified === true || 
                                          data.data?.isVerified === true ||
                                          data.data?.is_verified === true;
+                    
+                    // Check status string
                     const isVerifiedStatus = kycStatus === 'VERIFIED' || 
                                             kycStatus === 'verified' ||
                                             kycStatus === 'VERIFIED_SUCCESS' ||
                                             kycStatus === 'SUCCESS';
                     
-                    // Check verification even if success is false - OnMeta might return status even if success: false
-                    const isVerified = isVerifiedFlag || isVerifiedStatus;
+                    // Check verification - OnMeta might return status even if success: false
+                    const isVerified = isKycVerifiedString || isVerifiedFlag || isVerifiedStatus;
                     
                     console.log('%c=== VERIFICATION CHECK ===', 'color: orange; font-size: 14px; font-weight: bold;');
                     console.log('🔍 kycStatus value:', kycStatus);
