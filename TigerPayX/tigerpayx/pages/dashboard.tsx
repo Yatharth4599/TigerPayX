@@ -3758,16 +3758,44 @@ export default function DashboardPage() {
                               
                               if (statusResponse.ok) {
                                 const statusData = await statusResponse.json();
-                                console.log('UPI status check result:', statusData);
+                                console.log('UPI status check result (full):', JSON.stringify(statusData, null, 2));
+                                console.log('UPI status check - all fields:', {
+                                  status: statusData.status,
+                                  error: statusData.error,
+                                  message: statusData.message,
+                                  data: statusData.data,
+                                  upiStatus: statusData.data?.upiStatus,
+                                  failureReason: statusData.data?.failureReason,
+                                  reason: statusData.data?.reason,
+                                  errorMessage: statusData.data?.errorMessage,
+                                });
                                 
-                                // Extract error message from status response
-                                if (statusData.error) {
+                                // Extract error message from status response - check multiple possible locations
+                                if (statusData.data?.failureReason) {
+                                  errorMsg = statusData.data.failureReason;
+                                } else if (statusData.data?.reason) {
+                                  errorMsg = statusData.data.reason;
+                                } else if (statusData.data?.errorMessage) {
+                                  errorMsg = statusData.data.errorMessage;
+                                } else if (statusData.data?.message) {
+                                  errorMsg = statusData.data.message;
+                                } else if (statusData.error) {
                                   errorMsg = typeof statusData.error === 'string' ? statusData.error : (statusData.error.message || errorMsg);
                                 } else if (statusData.message) {
                                   errorMsg = statusData.message;
-                                } else if (statusData.status === 'FAILED') {
-                                  errorMsg = 'UPI linking failed. Please verify your UPI ID and try again.';
+                                } else if (statusData.status === 'FAILED' || statusData.data?.upiStatus === 'FAILED') {
+                                  // Check if there's any additional info in the response
+                                  const allFields = JSON.stringify(statusData);
+                                  if (allFields.includes('KYC') || allFields.includes('kyc')) {
+                                    errorMsg = 'UPI linking failed: KYC verification required. Please complete KYC first.';
+                                  } else if (allFields.includes('account') || allFields.includes('vpa')) {
+                                    errorMsg = 'UPI linking failed: Account not found for this UPI ID. Please verify your UPI ID.';
+                                  } else {
+                                    errorMsg = 'UPI linking failed. Please verify your UPI ID and try again.';
+                                  }
                                 }
+                              } else {
+                                console.error('UPI status check failed:', statusResponse.status, await statusResponse.text().catch(() => ''));
                               }
                             } catch (statusError) {
                               console.error('Failed to check UPI status:', statusError);

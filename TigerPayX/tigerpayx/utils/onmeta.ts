@@ -1488,7 +1488,9 @@ export async function onMetaGetUPIStatus(accessToken: string, refNumber?: string
     console.log("OnMeta get UPI status response:", {
       status: response.status,
       upiStatus: data.data?.upiStatus || data.upiStatus || data.status,
-      fullResponse: data,
+      fullResponse: JSON.stringify(data, null, 2),
+      allFields: Object.keys(data),
+      dataFields: data.data ? Object.keys(data.data) : null,
     });
 
     if (response.ok) {
