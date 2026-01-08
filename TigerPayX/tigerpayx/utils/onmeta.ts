@@ -2774,11 +2774,14 @@ export async function fetchKYCStatus(request: OnMetaKYCStatusRequest): Promise<O
       fullData: JSON.stringify(data, null, 2),
     });
 
+    // Return the parsed result with isVerified as boolean
     return {
       success: true,
-      kycStatus: kycStatus,
-      isVerified: isVerified,
+      kycStatus: kycStatus || (isVerified ? 'VERIFIED' : 'NOT_VERIFIED'),
+      isVerified: isVerified, // This is the single source of truth - boolean true/false
       message: data.message || data.data?.message,
+      // Include raw OnMeta response for debugging
+      rawData: process.env.NODE_ENV === 'development' ? data : undefined,
     };
   } catch (error: any) {
     console.error("OnMeta fetch KYC status error:", error);

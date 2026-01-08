@@ -1554,33 +1554,16 @@ export default function DashboardPage() {
                       'data.isVerified': data.data?.isVerified,
                     });
 
-                    // Check if KYC is verified - handle various response formats
-                    // OnMeta can return: { success: true, data: { isKycVerified: "true" } }
-                    const kycStatus = data.kycStatus || data.status || data.kyc_status || data.data?.kycStatus || data.data?.status;
-                    
-                    // Check isKycVerified in data (OnMeta format: data.isKycVerified: "true")
-                    const isKycVerifiedString = data.data?.isKycVerified === "true" || data.data?.isKycVerified === true;
-                    
-                    // Check isVerified flag (boolean)
-                    const isVerifiedFlag = data.isVerified === true || 
-                                         data.is_verified === true || 
-                                         data.data?.isVerified === true ||
-                                         data.data?.is_verified === true;
-                    
-                    // Check status string
-                    const isVerifiedStatus = kycStatus === 'VERIFIED' || 
-                                            kycStatus === 'verified' ||
-                                            kycStatus === 'VERIFIED_SUCCESS' ||
-                                            kycStatus === 'SUCCESS';
-                    
-                    // Check verification - OnMeta might return status even if success: false
-                    const isVerified = isKycVerifiedString || isVerifiedFlag || isVerifiedStatus;
+                    // Trust the isVerified value from our API route (already parsed from OnMeta response)
+                    // Our API route handles all OnMeta response formats including data.isKycVerified: "true"
+                    const isVerified = data.isVerified === true;
+                    const kycStatus = data.kycStatus || data.status || 'UNKNOWN';
                     
                     console.log('%c=== VERIFICATION CHECK ===', 'color: orange; font-size: 14px; font-weight: bold;');
-                    console.log('🔍 kycStatus value:', kycStatus);
-                    console.log('🔍 isVerifiedFlag:', isVerifiedFlag);
-                    console.log('🔍 isVerifiedStatus:', isVerifiedStatus);
-                    console.log('🔍 Final isVerified:', isVerified);
+                    console.log('🔍 API Route returned isVerified:', data.isVerified);
+                    console.log('🔍 API Route returned kycStatus:', kycStatus);
+                    console.log('🔍 Final isVerified (boolean check):', isVerified);
+                    console.log('🔍 Full API response:', JSON.stringify(data, null, 2));
 
                     if (isVerified) {
                       // Store KYC verification status
@@ -3590,14 +3573,8 @@ export default function DashboardPage() {
                               message: kycData.message
                             });
                             
-                            // Check if KYC is verified - handle various response formats
-                            const isVerified = (
-                              kycData.isVerified === true || 
-                              kycData.kycStatus === 'VERIFIED' || 
-                              kycData.kycStatus === 'verified' ||
-                              kycData.kycStatus === 'VERIFIED_SUCCESS' ||
-                              kycData.kycStatus === 'SUCCESS'
-                            );
+                            // Trust the isVerified value from our API route (already parsed from OnMeta)
+                            const isVerified = kycData.isVerified === true;
                             
                             if (isVerified) {
                               // Store KYC verification status
