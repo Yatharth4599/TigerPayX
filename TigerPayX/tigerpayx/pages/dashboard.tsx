@@ -137,6 +137,46 @@ export default function DashboardPage() {
     panBack: '',
   });
 
+  // Listen for messages from popup window (KYC completion)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Only accept messages from same origin
+      if (event.origin !== window.location.origin) return;
+      
+      if (event.data && event.data.type === 'kyc_success') {
+        console.log('Received KYC success message from popup');
+        showToast('KYC verification completed successfully!', 'success');
+        localStorage.setItem('onmeta_kyc_verified', 'true');
+        localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
+        setOnMetaKYCStatus('VERIFIED');
+        
+        // Refresh KYC status from API
+        const userEmail = getAuthEmail();
+        if (userEmail && onMetaAccessToken) {
+          fetch('/api/onmeta/kyc-status', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${onMetaAccessToken}`,
+            },
+            body: JSON.stringify({ email: userEmail }),
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.isVerified) {
+              localStorage.setItem('onmeta_kyc_verified', 'true');
+              setOnMetaKYCStatus('VERIFIED');
+            }
+          })
+          .catch(err => console.error('Failed to fetch KYC status:', err));
+        }
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [onMetaAccessToken]);
+
   // Handle OnMeta callback
   useEffect(() => {
     const handleOnMetaCallback = () => {
@@ -152,37 +192,112 @@ export default function DashboardPage() {
         
         if (type === 'kyc') {
           if (status === 'success' || status === 'completed') {
-            showToast('KYC verification completed successfully!', 'success');
-            // Store KYC verification status in localStorage
-            localStorage.setItem('onmeta_kyc_verified', 'true');
-            localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
-            setOnMetaKYCStatus('VERIFIED');
+            // Check if we're in a popup window (opened by window.open)
+            const isPopup = window.opener !== null;
             
-            // Fetch updated KYC status from API to confirm
-            const userEmail = getAuthEmail();
-            if (userEmail && onMetaAccessToken) {
-              fetch('/api/onmeta/kyc-status', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${onMetaAccessToken}`,
-                },
-                body: JSON.stringify({ email: userEmail }), // Keep original email case as used during KYC
-              })
-              .then(res => res.json())
-              .then(data => {
-                if (data.success && (data.isVerified || data.kycStatus === 'VERIFIED' || data.kycStatus === 'verified')) {
-                  // Confirm KYC is verified
-                  localStorage.setItem('onmeta_kyc_verified', 'true');
-                  setOnMetaKYCStatus('VERIFIED');
-                }
-              })
-              .catch(err => console.error('Failed to fetch KYC status:', err));
+            if (isPopup) {
+              // We're in the popup window - show success message and close
+              document.body.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding: 20px;">
+                  <div style="background: white; color: #333; padding: 40px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 400px;">
+                    <div style="width: 80px; height: 80px; margin: 0 auto 20px; background: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                      <svg style="width: 50px; height: 50px; color: white;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <h2 style="margin: 0 0 10px; font-size: 24px; font-weight: bold; color: #1f2937;">KYC Successful!</h2>
+                    <p style="margin: 0 0 30px; color: #6b7280; font-size: 16px;">Your KYC verification has been completed successfully.</p>
+                    <button onclick="window.close()" style="background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%;">Close</button>
+                  </div>
+                </div>
+              `;
+              
+              // Notify parent window that KYC was successful
+              try {
+                window.opener.postMessage({ type: 'kyc_success', status: 'success' }, window.location.origin);
+              } catch (e) {
+                console.log('Could not notify parent window:', e);
+              }
+              
+              // Store KYC verification status in localStorage (both popup and parent)
+              localStorage.setItem('onmeta_kyc_verified', 'true');
+              localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
+              
+              // Auto-close after 3 seconds if user doesn't click close
+              setTimeout(() => {
+                window.close();
+              }, 3000);
+            } else {
+              // We're in the main window - show toast and update status
+              showToast('KYC verification completed successfully!', 'success');
+              localStorage.setItem('onmeta_kyc_verified', 'true');
+              localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
+              setOnMetaKYCStatus('VERIFIED');
+              
+              // Clean up URL parameters
+              const newUrl = window.location.pathname;
+              window.history.replaceState({}, '', newUrl);
+            }
+            
+            // Fetch updated KYC status from API to confirm (only in main window)
+            if (!isPopup) {
+              const userEmail = getAuthEmail();
+              if (userEmail && onMetaAccessToken) {
+                fetch('/api/onmeta/kyc-status', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${onMetaAccessToken}`,
+                  },
+                  body: JSON.stringify({ email: userEmail }), // Keep original email case as used during KYC
+                })
+                .then(res => res.json())
+                .then(data => {
+                  if (data.success && (data.isVerified || data.kycStatus === 'VERIFIED' || data.kycStatus === 'verified')) {
+                    // Confirm KYC is verified
+                    localStorage.setItem('onmeta_kyc_verified', 'true');
+                    setOnMetaKYCStatus('VERIFIED');
+                  }
+                })
+                .catch(err => console.error('Failed to fetch KYC status:', err));
+              }
             }
           } else if (error || status === 'failure') {
-            showToast(`KYC verification failed: ${error || 'Please try again'}`, 'error');
+            // Check if we're in a popup window
+            const isPopup = window.opener !== null;
+            
+            if (isPopup) {
+              // Show error message in popup and allow close
+              document.body.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; text-align: center; padding: 20px;">
+                  <div style="background: white; color: #333; padding: 40px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 400px;">
+                    <div style="width: 80px; height: 80px; margin: 0 auto 20px; background: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                      <svg style="width: 50px; height: 50px; color: white;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </div>
+                    <h2 style="margin: 0 0 10px; font-size: 24px; font-weight: bold; color: #1f2937;">KYC Failed</h2>
+                    <p style="margin: 0 0 30px; color: #6b7280; font-size: 16px;">${error || 'Please try again'}</p>
+                    <button onclick="window.close()" style="background: #ef4444; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%;">Close</button>
+                  </div>
+                </div>
+              `;
+              
+              setTimeout(() => {
+                window.close();
+              }, 5000);
+            } else {
+              showToast(`KYC verification failed: ${error || 'Please try again'}`, 'error');
+            }
+            
             localStorage.removeItem('onmeta_kyc_verified');
             localStorage.removeItem('onmeta_kyc_verified_timestamp');
+          }
+          
+          // Clean up URL parameters after handling
+          if (window.opener === null) {
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
           }
         } else if (type === 'withdrawal' || urlParams.get('withdrawal') === 'true') {
           if (status === 'success' || status === 'completed') {
