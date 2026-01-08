@@ -23,7 +23,7 @@ export default async function handler(
       return res.status(400).json({ success: false, error: 'Email is required' });
     }
     
-    const emailStr = String(email).trim().toLowerCase(); // Convert email to lowercase as per OnMeta requirement
+    const emailStr = String(email).trim(); // Keep original email case as used during KYC
     if (typeof emailStr !== 'string' || !emailStr.includes('@') || emailStr.length < 5) {
       return res.status(400).json({ success: false, error: 'Valid email is required' });
     }

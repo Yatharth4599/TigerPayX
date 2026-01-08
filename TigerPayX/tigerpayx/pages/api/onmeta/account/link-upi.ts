@@ -63,7 +63,7 @@ export default async function handler(
     const result = await onMetaLinkUPI({
       accessToken,
       name: name.trim(),
-      email: email.trim().toLowerCase(), // Convert email to lowercase as per OnMeta requirement
+      email: email.trim(), // Keep original email case as used during KYC
       upiId: upiId.trim(),
       phone: phoneObj,
     });

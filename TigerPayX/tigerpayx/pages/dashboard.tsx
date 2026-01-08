@@ -167,7 +167,7 @@ export default function DashboardPage() {
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${onMetaAccessToken}`,
                 },
-                body: JSON.stringify({ email: userEmail.toLowerCase() }), // Convert email to lowercase
+                body: JSON.stringify({ email: userEmail }), // Keep original email case as used during KYC
               })
               .then(res => res.json())
               .then(data => {
@@ -1516,7 +1516,7 @@ export default function DashboardPage() {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${accessToken}`,
                       },
-                      body: JSON.stringify({ email: userEmail.toLowerCase() }), // Convert email to lowercase
+                      body: JSON.stringify({ email: userEmail }), // Keep original email case as used during KYC
                     });
 
                     console.log('📥 Response Status:', response.status, response.statusText);
