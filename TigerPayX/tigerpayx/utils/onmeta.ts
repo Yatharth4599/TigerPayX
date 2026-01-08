@@ -2780,8 +2780,6 @@ export async function fetchKYCStatus(request: OnMetaKYCStatusRequest): Promise<O
       kycStatus: kycStatus || (isVerified ? 'VERIFIED' : 'NOT_VERIFIED'),
       isVerified: isVerified, // This is the single source of truth - boolean true/false
       message: data.message || data.data?.message,
-      // Include raw OnMeta response for debugging
-      rawData: process.env.NODE_ENV === 'development' ? data : undefined,
     };
   } catch (error: any) {
     console.error("OnMeta fetch KYC status error:", error);
