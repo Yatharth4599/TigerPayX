@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/router";
 import { Navbar } from "@/components/Navbar";
-import { isAuthenticated, getAuthEmail } from "@/utils/auth";
+import { isAuthenticated, getAuthEmail, getAuthToken } from "@/utils/auth";
 import { getDetectedWallets, connectWallet, disconnectWallet, getConnectedWalletAddress, DetectedWallet } from "@/app/wallet/walletDetection";
 import { showToast, ToastContainer } from "@/components/Toast";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -139,7 +139,7 @@ export default function DashboardPage() {
 
   // Listen for messages from popup window (KYC completion)
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = async (event: MessageEvent) => {
       // Only accept messages from same origin
       if (event.origin !== window.location.origin) return;
       
@@ -149,6 +149,9 @@ export default function DashboardPage() {
         localStorage.setItem('onmeta_kyc_verified', 'true');
         localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
         setOnMetaKYCStatus('VERIFIED');
+        
+        // Sync to database
+        await syncKYCStatusToDatabase(true, 'VERIFIED');
         
         // Refresh KYC status from API
         const userEmail = getAuthEmail();
@@ -223,6 +226,8 @@ export default function DashboardPage() {
               localStorage.setItem('onmeta_kyc_verified', 'true');
               localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
               
+              // Sync to database (popup can't directly call API, but parent will handle it via message)
+              
               // Auto-close after 3 seconds if user doesn't click close
               setTimeout(() => {
                 window.close();
@@ -233,6 +238,9 @@ export default function DashboardPage() {
               localStorage.setItem('onmeta_kyc_verified', 'true');
               localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
               setOnMetaKYCStatus('VERIFIED');
+              
+              // Sync to database
+              syncKYCStatusToDatabase(true, 'VERIFIED');
               
               // Clean up URL parameters
               const newUrl = window.location.pathname;
@@ -601,6 +609,77 @@ export default function DashboardPage() {
       if (storedKYCVerified === 'true') {
         setOnMetaKYCStatus('VERIFIED');
       }
+    }
+  }, [authChecked]);
+
+  // Helper function to sync KYC status to database
+  const syncKYCStatusToDatabase = async (kycVerified: boolean, kycStatus: string = 'VERIFIED', onmetaKycRefNumber?: string) => {
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        console.log('No auth token, skipping database sync');
+        return;
+      }
+
+      await fetch('/api/user/update-kyc', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          kycVerified,
+          kycStatus,
+          kycVerifiedAt: kycVerified ? new Date().toISOString() : undefined,
+          onmetaKycRefNumber: onmetaKycRefNumber || undefined,
+        }),
+      });
+      console.log('✅ KYC status synced to database');
+    } catch (error) {
+      console.error('Failed to sync KYC status to database:', error);
+      // Don't throw - this is non-critical
+    }
+  };
+
+  // Load KYC status from database on mount
+  useEffect(() => {
+    const loadKYCStatusFromDatabase = async () => {
+      try {
+        const token = getAuthToken();
+        if (!token || !isAuthenticated()) {
+          return;
+        }
+
+        const response = await fetch('/api/user/kyc-status', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.kycVerified) {
+            setOnMetaKYCStatus(data.kycStatus || 'VERIFIED');
+            localStorage.setItem('onmeta_kyc_verified', 'true');
+            if (data.kycVerifiedAt) {
+              localStorage.setItem('onmeta_kyc_verified_timestamp', new Date(data.kycVerifiedAt).getTime().toString());
+            }
+            console.log('✅ Loaded KYC status from database:', data);
+          } else {
+            // Clear if not verified in database
+            localStorage.removeItem('onmeta_kyc_verified');
+            localStorage.removeItem('onmeta_kyc_verified_timestamp');
+            setOnMetaKYCStatus(null);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load KYC status from database:', error);
+        // Non-critical error, continue
+      }
+    };
+
+    if (authChecked && isAuthenticated()) {
+      loadKYCStatusFromDatabase();
     }
   }, [authChecked]);
 
@@ -1687,6 +1766,9 @@ export default function DashboardPage() {
                       setOnMetaKYCStatus('VERIFIED');
                       console.log('%c✅ KYC IS VERIFIED - Stored in localStorage', 'color: green; font-size: 16px; font-weight: bold;');
                       showToast('KYC Status: VERIFIED ✓', 'success');
+                      
+                      // Sync to database
+                      syncKYCStatusToDatabase(true, 'VERIFIED');
                     } else {
                       // Clear stored KYC status if not verified
                       localStorage.removeItem('onmeta_kyc_verified');
@@ -3697,6 +3779,9 @@ export default function DashboardPage() {
                               localStorage.setItem('onmeta_kyc_verified_timestamp', Date.now().toString());
                               setOnMetaKYCStatus('VERIFIED');
                               console.log('KYC verified, proceeding with UPI linking');
+                              
+                              // Sync to database
+                              syncKYCStatusToDatabase(true, 'VERIFIED');
                             } else {
                               // KYC status not explicitly verified
                               // Check if API explicitly says "KYC not verified" - only then block
