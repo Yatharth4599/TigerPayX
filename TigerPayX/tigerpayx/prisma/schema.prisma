@@ -25,6 +25,15 @@ model User {
   emailVerificationToken String?  @unique
   emailVerificationTokenExpires DateTime?
   
+  // KYC/OnMeta verification
+  kycVerified          Boolean  @default(false)
+  kycVerifiedAt        DateTime?
+  kycStatus            String?  // "VERIFIED", "PENDING", "REJECTED", "NOT_VERIFIED"
+  onmetaKycRefNumber   String?  // Reference number from OnMeta KYC
+  onmetaAccessToken    String?  // Encrypted OnMeta access token
+  onmetaRefreshToken   String?  // Encrypted OnMeta refresh token
+  onmetaTokenExpiresAt DateTime? // When access token expires
+  
   // Solana wallet address (non-custodial - private key stored client-side only)
   solanaAddress String?  @unique
   
