@@ -1480,8 +1480,12 @@ export default function DashboardPage() {
           </button>
           
           <button
-            onClick={() => setShowDebitCardsModal(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+            onClick={() => setActiveView('cards')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              activeView === 'cards'
+                ? 'bg-[#ff6b00]/10 text-[#ff6b00] font-semibold'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -1505,8 +1509,12 @@ export default function DashboardPage() {
           </button>
           
           <button
-            onClick={() => setShowEarnModal(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+            onClick={() => setActiveView('earn')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              activeView === 'earn'
+                ? 'bg-[#ff6b00]/10 text-[#ff6b00] font-semibold'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1515,8 +1523,12 @@ export default function DashboardPage() {
           </button>
           
           <button
-            onClick={() => setShowLendingModal(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+            onClick={() => setActiveView('lending')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              activeView === 'lending'
+                ? 'bg-[#ff6b00]/10 text-[#ff6b00] font-semibold'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -1525,8 +1537,12 @@ export default function DashboardPage() {
           </button>
           
           <button
-            onClick={() => setShowInvoicingModal(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+            onClick={() => setActiveView('invoicing')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              activeView === 'invoicing'
+                ? 'bg-[#ff6b00]/10 text-[#ff6b00] font-semibold'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -1535,8 +1551,12 @@ export default function DashboardPage() {
           </button>
           
           <button
-            onClick={() => setShowPayrollModal(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+            onClick={() => setActiveView('payroll')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              activeView === 'payroll'
+                ? 'bg-[#ff6b00]/10 text-[#ff6b00] font-semibold'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -1545,8 +1565,12 @@ export default function DashboardPage() {
           </button>
           
           <button
-            onClick={() => setShowAddEmployeeModal(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+            onClick={() => setActiveView('employees')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              activeView === 'employees'
+                ? 'bg-[#ff6b00]/10 text-[#ff6b00] font-semibold'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -1555,8 +1579,12 @@ export default function DashboardPage() {
           </button>
           
           <button
-            onClick={() => setShowCreditScoreModal(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+            onClick={() => setActiveView('credit-score')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              activeView === 'credit-score'
+                ? 'bg-[#ff6b00]/10 text-[#ff6b00] font-semibold'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -1565,8 +1593,12 @@ export default function DashboardPage() {
           </button>
           
           <button
-            onClick={() => setShowAccountModal(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+            onClick={() => setActiveView('account')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              activeView === 'account'
+                ? 'bg-[#ff6b00]/10 text-[#ff6b00] font-semibold'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -1575,8 +1607,12 @@ export default function DashboardPage() {
           </button>
           
           <button
-            onClick={() => setShowBeneficiaryModal(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+            onClick={() => setActiveView('beneficiary')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              activeView === 'beneficiary'
+                ? 'bg-[#ff6b00]/10 text-[#ff6b00] font-semibold'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -1621,6 +1657,9 @@ export default function DashboardPage() {
         </header>
         
         <div className="p-6">
+          {/* Conditional Content Based on Active View */}
+          {activeView === 'dashboard' && (
+            <div>
           {/* Balance Section */}
           <div className="mb-6">
             <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
@@ -1807,10 +1846,420 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+            </div>
+          )}
+
+          {/* Cards Section */}
+          {activeView === 'cards' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Debit Cards</h2>
+                <p className="text-gray-600 mb-6">Manage your TigerPayX debit cards</p>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="bg-gradient-to-br from-[#ff6b00] to-[#ff8c42] rounded-2xl p-6 text-white">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold">Virtual Card</h3>
+                      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                    </div>
+                    <p className="text-white/80 text-sm mb-4">Instant virtual card for online purchases</p>
+                    <button className="bg-white text-[#ff6b00] px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+                      Create Virtual Card
+                    </button>
+                  </div>
+                  
+                  <div className="bg-gray-50 rounded-2xl p-6 border-2 border-dashed border-gray-300">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Physical Card</h3>
+                      <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-600 text-sm mb-4">Physical card for in-store purchases</p>
+                    <button className="bg-gray-200 text-gray-600 px-4 py-2 rounded-lg font-semibold cursor-not-allowed" disabled>
+                      Coming Soon
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Banking Section */}
+          {activeView === 'banking' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Banking</h2>
+                <p className="text-gray-600 mb-6">Manage your bank accounts and transactions</p>
+                
+                <div className="grid md:grid-cols-3 gap-6">
+                  {/* KYC Verification */}
+                  <div className="bg-white rounded-xl p-6 border border-gray-200">
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center mb-4">
+                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">Complete KYC</h3>
+                    <p className="text-sm text-gray-600 mb-4">Verify identity to unlock features</p>
+                    <button className="w-full bg-purple-500 text-white py-2 rounded-lg font-semibold hover:bg-purple-600 transition-colors text-sm">
+                      Start KYC
+                    </button>
+                  </div>
+                  
+                  {/* Link Bank Account */}
+                  <div className="bg-white rounded-xl p-6 border border-gray-200">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center mb-4">
+                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">Link Bank Account</h3>
+                    <p className="text-sm text-gray-600 mb-4">Connect bank for fiat transactions</p>
+                    <button 
+                      onClick={() => setShowLinkBankModal(true)}
+                      className="w-full bg-blue-500 text-white py-2 rounded-lg font-semibold hover:bg-blue-600 transition-colors text-sm"
+                    >
+                      {onMetaBankStatus === 'SUCCESS' ? '✓ Linked' : 'Link Bank'}
+                    </button>
+                  </div>
+                  
+                  {/* Link UPI ID */}
+                  <div className="bg-white rounded-xl p-6 border border-gray-200">
+                    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mb-4">
+                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">Link UPI ID</h3>
+                    <p className="text-sm text-gray-600 mb-4">Connect UPI for instant payments</p>
+                    <button 
+                      onClick={() => setShowLinkUPIModal(true)}
+                      className="w-full bg-green-500 text-white py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors text-sm"
+                    >
+                      {onMetaUPIStatus === 'SUCCESS' ? '✓ Linked' : 'Link UPI'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Earn Section */}
+          {activeView === 'earn' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Earn</h2>
+                <p className="text-gray-600 mb-6">Earn yield on your crypto holdings</p>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white">
+                    <h3 className="text-xl font-bold mb-2">Staking</h3>
+                    <p className="text-white/80 mb-4">Stake your crypto and earn rewards</p>
+                    <div className="bg-white/20 rounded-lg p-4 mb-4">
+                      <p className="text-sm text-white/80">APY</p>
+                      <p className="text-3xl font-bold">5.2%</p>
+                    </div>
+                    <button className="bg-white text-green-600 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors w-full">
+                      Start Staking
+                    </button>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white">
+                    <h3 className="text-xl font-bold mb-2">Liquidity Pools</h3>
+                    <p className="text-white/80 mb-4">Provide liquidity and earn fees</p>
+                    <div className="bg-white/20 rounded-lg p-4 mb-4">
+                      <p className="text-sm text-white/80">APY</p>
+                      <p className="text-3xl font-bold">12.5%</p>
+                    </div>
+                    <button className="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors w-full">
+                      Add Liquidity
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Lending Section */}
+          {activeView === 'lending' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Lending</h2>
+                <p className="text-gray-600 mb-6">Get loans without collateral based on your transaction history</p>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white">
+                    <h3 className="text-xl font-bold mb-2">Collateral-Free Loan</h3>
+                    <p className="text-white/80 mb-4">Borrow up to $10,000 based on your credit score</p>
+                    <div className="space-y-2 mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-white/80">Interest Rate</span>
+                        <span className="font-semibold">8.5% APR</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-white/80">Max Amount</span>
+                        <span className="font-semibold">$10,000</span>
+                      </div>
+                    </div>
+                    <button className="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors w-full">
+                      Apply Now
+                    </button>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-6 text-white">
+                    <h3 className="text-xl font-bold mb-2">Collateral Loan</h3>
+                    <p className="text-white/80 mb-4">Borrow against your crypto assets</p>
+                    <div className="space-y-2 mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-white/80">Interest Rate</span>
+                        <span className="font-semibold">4.2% APR</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-white/80">LTV Ratio</span>
+                        <span className="font-semibold">75%</span>
+                      </div>
+                    </div>
+                    <button className="bg-white text-purple-600 px-4 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors w-full">
+                      Apply Now
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Invoicing Section */}
+          {activeView === 'invoicing' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Invoicing</h2>
+                    <p className="text-gray-600">Create and manage invoices for your business</p>
+                  </div>
+                  <button className="bg-[#ff6b00] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#e55a00] transition-colors">
+                    Create Invoice
+                  </button>
+                </div>
+                
+                <div className="grid md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-sm text-gray-600 mb-1">Total Invoices</p>
+                    <p className="text-2xl font-bold text-gray-900">0</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-sm text-gray-600 mb-1">Pending</p>
+                    <p className="text-2xl font-bold text-yellow-600">0</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-sm text-gray-600 mb-1">Paid</p>
+                    <p className="text-2xl font-bold text-green-600">0</p>
+                  </div>
+                </div>
+                
+                <div className="text-center py-12">
+                  <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-gray-500 mb-2">No invoices yet</p>
+                  <p className="text-sm text-gray-400">Create your first invoice to get started</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Payroll Section */}
+          {activeView === 'payroll' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Payroll</h2>
+                    <p className="text-gray-600">Manage employee payroll and payments</p>
+                  </div>
+                  <button className="bg-[#ff6b00] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#e55a00] transition-colors">
+                    Run Payroll
+                  </button>
+                </div>
+                
+                <div className="grid md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-sm text-gray-600 mb-1">Total Employees</p>
+                    <p className="text-2xl font-bold text-gray-900">0</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-sm text-gray-600 mb-1">This Month</p>
+                    <p className="text-2xl font-bold text-[#ff6b00]">$0</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <p className="text-sm text-gray-600 mb-1">Next Payroll</p>
+                    <p className="text-2xl font-bold text-gray-900">-</p>
+                  </div>
+                </div>
+                
+                <div className="text-center py-12">
+                  <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <p className="text-gray-500 mb-2">No payroll records yet</p>
+                  <p className="text-sm text-gray-400">Add employees and set up payroll to get started</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Employees Section */}
+          {activeView === 'employees' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Employees</h2>
+                    <p className="text-gray-600">Manage your team members</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowAddEmployeeModal(true)}
+                    className="bg-[#ff6b00] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#e55a00] transition-colors"
+                  >
+                    Add Employee
+                  </button>
+                </div>
+                
+                <div className="text-center py-12">
+                  <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  <p className="text-gray-500 mb-2">No employees yet</p>
+                  <p className="text-sm text-gray-400">Add your first employee to get started</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Credit Score Section */}
+          {activeView === 'credit-score' && (
+            <div className="space-y-6">
+              <div className="bg-gradient-to-br from-[#ff6b00] to-[#ff8c42] rounded-2xl p-8 text-white">
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold mb-2">Your Credit Score</h2>
+                  <div className="text-6xl font-bold mb-2">750</div>
+                  <p className="text-white/80">Excellent</p>
+                </div>
+                
+                <div className="bg-white/20 rounded-xl p-6 mb-6">
+                  <h3 className="font-semibold mb-4">Score Breakdown</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-sm">Payment History</span>
+                        <span className="text-sm font-semibold">95%</span>
+                      </div>
+                      <div className="w-full bg-white/20 rounded-full h-2">
+                        <div className="bg-white rounded-full h-2" style={{ width: '95%' }}></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-sm">Credit Utilization</span>
+                        <span className="text-sm font-semibold">78%</span>
+                      </div>
+                      <div className="w-full bg-white/20 rounded-full h-2">
+                        <div className="bg-white rounded-full h-2" style={{ width: '78%' }}></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-sm">Account Age</span>
+                        <span className="text-sm font-semibold">82%</span>
+                      </div>
+                      <div className="w-full bg-white/20 rounded-full h-2">
+                        <div className="bg-white rounded-full h-2" style={{ width: '82%' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Account Section */}
+          {activeView === 'account' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Account Settings</h2>
+                
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Profile Information</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                        <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg" defaultValue={userProfile?.name || ''} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" className="w-full px-4 py-2 border border-gray-300 rounded-lg" defaultValue={userProfile?.email || getAuthEmail() || ''} />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Security</h3>
+                    <div className="space-y-3">
+                      <button className="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-900">Change Password</span>
+                          <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </button>
+                      <button className="w-full text-left px-4 py-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-gray-900">Two-Factor Authentication</span>
+                          <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Beneficiary Section */}
+          {activeView === 'beneficiary' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Beneficiaries</h2>
+                    <p className="text-gray-600">Manage your payment recipients</p>
+                  </div>
+                  <button className="bg-[#ff6b00] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#e55a00] transition-colors">
+                    Add Beneficiary
+                  </button>
+                </div>
+                
+                <div className="text-center py-12">
+                  <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <p className="text-gray-500 mb-2">No beneficiaries yet</p>
+                  <p className="text-sm text-gray-400">Add beneficiaries for quick payments</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-
-        {/* Services Section - KYC, Bank Account & UPI */}
+        {/* Services Section - KYC, Bank Account & UPI - Only show on dashboard */}
+        {activeView === 'dashboard' && (
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           {/* KYC Verification */}
                     <motion.div
@@ -2114,8 +2563,10 @@ export default function DashboardPage() {
               </button>
           </motion.div>
             </div>
+        )}
 
-        {/* Supported Tokens & Limits Section */}
+        {/* Supported Tokens & Limits Section - Only show on dashboard */}
+        {activeView === 'dashboard' && (
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           {/* Supported Tokens */}
             <motion.div
@@ -2278,8 +2729,10 @@ export default function DashboardPage() {
             )}
           </motion.div>
           </div>
+        )}
 
-        {/* Supported Currencies Section */}
+        {/* Supported Currencies Section - Only show on dashboard */}
+        {activeView === 'dashboard' && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -2347,8 +2800,10 @@ export default function DashboardPage() {
                   </div>
               )}
         </motion.div>
+        )}
 
-        {/* Token Quotation Section */}
+        {/* Token Quotation Section - Only show on dashboard */}
+        {activeView === 'dashboard' && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -2373,8 +2828,10 @@ export default function DashboardPage() {
             Get Quotation
                         </button>
         </motion.div>
+        )}
 
-        {/* Order Status Section */}
+        {/* Order Status Section - Only show on dashboard */}
+        {activeView === 'dashboard' && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -2399,8 +2856,10 @@ export default function DashboardPage() {
             Check Order Status
                   </button>
         </motion.div>
+        )}
 
-        {/* Update UTR Section */}
+        {/* Update UTR Section - Only show on dashboard */}
+        {activeView === 'dashboard' && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -2425,9 +2884,10 @@ export default function DashboardPage() {
             Update UTR
           </button>
         </motion.div>
+        )}
 
-
-        {/* Wallet & Card Section */}
+        {/* Wallet & Card Section - Only show on dashboard */}
+        {activeView === 'dashboard' && (
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           {/* Connect Crypto Wallet */}
           <motion.div
@@ -2513,8 +2973,10 @@ export default function DashboardPage() {
             </div>
           </motion.div>
         </div>
+        )}
 
-        {/* Earn & Lending Section */}
+        {/* Earn & Lending Section - Only show on dashboard */}
+        {activeView === 'dashboard' && (
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           {/* Earn Yield */}
           <motion.div
@@ -2580,9 +3042,10 @@ export default function DashboardPage() {
             </div>
           </motion.div>
         </div>
+        )}
 
-        {/* Roar Score Section - Hide for cleaner UI, can be enabled later */}
-        {false && (
+        {/* Roar Score Section - Only show on dashboard, hidden for now */}
+        {activeView === 'dashboard' && false && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
