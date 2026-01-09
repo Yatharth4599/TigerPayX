@@ -1867,106 +1867,120 @@ export async function createOnrampOrder(request: OnMetaCreateOnrampOrderRequest)
       };
     }
 
-    // Build request body
+    // Build request body according to OnMeta API specification
+    // POST /v1/orders/create
     const requestBody: any = {
-      buyTokenSymbol: request.buyTokenSymbol,
-      chainId: request.chainId,
-      fiatCurrency: request.fiatCurrency.toLowerCase(),
-      fiatAmount: request.fiatAmount,
-      buyTokenAddress: request.buyTokenAddress,
-      receiverAddress: request.receiverAddress,
-      paymentMode: request.paymentMode,
+      buyTokenSymbol: request.buyTokenSymbol, // String, required
+      chainId: request.chainId, // Number, required
+      fiatCurrency: request.fiatCurrency.toLowerCase(), // String, required (e.g., "inr")
+      fiatAmount: request.fiatAmount, // Number, required
+      buyTokenAddress: request.buyTokenAddress, // String, required
+      receiverAddress: request.receiverAddress, // String, required (receiverAddress in docs)
+      paymentMode: request.paymentMode, // String, required (e.g., "INR_UPI", "INR_IMPS", "INR_NEFT")
     };
 
-    // Add UPI ID if provided (for UPI orders)
+    // Add UPI ID if provided (for UPI orders) - must be object with upiId property
     if (request.upiId && request.upiId.upiId) {
-      requestBody.upiId = request.upiId;
+      requestBody.upiId = {
+        upiId: request.upiId.upiId, // Object with upiId property
+      };
     }
 
-    // Add bank details if provided (for IMPS/NEFT orders)
+    // Add bank details if provided (for IMPS/NEFT orders) - must be object
     if (request.bankDetails) {
-      requestBody.bankDetails = request.bankDetails;
+      requestBody.bankDetails = {
+        accountNumber: request.bankDetails.accountNumber,
+        ifscCode: request.bankDetails.ifscCode,
+        accountHolderName: request.bankDetails.accountHolderName,
+        // Include optional fields if provided
+        ...(request.bankDetails.routingNumber && { routingNumber: request.bankDetails.routingNumber }),
+        ...(request.bankDetails.bankCode && { bankCode: request.bankDetails.bankCode }),
+      };
     }
 
-    // Add metadata if provided (ensure all values are strings)
+    // Add metadata if provided (ensure all values are strings as per OnMeta requirement)
     if (request.metaData) {
       const stringMetaData: Record<string, string> = {};
       for (const [key, value] of Object.entries(request.metaData)) {
-        stringMetaData[key] = String(value);
+        stringMetaData[key] = String(value); // All values must be strings
       }
-      requestBody.metaData = stringMetaData;
+      requestBody.metaData = stringMetaData; // Object, not stringified
     }
 
-    // Add redirect URL if provided
-    if (request.redirectUrl) {
-      requestBody.redirectUrl = request.redirectUrl;
+    // Use the correct OnMeta endpoint: POST /v1/orders/create
+    const apiUrl = `${ONMETA_API_BASE_URL}/v1/orders/create`;
+
+    console.log("OnMeta create onramp order request:", {
+      url: apiUrl,
+      buyTokenSymbol: request.buyTokenSymbol,
+      chainId: request.chainId,
+      fiatCurrency: request.fiatCurrency,
+      fiatAmount: request.fiatAmount,
+      paymentMode: request.paymentMode,
+      hasUPI: !!request.upiId,
+      hasBankDetails: !!request.bankDetails,
+      requestBody: JSON.stringify(requestBody, null, 2),
+    });
+
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "x-api-key": ONMETA_CLIENT_ID,
+        "Authorization": `Bearer ${request.accessToken}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error("OnMeta create onramp order response is not JSON:", {
+        status: response.status,
+        contentType,
+        textPreview: text.substring(0, 200),
+      });
+      return {
+        success: false,
+        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+      };
     }
 
-    // Try different endpoint patterns
-    const possibleEndpoints = [
-      `${ONMETA_API_BASE_URL}/v1/orders/create-onramp`,
-      `${ONMETA_API_BASE_URL}/v1/orders/onramp`,
-      `${ONMETA_API_BASE_URL}/v1/onramp/create`,
-      `${ONMETA_API_BASE_URL}/v1/order/create`,
-    ];
+    const data = await response.json();
+    console.log("OnMeta create onramp order response:", {
+      status: response.status,
+      success: data.success,
+      orderId: data.orderId || data.id,
+      hasOrderUrl: !!data.orderUrl || !!data.depositUrl,
+      error: data.error,
+      fullResponse: JSON.stringify(data, null, 2),
+    });
 
-    let lastError: any = null;
+    if (response.ok && (data.orderId || data.id)) {
+      return {
+        success: true,
+        orderId: data.orderId || data.id,
+        orderUrl: data.orderUrl || data.depositUrl || data.url,
+        depositUrl: data.depositUrl || data.orderUrl || data.url,
+        message: data.message,
+      };
+    }
 
-    for (const apiUrl of possibleEndpoints) {
-      try {
-        console.log("OnMeta create onramp order request:", {
-          url: apiUrl,
-          buyTokenSymbol: request.buyTokenSymbol,
-          chainId: request.chainId,
-          fiatCurrency: request.fiatCurrency,
-          fiatAmount: request.fiatAmount,
-          paymentMode: request.paymentMode,
-          hasUPI: !!request.upiId,
-          hasBankDetails: !!request.bankDetails,
-        });
-
-        const response = await fetch(apiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": ONMETA_CLIENT_ID,
-            "Authorization": `Bearer ${request.accessToken}`,
-            "Accept": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        });
-
-        const data = await response.json();
-        console.log("OnMeta create onramp order response:", {
-          status: response.status,
-          hasOrderId: !!data.orderId,
-          hasOrderUrl: !!data.orderUrl || !!data.depositUrl,
-        });
-
-        if (response.ok) {
-          return {
-            success: true,
-            orderId: data.orderId || data.id,
-            orderUrl: data.orderUrl || data.depositUrl || data.url,
-            depositUrl: data.depositUrl || data.orderUrl || data.url,
-            message: data.message,
-          };
-        }
-
-        if (response.status !== 404) {
-          lastError = data;
-          break; // Don't try other endpoints if it's not a 404
-        }
-      } catch (fetchError: any) {
-        console.error(`Error trying endpoint ${apiUrl}:`, fetchError);
-        lastError = fetchError;
-        continue; // Try next endpoint
-      }
+    // Extract error message
+    let errorMessage = "Failed to create onramp order";
+    if (data.error) {
+      errorMessage = typeof data.error === 'string' ? data.error : (data.error.message || JSON.stringify(data.error));
+    } else if (data.message) {
+      errorMessage = data.message;
+    } else if (data.errors && Array.isArray(data.errors)) {
+      errorMessage = data.errors.map((e: any) => typeof e === 'string' ? e : e.message || JSON.stringify(e)).join(', ');
     }
 
     return {
       success: false,
-      error: lastError?.message || lastError?.error || "Failed to create onramp order. Please check the API endpoint and parameters.",
+      error: errorMessage,
     };
   } catch (error: any) {
     console.error("OnMeta create onramp order error:", error);
