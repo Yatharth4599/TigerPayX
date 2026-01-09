@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const [showReceivePaymentModal, setShowReceivePaymentModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
+  const [selectedPHPEWallet, setSelectedPHPEWallet] = useState<string>('GCASH'); // GCASH, PAYMAYA, GRABPAY
   const [selectedWithdrawCurrency, setSelectedWithdrawCurrency] = useState<string | null>(null);
   const [connectingWallet, setConnectingWallet] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
@@ -2844,6 +2845,7 @@ export default function DashboardPage() {
                     <button
                       onClick={() => {
                         setSelectedPaymentMethod(null);
+                        setSelectedPHPEWallet('GCASH');
                         setDepositAmount('');
                         setDepositWalletAddress('');
                       }}
@@ -2936,7 +2938,7 @@ export default function DashboardPage() {
 
                   <p className="text-sm text-gray-600 mb-4">
                     {selectedPaymentMethod === 'INR' && 'You will be redirected to OnMeta to complete your INR deposit via UPI'}
-                    {selectedPaymentMethod === 'PHP' && 'You will be redirected to OnMeta to complete your PHP deposit via GCash'}
+                    {selectedPaymentMethod === 'PHP' && `You will be redirected to OnMeta to complete your PHP deposit via ${selectedPHPEWallet}`}
                     {selectedPaymentMethod === 'IDR' && 'You will be redirected to OnMeta to complete your IDR deposit'}
                     {selectedPaymentMethod === 'STABLES' && 'Continue with stablecoin payment'}
                     {selectedPaymentMethod === 'BANK' && 'Continue with bank transfer'}
@@ -3008,7 +3010,13 @@ export default function DashboardPage() {
                               return;
                             }
                           } else if (selectedPaymentMethod === 'PHP') {
-                            paymentMode = 'PHP_EWALLET_GCASH'; // Default to GCash
+                            // Use selected PHP e-wallet: GCASH, PAYMAYA, or GRABPAY
+                            const phpEwalletMap: Record<string, string> = {
+                              'GCASH': 'PHP_EWALLET_GCASH',
+                              'PAYMAYA': 'PHP_EWALLET_PAYMAYA',
+                              'GRABPAY': 'PHP_EWALLET_GRABPAY',
+                            };
+                            paymentMode = phpEwalletMap[selectedPHPEWallet] || 'PHP_EWALLET_GCASH';
                           } else if (selectedPaymentMethod === 'IDR') {
                             // IDR payment modes - you may need to check what's available
                             paymentMode = 'IDR_BANK_TRANSFER'; // Adjust based on available modes
