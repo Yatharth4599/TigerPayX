@@ -2857,12 +2857,95 @@ export default function DashboardPage() {
                     </button>
                   </div>
                   
-                  {/* Amount Input for Fiat Deposits */}
+                  {/* Payment Method Specific Fields */}
                   {['INR', 'PHP', 'IDR'].includes(selectedPaymentMethod) && (
                     <div className="mb-4 space-y-4">
-              <div>
+                      {/* PHP E-Wallet Selection - Show FIRST */}
+                      {selectedPaymentMethod === 'PHP' && (
+                        <div className="mb-4 p-4 bg-cyan-50 rounded-xl border border-cyan-200">
+                          <label className="block text-sm font-medium text-gray-700 mb-3">
+                            Select E-Wallet
+                          </label>
+                          <div className="grid grid-cols-3 gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPHPEWallet('GCASH')}
+                              className={`p-4 rounded-xl border-2 transition-all text-center ${
+                                selectedPHPEWallet === 'GCASH'
+                                  ? 'border-cyan-500 bg-cyan-100 shadow-md'
+                                  : 'border-gray-200 bg-white hover:border-cyan-300'
+                              }`}
+                            >
+                              <div className="text-lg font-semibold text-gray-900 mb-1">GCash</div>
+                              <div className="text-xs text-gray-500">PHP_EWALLET_GCASH</div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPHPEWallet('PAYMAYA')}
+                              className={`p-4 rounded-xl border-2 transition-all text-center ${
+                                selectedPHPEWallet === 'PAYMAYA'
+                                  ? 'border-cyan-500 bg-cyan-100 shadow-md'
+                                  : 'border-gray-200 bg-white hover:border-cyan-300'
+                              }`}
+                            >
+                              <div className="text-lg font-semibold text-gray-900 mb-1">PayMaya</div>
+                              <div className="text-xs text-gray-500">PHP_EWALLET_PAYMAYA</div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPHPEWallet('GRABPAY')}
+                              className={`p-4 rounded-xl border-2 transition-all text-center ${
+                                selectedPHPEWallet === 'GRABPAY'
+                                  ? 'border-cyan-500 bg-cyan-100 shadow-md'
+                                  : 'border-gray-200 bg-white hover:border-cyan-300'
+                              }`}
+                            >
+                              <div className="text-lg font-semibold text-gray-900 mb-1">GrabPay</div>
+                              <div className="text-xs text-gray-500">PHP_EWALLET_GRABPAY</div>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* INR UPI/Bank Status - Show payment method status */}
+                      {selectedPaymentMethod === 'INR' && (
+                        <div className="mb-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Payment Method Status
+                          </label>
+                          <div className="space-y-2">
+                            {onMetaUPIStatus === 'SUCCESS' && linkedUPIId && (
+                              <div className="flex items-center gap-2 text-sm text-green-700">
+                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                <span>UPI Linked: {linkedUPIId}</span>
+                              </div>
+                            )}
+                            {onMetaBankStatus === 'SUCCESS' && !onMetaUPIStatus && (
+                              <div className="flex items-center gap-2 text-sm text-green-700">
+                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                <span>Bank Account Linked</span>
+                              </div>
+                            )}
+                            {onMetaUPIStatus !== 'SUCCESS' && onMetaBankStatus !== 'SUCCESS' && (
+                              <div className="flex items-center gap-2 text-sm text-amber-700">
+                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                <span>Please link your UPI ID or Bank Account first</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Amount Input */}
+                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Amount to Deposit
+                          Amount to Deposit ({selectedPaymentMethod})
                         </label>
                         <div className="relative">
                           <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
@@ -2936,13 +3019,49 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  <p className="text-sm text-gray-600 mb-4">
-                    {selectedPaymentMethod === 'INR' && 'You will be redirected to OnMeta to complete your INR deposit via UPI'}
-                    {selectedPaymentMethod === 'PHP' && `You will be redirected to OnMeta to complete your PHP deposit via ${selectedPHPEWallet}`}
-                    {selectedPaymentMethod === 'IDR' && 'You will be redirected to OnMeta to complete your IDR deposit'}
-                    {selectedPaymentMethod === 'STABLES' && 'Continue with stablecoin payment'}
-                    {selectedPaymentMethod === 'BANK' && 'Continue with bank transfer'}
-                  </p>
+                  {/* Payment Summary */}
+                  {selectedPaymentMethod && ['INR', 'PHP', 'IDR'].includes(selectedPaymentMethod) && (
+                    <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0">
+                          <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900 mb-1">Payment Summary</p>
+                          {selectedPaymentMethod === 'INR' && (
+                            <div className="text-sm text-gray-700 space-y-1">
+                              <p><span className="font-medium">Currency:</span> Indian Rupees (INR)</p>
+                              <p><span className="font-medium">Payment Method:</span> {onMetaUPIStatus === 'SUCCESS' ? `UPI (${linkedUPIId})` : onMetaBankStatus === 'SUCCESS' ? 'Bank Transfer (IMPS/NEFT)' : 'UPI or Bank Transfer'}</p>
+                              <p className="text-xs text-gray-500 mt-2">You will be redirected to OnMeta to complete the payment</p>
+                            </div>
+                          )}
+                          {selectedPaymentMethod === 'PHP' && (
+                            <div className="text-sm text-gray-700 space-y-1">
+                              <p><span className="font-medium">Currency:</span> Philippine Pesos (PHP)</p>
+                              <p><span className="font-medium">E-Wallet:</span> {selectedPHPEWallet} ({selectedPHPEWallet === 'GCASH' ? 'PHP_EWALLET_GCASH' : selectedPHPEWallet === 'PAYMAYA' ? 'PHP_EWALLET_PAYMAYA' : 'PHP_EWALLET_GRABPAY'})</p>
+                              <p className="text-xs text-gray-500 mt-2">You will be redirected to OnMeta to complete the payment</p>
+                            </div>
+                          )}
+                          {selectedPaymentMethod === 'IDR' && (
+                            <div className="text-sm text-gray-700 space-y-1">
+                              <p><span className="font-medium">Currency:</span> Indonesian Rupiah (IDR)</p>
+                              <p><span className="font-medium">Payment Method:</span> Bank Transfer</p>
+                              <p className="text-xs text-gray-500 mt-2">You will be redirected to OnMeta to complete the payment</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedPaymentMethod && ['STABLES', 'BANK'].includes(selectedPaymentMethod) && (
+                    <p className="text-sm text-gray-600 mb-4">
+                      {selectedPaymentMethod === 'STABLES' && 'Continue with stablecoin payment'}
+                      {selectedPaymentMethod === 'BANK' && 'Continue with bank transfer'}
+                    </p>
+                  )}
                   
                   <div className="flex gap-3">
                   <button
