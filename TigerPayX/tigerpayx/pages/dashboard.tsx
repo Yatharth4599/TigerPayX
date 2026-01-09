@@ -98,6 +98,18 @@ export default function DashboardPage() {
   // Order status state
   const [showOrderStatusModal, setShowOrderStatusModal] = useState(false);
   const [orderStatusLoading, setOrderStatusLoading] = useState(false);
+  
+  // New feature modals
+  const [activeView, setActiveView] = useState<string>('dashboard');
+  const [showInvoicingModal, setShowInvoicingModal] = useState(false);
+  const [showLendingModal, setShowLendingModal] = useState(false);
+  const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [showPayrollModal, setShowPayrollModal] = useState(false);
+  const [showEarnModal, setShowEarnModal] = useState(false);
+  const [showDebitCardsModal, setShowDebitCardsModal] = useState(false);
+  const [showCreditScoreModal, setShowCreditScoreModal] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showBeneficiaryModal, setShowBeneficiaryModal] = useState(false);
   const [orderStatus, setOrderStatus] = useState<any>(null);
   const [orderStatusInput, setOrderStatusInput] = useState<string>('');
   
@@ -1434,201 +1446,369 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 overflow-x-hidden">
-      <Navbar />
+    <div className="min-h-screen bg-gray-50 flex">
       <ToastContainer />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
-        {/* Profile Section - Compact */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="mb-8 bg-white rounded-2xl p-6 border border-gray-200 shadow-lg"
-            >
-          {profileLoading ? (
-            <div className="flex items-center gap-4 animate-pulse">
-              <div className="w-16 h-16 bg-gray-200 rounded-xl"></div>
-              <div className="flex-1">
-                <div className="h-6 bg-gray-200 rounded w-32 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-48"></div>
-              </div>
+      {/* Sidebar Navigation */}
+      <aside className="w-64 bg-white border-r border-gray-200 fixed h-screen overflow-y-auto">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <img
+              src="/assets/logo copy.svg"
+              alt="TigerPayX Logo"
+              width={32}
+              height={32}
+              className="object-contain"
+            />
+            <span className="text-xl font-bold text-gray-900">TigerPayX</span>
           </div>
-          ) : userProfile ? (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-[#ff6b00] to-[#ff8c42] rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-md">
-                  {userProfile.avatarInitials || (userProfile.name?.charAt(0) || "U")}
         </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">
-                    {userProfile.name || "User"}
-                  </h3>
-                  <p className="text-gray-600 text-sm">{userProfile.handle || userProfile.email}</p>
-                </div>
-              </div>
-              <button className="text-[#ff6b00] hover:text-[#e55a00] font-semibold text-sm px-4 py-2 hover:bg-orange-50 rounded-lg transition-colors">
-                Edit Profile
-              </button>
-            </div>
-          ) : (
-            <div className="text-center py-6 text-gray-500">
-              No profile data available
-                  </div>
-                )}
-        </motion.div>
-
-        {/* Balance Section */}
-        {walletConnected && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.05 }}
-            className="mb-8"
+        
+        <nav className="p-4 space-y-1">
+          <button
+            onClick={() => setActiveView('dashboard')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              activeView === 'dashboard'
+                ? 'bg-[#ff6b00]/10 text-[#ff6b00] font-semibold'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
           >
-            <div className="bg-gradient-to-br from-[#ff6b00] to-[#ff8c42] rounded-3xl p-8 md:p-10 border border-orange-300 shadow-2xl relative overflow-hidden">
-              <motion.div
-                className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl opacity-10"
-                animate={{
-                  scale: [1, 1.2, 1],
-                  opacity: [0.1, 0.15, 0.1],
-                }}
-                transition={{
-                  duration: 4,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <p className="text-white/80 text-sm font-medium mb-2">Total Balance</p>
-                    {balanceLoading ? (
-                      <div className="flex items-center gap-3">
-                        <LoadingSpinner size="sm" />
-                        <div className="h-12 bg-white/20 rounded-lg w-48 animate-pulse"></div>
-                      </div>
-                    ) : (
-                      <h2 className="text-4xl md:text-5xl font-bold text-white">
-                        ${walletBalance !== null ? (walletBalance * solPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
-                      </h2>
-                    )}
-                    {walletBalance !== null && (
-                      <p className="text-white/70 text-lg mt-2">
-                        {walletBalance.toFixed(4)} SOL
-                      </p>
-                    )}
-              </div>
-                  <div className="hidden md:block">
-                    <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-                      <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-            </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <button
-                    onClick={() => setShowSendPaymentModal(true)}
-                    className="bg-white text-[#ff6b00] py-3 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg"
-                  >
-                    Send
-                  </button>
-                  <button
-                    onClick={() => setShowReceivePaymentModal(true)}
-                    className="bg-white/20 backdrop-blur-sm text-white border border-white/30 py-3 rounded-xl font-semibold hover:bg-white/30 transition-colors"
-                  >
-                    Receive
-                  </button>
-                  <button
-                    onClick={() => setShowWithdrawModal(true)}
-                    className="bg-white/20 backdrop-blur-sm text-white border border-white/30 py-3 rounded-xl font-semibold hover:bg-white/30 transition-colors"
-                  >
-                    Withdraw
-                  </button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Quick Actions - Only show if wallet not connected (balance section already has send/receive) */}
-        {!walletConnected && (
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            {/* Send Money */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="bg-gradient-to-br from-[#ff6b00] to-[#ff8c42] rounded-3xl p-8 border border-orange-300 shadow-2xl relative overflow-hidden"
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span>Dashboard</span>
+          </button>
+          
+          <button
+            onClick={() => setShowDebitCardsModal(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
           >
-            <motion.div
-              className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl opacity-20"
-              animate={{
-                scale: [1, 1.2, 1],
-                opacity: [0.2, 0.3, 0.2],
-              }}
-              transition={{
-                duration: 4,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            />
-            <div className="relative z-10">
-              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6">
-                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+            <span>Cards</span>
+            <span className="ml-auto bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">NEW</span>
+          </button>
+          
+          <button
+            onClick={() => setActiveView('banking')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              activeView === 'banking'
+                ? 'bg-[#ff6b00]/10 text-[#ff6b00] font-semibold'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            <span>Banking</span>
+          </button>
+          
+          <button
+            onClick={() => setShowEarnModal(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Earn</span>
+          </button>
+          
+          <button
+            onClick={() => setShowLendingModal(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+            <span>Lending</span>
+          </button>
+          
+          <button
+            onClick={() => setShowInvoicingModal(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span>Invoicing</span>
+          </button>
+          
+          <button
+            onClick={() => setShowPayrollModal(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span>Payroll</span>
+          </button>
+          
+          <button
+            onClick={() => setShowAddEmployeeModal(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <span>Employees</span>
+          </button>
+          
+          <button
+            onClick={() => setShowCreditScoreModal(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <span>Credit Score</span>
+          </button>
+          
+          <button
+            onClick={() => setShowAccountModal(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+            </svg>
+            <span>Account</span>
+          </button>
+          
+          <button
+            onClick={() => setShowBeneficiaryModal(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span>Beneficiary</span>
+          </button>
+        </nav>
+        
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Help</span>
+          </button>
+        </div>
+      </aside>
+      
+      {/* Main Content */}
+      <main className="flex-1 ml-64">
+        {/* Top Header */}
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+          <div className="flex items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-4">
+              {onMetaKYCStatus !== 'VERIFIED' && (
+                <div className="bg-[#ff6b00] text-white px-4 py-2 rounded-lg text-sm font-medium">
+                  Complete your KYC/KYB verification to start using TigerPayX
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                <span className="text-sm font-semibold text-gray-600">0</span>
+              </div>
+              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
-            </div>
-              <h2 className="text-3xl font-bold text-white mb-2">Send Money</h2>
-              <p className="text-white/90 mb-6">Send payments to anyone, anywhere instantly</p>
-                  <button
-                onClick={() => setShowSendPaymentModal(true)}
-                className="w-full bg-white text-[#ff6b00] py-4 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg"
-                  >
-                Send Payment
-                  </button>
-                </div>
-          </motion.div>
-
-          {/* Receive Money / Payment Link */}
-                    <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-3xl p-8 border border-green-400 shadow-2xl relative overflow-hidden"
-          >
-            <motion.div
-              className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl opacity-20"
-              animate={{
-                scale: [1, 1.2, 1],
-                opacity: [0.2, 0.3, 0.2],
-              }}
-              transition={{
-                duration: 4,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 1,
-              }}
-            />
-            <div className="relative z-10">
-              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6">
-                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
               </div>
-              <h2 className="text-3xl font-bold text-white mb-2">Receive Money</h2>
-              <p className="text-white/90 mb-6">Create a payment link to receive payments</p>
-              <button 
-                onClick={() => setShowReceivePaymentModal(true)}
-                className="w-full bg-white text-green-600 py-4 rounded-xl font-semibold hover:bg-gray-100 transition-colors shadow-lg"
-              >
-                Receive Payment
+            </div>
+          </div>
+        </header>
+        
+        <div className="p-6">
+          {/* Balance Section */}
+          <div className="mb-6">
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Overall Balance</p>
+                  {balanceLoading ? (
+                    <div className="flex items-center gap-3">
+                      <LoadingSpinner size="sm" />
+                      <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
+                    </div>
+                  ) : (
+                    <h2 className="text-4xl font-bold text-gray-900">
+                      ${walletBalance !== null ? (walletBalance * solPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                    </h2>
+                  )}
+                  {walletBalance !== null && (
+                    <p className="text-sm text-gray-500 mt-1">Balance on Solana</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </button>
+                  <button className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
                   </button>
                 </div>
-          </motion.div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="grid grid-cols-3 gap-4 mt-6">
+                <button
+                  onClick={() => setShowSendPaymentModal(true)}
+                  className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors group"
+                >
+                  <div className="w-12 h-12 bg-[#ff6b00] rounded-xl flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">Send</span>
+                </button>
+                
+                <button
+                  onClick={() => setShowReceivePaymentModal(true)}
+                  className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors group"
+                >
+                  <div className="w-12 h-12 bg-[#ff6b00] rounded-xl flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">Deposit</span>
+                </button>
+                
+                <button
+                  onClick={() => setShowReceivePaymentModal(true)}
+                  className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors group"
+                >
+                  <div className="w-12 h-12 bg-[#ff6b00] rounded-xl flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">Get Paid</span>
+                </button>
+              </div>
+            </div>
           </div>
-        )}
+
+          {/* Transactions Section */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Your transactions</h3>
+              <div className="flex items-center gap-2">
+                <button className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">All</button>
+                <button className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">Deposit</button>
+                <button className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">Transfer</button>
+                <button className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">Offramp</button>
+                <button 
+                  onClick={() => fetchOrderHistory(0, false)}
+                  disabled={orderHistoryLoading}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg transition-colors disabled:opacity-50"
+                  title="Refresh transactions"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            {orderHistoryLoading && orderHistory.length === 0 ? (
+              <div className="text-center py-12">
+                <LoadingSpinner size="md" />
+                <p className="mt-4 text-gray-500">Loading transactions...</p>
+              </div>
+            ) : orderHistory.length > 0 ? (
+              <div className="space-y-2">
+                {orderHistory.slice(0, 10).map((order: any, index: number) => (
+                  <div key={order.orderId || order.id || index} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer" onClick={() => {
+                    // Could open order details modal here
+                    console.log('Order clicked:', order);
+                  }}>
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        order.status === 'completed' || order.status === 'SUCCESS' || order.status === 'transferred'
+                          ? 'bg-green-100' :
+                        order.status === 'pending' || order.status === 'PENDING' || order.status === 'fiatPending' || order.status === 'orderReceived' || order.status === 'fiatReceived' || order.status === 'InProgress'
+                          ? 'bg-yellow-100' :
+                        order.status === 'failed' || order.status === 'FAILED' || order.status === 'expired'
+                          ? 'bg-red-100' :
+                        'bg-gray-100'
+                      }`}>
+                        {order.status === 'completed' || order.status === 'SUCCESS' || order.status === 'transferred' ? (
+                          <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : order.status === 'pending' || order.status === 'PENDING' || order.status === 'fiatPending' || order.status === 'orderReceived' || order.status === 'fiatReceived' || order.status === 'InProgress' ? (
+                          <svg className="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {order.fiatCurrency === 'INR' ? '₹' : order.fiatCurrency === 'PHP' ? '₱' : order.fiatCurrency === 'IDR' ? 'Rp' : '$'}
+                          {order.fiatAmount?.toLocaleString()} {order.fiatCurrency}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {order.status === 'completed' || order.status === 'SUCCESS' ? 'Completed' :
+                           order.status === 'transferred' ? 'Transferred' :
+                           order.status === 'pending' || order.status === 'PENDING' ? 'Pending' :
+                           order.status === 'fiatPending' ? 'Payment Pending' :
+                           order.status === 'orderReceived' ? 'Payment Received' :
+                           order.status === 'fiatReceived' ? 'Fiat Received' :
+                           order.status === 'InProgress' ? 'In Progress' :
+                           order.status === 'failed' || order.status === 'FAILED' ? 'Failed' :
+                           order.status === 'expired' ? 'Expired' :
+                           order.status || 'Unknown'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-gray-900">
+                        {order.cryptoAmount ? `${order.cryptoAmount} ${order.buyTokenSymbol || order.cryptoCurrency || 'USDC'}` : order.buyTokenSymbol || '-'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '-'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {orderHistory.length > 10 && (
+                  <button
+                    onClick={() => fetchOrderHistory(orderHistorySkip + 1, true)}
+                    disabled={orderHistoryLoading}
+                    className="w-full mt-4 px-4 py-2 text-sm font-medium text-[#ff6b00] bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50"
+                  >
+                    {orderHistoryLoading ? 'Loading...' : `Load More (${orderHistory.length - 10} remaining)`}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-gray-500 mb-2">No transactions yet</p>
+                <p className="text-sm text-gray-400">Start by making your first deposit</p>
+                <button
+                  onClick={() => setShowReceivePaymentModal(true)}
+                  className="mt-4 px-4 py-2 bg-[#ff6b00] text-white rounded-lg font-medium hover:bg-[#e55a00] transition-colors"
+                >
+                  Deposit Now
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
 
         {/* Services Section - KYC, Bank Account & UPI */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
@@ -2246,174 +2426,6 @@ export default function DashboardPage() {
           </button>
         </motion.div>
 
-        {/* Order History Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg hover:shadow-xl transition-shadow mb-8"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-slate-500 to-gray-600 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                </div>
-                    <div className="flex-1">
-                <div className="flex items-center gap-3 mb-1">
-                <h3 className="text-lg font-bold text-gray-900">Order History</h3>
-                  {orderHistory.some((order: any) => {
-                    const status = order.status || order.orderStatus || '';
-                    return status === 'pending' || status === 'PENDING' || status === 'fiatPending' || 
-                           status === 'orderReceived' || status === 'fiatReceived' || status === 'InProgress';
-                  }) && (
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
-                      Auto-refreshing
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-600">Your recent transactions</p>
-                    </div>
-            </div>
-                  <button
-              onClick={() => fetchOrderHistory(0, false)}
-              disabled={orderHistoryLoading}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-              {orderHistoryLoading && <LoadingSpinner size="sm" />}
-              {orderHistoryLoading ? 'Loading...' : 'Refresh'}
-                  </button>
-                        </div>
-
-          {orderHistoryLoading && orderHistory.length === 0 ? (
-            <SkeletonTable />
-          ) : orderHistory.length > 0 ? (
-            <>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {orderHistory.map((order: any, index: number) => (
-                  <div
-                    key={order.orderId || order.id || index}
-                    className="p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors"
-                    >
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${
-                          order.status === 'completed' || order.status === 'SUCCESS' || order.status === 'transferred'
-                            ? 'bg-green-500 animate-pulse'
-                            : order.status === 'pending' || order.status === 'PENDING' || order.status === 'fiatPending' || order.status === 'orderReceived' || order.status === 'fiatReceived' || order.status === 'InProgress'
-                            ? 'bg-yellow-500 animate-pulse'
-                            : order.status === 'failed' || order.status === 'FAILED' || order.status === 'expired'
-                            ? 'bg-red-500'
-                            : 'bg-gray-400'
-                        }`}></div>
-                        <div className="flex items-center gap-2">
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            Order #{order.orderId || order.id || 'N/A'}
-                          </p>
-                          <p className="text-xs text-gray-500 font-mono">
-                            {order.orderId || order.id || 'N/A'}
-                          </p>
-                        </div>
-                          {(order.orderId || order.id) && (
-                            <CopyButton text={order.orderId || order.id} />
-                          )}
-                      </div>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        order.status === 'completed' || order.status === 'SUCCESS' || order.status === 'transferred'
-                          ? 'bg-green-100 text-green-700 border border-green-200'
-                          : order.status === 'pending' || order.status === 'PENDING' || order.status === 'fiatPending' || order.status === 'orderReceived' || order.status === 'fiatReceived' || order.status === 'InProgress'
-                          ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                          : order.status === 'failed' || order.status === 'FAILED' || order.status === 'expired'
-                          ? 'bg-red-100 text-red-700 border border-red-200'
-                          : 'bg-gray-100 text-gray-700 border border-gray-200'
-                      }`}>
-                        {order.status === 'completed' || order.status === 'SUCCESS' ? '✓ Completed' :
-                         order.status === 'transferred' ? '✓ Transferred' :
-                         order.status === 'pending' || order.status === 'PENDING' ? '⏳ Pending' :
-                         order.status === 'fiatPending' ? '⏳ Payment Pending' :
-                         order.status === 'orderReceived' ? '✅ Payment Received' :
-                         order.status === 'fiatReceived' ? '💰 Fiat Received' :
-                         order.status === 'InProgress' ? '⏳ In Progress' :
-                         order.status === 'failed' || order.status === 'FAILED' ? '❌ Failed' :
-                         order.status === 'expired' ? '⏰ Expired' :
-                         order.status || order.orderStatus || 'Unknown'}
-                      </span>
-                        </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm mt-3">
-                      {order.fiatAmount && (
-                          <div>
-                          <p className="text-gray-500">Amount</p>
-                          <p className="font-semibold text-gray-900">
-                            {order.fiatCurrency === 'INR' ? '₹' : order.fiatCurrency === 'PHP' ? '₱' : order.fiatCurrency === 'IDR' ? 'Rp' : '$'}
-                            {order.fiatAmount?.toLocaleString()}
-                    </p>
-                        </div>
-                      )}
-                      {order.buyTokenSymbol && (
-                        <div>
-                          <p className="text-gray-500">Token</p>
-                          <p className="font-semibold text-gray-900">{order.buyTokenSymbol}</p>
-                  </div>
-                      )}
-                      {order.createdAt && (
-                        <div>
-                          <p className="text-gray-500">Date</p>
-                          <p className="font-semibold text-gray-900">
-                            {new Date(order.createdAt).toLocaleDateString()}
-                          </p>
-                  </div>
-                      )}
-                      {order.paymentMode && (
-                        <div>
-                          <p className="text-gray-500">Payment</p>
-                          <p className="font-semibold text-gray-900">{order.paymentMode}</p>
-                  </div>
-                      )}
-                  </div>
-                  </div>
-                ))}
-              </div>
-              {orderHistoryHasMore && (
-                <button
-                  onClick={() => fetchOrderHistory(orderHistorySkip + 1, true)}
-                  disabled={orderHistoryLoading}
-                  className="w-full mt-4 px-4 py-2 text-sm font-medium text-[#ff6b00] bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {orderHistoryLoading && <LoadingSpinner size="sm" />}
-                  {orderHistoryLoading ? 'Loading...' : 'Load More'}
-                </button>
-              )}
-            </>
-          ) : (
-            <div className="text-center py-12">
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No orders yet</h3>
-              <p className="text-gray-500 mb-6 max-w-sm mx-auto">
-                Your order history will appear here once you create your first deposit or withdrawal.
-              </p>
-              <button
-                onClick={() => setShowSendPaymentModal(true)}
-                className="px-6 py-3 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors mb-3"
-              >
-                Create Your First Order
-              </button>
-              <button
-                onClick={() => fetchOrderHistory(0, false)}
-                className="mt-2 text-sm text-[#ff6b00] hover:underline"
-              >
-                Retry
-              </button>
-                </div>
-          )}
-                    </motion.div>
 
         {/* Wallet & Card Section */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
@@ -5105,6 +5117,243 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      {/* New Feature Modals */}
+      
+      {/* Invoicing Modal */}
+      {showInvoicingModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Invoicing</h3>
+              <button onClick={() => setShowInvoicingModal(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <p className="text-gray-600">Create and manage invoices for your business. Send invoices to customers and track payments.</p>
+              <div className="p-4 bg-gray-50 rounded-xl">
+                <p className="text-sm text-gray-500">Invoicing feature coming soon...</p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Lending Modal */}
+      {showLendingModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Lending</h3>
+              <button onClick={() => setShowLendingModal(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <p className="text-gray-600">Get loans without collateral based on your transaction history and credit score.</p>
+              <div className="p-4 bg-gray-50 rounded-xl">
+                <p className="text-sm text-gray-500">Lending feature coming soon...</p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Add Employee Modal */}
+      {showAddEmployeeModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Add Employee</h3>
+              <button onClick={() => setShowAddEmployeeModal(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <p className="text-gray-600">Add employees to your merchant account and manage payroll.</p>
+              <div className="p-4 bg-gray-50 rounded-xl">
+                <p className="text-sm text-gray-500">Employee management feature coming soon...</p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Payroll Modal */}
+      {showPayrollModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Payroll</h3>
+              <button onClick={() => setShowPayrollModal(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <p className="text-gray-600">Manage employee payroll and payments.</p>
+              <div className="p-4 bg-gray-50 rounded-xl">
+                <p className="text-sm text-gray-500">Payroll feature coming soon...</p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Earn (Yielding) Modal */}
+      {showEarnModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Earn</h3>
+              <button onClick={() => setShowEarnModal(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <p className="text-gray-600">Earn yield on your crypto holdings with our yield farming options.</p>
+              <div className="p-4 bg-gray-50 rounded-xl">
+                <p className="text-sm text-gray-500">Earn feature coming soon...</p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Debit Cards Modal */}
+      {showDebitCardsModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Debit Cards</h3>
+              <button onClick={() => setShowDebitCardsModal(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <p className="text-gray-600">Order and manage your TigerPayX debit cards.</p>
+              <div className="p-4 bg-gray-50 rounded-xl">
+                <p className="text-sm text-gray-500">Debit cards feature coming soon...</p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Credit Score Modal */}
+      {showCreditScoreModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Credit Score</h3>
+              <button onClick={() => setShowCreditScoreModal(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="p-6 bg-gradient-to-br from-[#ff6b00] to-[#ff8c42] rounded-2xl text-white text-center">
+                <h4 className="text-4xl font-bold mb-2">750</h4>
+                <p className="text-white/80">Your Credit Score</p>
+              </div>
+              <p className="text-gray-600">Your credit score is based on your transaction history, payment behavior, and account activity.</p>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Account Modal */}
+      {showAccountModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Account</h3>
+              <button onClick={() => setShowAccountModal(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <p className="text-gray-600">Manage your account settings and preferences.</p>
+              <div className="p-4 bg-gray-50 rounded-xl">
+                <p className="text-sm text-gray-500">Account management feature coming soon...</p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Beneficiary Modal */}
+      {showBeneficiaryModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Beneficiary</h3>
+              <button onClick={() => setShowBeneficiaryModal(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <p className="text-gray-600">Manage your beneficiaries for quick payments.</p>
+              <div className="p-4 bg-gray-50 rounded-xl">
+                <p className="text-sm text-gray-500">Beneficiary management feature coming soon...</p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
