@@ -2756,8 +2756,8 @@ export default function DashboardPage() {
                       <div className="w-14 h-14 bg-cyan-500 rounded-xl flex items-center justify-center mb-3">
                         <span className="text-2xl">🇵🇭</span>
               </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">PHP (GCash)</h3>
-                      <p className="text-gray-600 text-xs">Philippine Pesos via GCash</p>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">PHP (E-Wallet)</h3>
+                      <p className="text-gray-600 text-xs">Philippine Pesos via GCash, PayMaya, or GrabPay</p>
                       <div className="mt-2 text-xs text-cyan-600 font-medium">Powered by OnMeta</div>
                     </motion.button>
 
