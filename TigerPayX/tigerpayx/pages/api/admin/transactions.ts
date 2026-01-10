@@ -5,11 +5,11 @@ import { withAdmin, AdminRequest } from "@/utils/admin-middleware";
 type TransactionData = {
   id: string;
   type: string;
-  fromAddress: string;
-  toAddress: string;
-  amount: string;
-  token: string;
-  txHash: string;
+  fromAddress: string | null;
+  toAddress: string | null;
+  amount: string | null;
+  token: string | null;
+  txHash: string | null;
   status: string;
   description: string | null;
   createdAt: Date;
