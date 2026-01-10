@@ -1346,12 +1346,19 @@ export default function DashboardPage() {
       return;
     }
 
+    const token = getAuthToken();
+    if (!token) {
+      showToast('Authentication required. Please login again.', 'error');
+      return;
+    }
+
     setLookupLoading(true);
     try {
       const response = await fetch('/api/send/lookup-user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ email: recipientEmail }),
       });
@@ -1390,12 +1397,19 @@ export default function DashboardPage() {
       return;
     }
 
+    const token = getAuthToken();
+    if (!token) {
+      showToast('Authentication required. Please login again.', 'error');
+      return;
+    }
+
     setSendLoading(true);
     try {
       const response = await fetch('/api/send/from-wallet', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           recipientEmail: recipientEmail,
@@ -1443,6 +1457,12 @@ export default function DashboardPage() {
       return;
     }
 
+    const token = getAuthToken();
+    if (!token) {
+      showToast('Authentication required. Please login again.', 'error');
+      return;
+    }
+
     if (!onMetaAccessToken) {
       showToast('OnMeta authentication required. Please complete KYC first.', 'warning');
       return;
@@ -1454,6 +1474,7 @@ export default function DashboardPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           recipientEmail: recipientEmail,
