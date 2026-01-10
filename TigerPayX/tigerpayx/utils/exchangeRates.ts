@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/utils/db';
 
 export interface ExchangeRateData {
   fromCurrency: string;
@@ -207,7 +205,7 @@ export async function updateAllExchangeRates(): Promise<void> {
         await updateExchangeRate(currency, 'USDC', rate);
         console.log(`Updated exchange rate: ${currency} → USDC = ${rate}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error updating rate for ${currency}:`, error);
     }
   }

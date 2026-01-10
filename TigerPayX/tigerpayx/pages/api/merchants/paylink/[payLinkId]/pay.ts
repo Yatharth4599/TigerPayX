@@ -66,7 +66,7 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
       },
     });
 
-    // Create transaction log
+    // Create transaction log (legacy crypto payment - no fiat amount)
     await prisma.transaction.create({
       data: {
         userId: payLink.merchant.userId,
@@ -78,6 +78,9 @@ async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
         txHash,
         status: "confirmed",
         description: payLink.description || `Payment for ${payLink.merchant.name}`,
+        // fiatAmount and fiatCurrency are optional for legacy crypto transactions
+        fiatAmount: null,
+        fiatCurrency: null,
       },
     });
 

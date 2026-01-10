@@ -110,8 +110,8 @@ model Transaction {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // User-facing (fiat) - what user sees in main UI
-  fiatAmount   Decimal @db.Decimal(20, 2)
-  fiatCurrency String // "INR", "PHP", "IDR", "USD"
+  fiatAmount   Decimal? @db.Decimal(20, 2) // Optional for legacy crypto transactions
+  fiatCurrency String? // "INR", "PHP", "IDR", "USD" - Optional for legacy crypto transactions
   type         String // "send", "receive", "deposit", "withdraw", "p2p_send", "p2p_receive", "swap", "pay"
 
   // Backend (crypto) - visible only in Wallet section

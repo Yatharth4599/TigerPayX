@@ -4,13 +4,21 @@ import { prisma } from "@/utils/db";
 import { withAuth, AuthenticatedRequest } from "@/utils/auth-middleware";
 
 type Data = {
-  profile: {
+  user: {
+    id: string;
     name: string;
+    email: string;
     handle: string;
     avatarInitials: string;
+    solanaAddress?: string;
+    isAdmin?: boolean;
+    fiatBalance?: number;
+    preferredCurrency?: string;
+    country?: string | null;
+    cryptoBalance?: number;
+    walletAddress?: string | null;
+    autoOfframpEnabled?: boolean;
   };
-  solanaAddress?: string;
-  isAdmin?: boolean;
 };
 
 async function handler(
