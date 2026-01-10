@@ -53,13 +53,22 @@ async function handler(
     }
 
     return res.status(200).json({
-      profile: {
+      user: {
+        id: user.id,
         name: user.name || "TigerPayX User",
+        email: user.email,
         handle: user.handle || `@tiger.${user.id.slice(0, 6)}`,
         avatarInitials: user.avatarInitials || (user.name || "TX").slice(0, 2).toUpperCase(),
+        solanaAddress: user.solanaAddress || undefined,
+        isAdmin: user.isAdmin || false,
+        // New fields for fiat/crypto balance
+        fiatBalance: (user as any).fiatBalance || 0,
+        preferredCurrency: (user as any).preferredCurrency || 'INR',
+        country: (user as any).country || null,
+        cryptoBalance: (user as any).cryptoBalance || 0,
+        walletAddress: (user as any).walletAddress || null,
+        autoOfframpEnabled: (user as any).autoOfframpEnabled || false,
       },
-      solanaAddress: user.solanaAddress || undefined,
-      isAdmin: user.isAdmin || false,
     });
   } catch (error: any) {
     console.error("Error fetching user:", error);

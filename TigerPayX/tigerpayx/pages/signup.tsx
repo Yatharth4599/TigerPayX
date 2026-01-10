@@ -14,6 +14,8 @@ export default function SignupPage() {
   const [otp, setOtp] = useState<string>("");
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
+  const [country, setCountry] = useState<string>("");
+  const [preferredCurrency, setPreferredCurrency] = useState<string>("INR");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -32,6 +34,12 @@ export default function SignupPage() {
       return;
     }
 
+    if (!country) {
+      setError("Please select your country");
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/auth?action=signup", {
         method: "POST",
@@ -41,6 +49,8 @@ export default function SignupPage() {
           password, 
           name: name.trim(),
           handle: handle.trim() || undefined,
+          country: country,
+          preferredCurrency: preferredCurrency,
         }),
       });
 
@@ -336,6 +346,103 @@ export default function SignupPage() {
                           style={{ color: '#ffffff' }}
                   />
                         <p className="text-xs text-white/50">Must be at least 8 characters</p>
+                      </motion.div>
+
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.3 }}
+                        className="space-y-2"
+                      >
+                        <label htmlFor="country" className="block text-sm font-medium text-white">
+                          Country <span className="text-red-300">*</span>
+                        </label>
+                        <select
+                          id="country"
+                          name="country"
+                          required
+                          value={country}
+                          onChange={(e) => {
+                            setCountry(e.target.value);
+                            // Auto-detect currency based on country
+                            const countryCurrencyMap: { [key: string]: string } = {
+                              'IN': 'INR',
+                              'PH': 'PHP',
+                              'ID': 'IDR',
+                              'US': 'USD',
+                            };
+                            const detectedCurrency = countryCurrencyMap[e.target.value] || 'USD';
+                            setPreferredCurrency(detectedCurrency);
+                          }}
+                          className="w-full rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white outline-none focus:border-white/40 focus:bg-white/15 transition-all"
+                          style={{ color: '#ffffff' }}
+                        >
+                          <option value="" className="bg-gray-800 text-white">Select your country</option>
+                          <option value="IN" className="bg-gray-800 text-white">🇮🇳 India</option>
+                          <option value="PH" className="bg-gray-800 text-white">🇵🇭 Philippines</option>
+                          <option value="ID" className="bg-gray-800 text-white">🇮🇩 Indonesia</option>
+                          <option value="US" className="bg-gray-800 text-white">🇺🇸 United States</option>
+                          <option value="GB" className="bg-gray-800 text-white">🇬🇧 United Kingdom</option>
+                          <option value="CA" className="bg-gray-800 text-white">🇨🇦 Canada</option>
+                          <option value="AU" className="bg-gray-800 text-white">🇦🇺 Australia</option>
+                          <option value="SG" className="bg-gray-800 text-white">🇸🇬 Singapore</option>
+                          <option value="AE" className="bg-gray-800 text-white">🇦🇪 United Arab Emirates</option>
+                          <option value="MY" className="bg-gray-800 text-white">🇲🇾 Malaysia</option>
+                          <option value="TH" className="bg-gray-800 text-white">🇹🇭 Thailand</option>
+                          <option value="VN" className="bg-gray-800 text-white">🇻🇳 Vietnam</option>
+                          <option value="BD" className="bg-gray-800 text-white">🇧🇩 Bangladesh</option>
+                          <option value="PK" className="bg-gray-800 text-white">🇵🇰 Pakistan</option>
+                          <option value="NG" className="bg-gray-800 text-white">🇳🇬 Nigeria</option>
+                          <option value="ZA" className="bg-gray-800 text-white">🇿🇦 South Africa</option>
+                          <option value="BR" className="bg-gray-800 text-white">🇧🇷 Brazil</option>
+                          <option value="MX" className="bg-gray-800 text-white">🇲🇽 Mexico</option>
+                          <option value="OTHER" className="bg-gray-800 text-white">Other</option>
+                        </select>
+                      </motion.div>
+
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.35 }}
+                        className="space-y-2"
+                      >
+                        <label htmlFor="preferredCurrency" className="block text-sm font-medium text-white">
+                          Preferred Currency <span className="text-white/50 text-xs">(auto-detected)</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <select
+                            id="preferredCurrency"
+                            name="preferredCurrency"
+                            value={preferredCurrency}
+                            onChange={(e) => setPreferredCurrency(e.target.value)}
+                            className="flex-1 rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-4 py-3 text-white outline-none focus:border-white/40 focus:bg-white/15 transition-all"
+                            style={{ color: '#ffffff' }}
+                          >
+                            <option value="INR" className="bg-gray-800 text-white">₹ INR - Indian Rupee</option>
+                            <option value="PHP" className="bg-gray-800 text-white">₱ PHP - Philippine Peso</option>
+                            <option value="IDR" className="bg-gray-800 text-white">Rp IDR - Indonesian Rupiah</option>
+                            <option value="USD" className="bg-gray-800 text-white">$ USD - US Dollar</option>
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Reset to auto-detected based on country
+                              const countryCurrencyMap: { [key: string]: string } = {
+                                'IN': 'INR',
+                                'PH': 'PHP',
+                                'ID': 'IDR',
+                                'US': 'USD',
+                              };
+                              const detectedCurrency = countryCurrencyMap[country] || 'USD';
+                              setPreferredCurrency(detectedCurrency);
+                            }}
+                            className="px-3 py-3 rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm text-white hover:bg-white/15 transition-colors text-xs"
+                            title="Reset to auto-detected"
+                          >
+                            Reset
+                          </button>
+                        </div>
+                        <p className="text-xs text-white/50">You can change this later in Account Settings</p>
                       </motion.div>
 
                 {error && (

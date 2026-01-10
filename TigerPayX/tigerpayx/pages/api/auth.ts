@@ -11,6 +11,8 @@ type AuthRequest = {
   password: string;
   name?: string;
   handle?: string;
+  country?: string;
+  preferredCurrency?: string;
 };
 
 export default async function handler(
@@ -18,7 +20,7 @@ export default async function handler(
   res: NextApiResponse
 ) {
   if (req.method === "POST") {
-    const { email, password, name, handle } = req.body as AuthRequest;
+    const { email, password, name, handle, country, preferredCurrency } = req.body as AuthRequest;
 
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
@@ -137,6 +139,8 @@ export default async function handler(
               emailVerified: false,
               emailVerificationToken: otp,
               emailVerificationTokenExpires: expiresAt,
+              country: country || null,
+              preferredCurrency: preferredCurrency || 'INR',
               // solanaAddress will be set when user creates wallet client-side
             },
           });
@@ -184,6 +188,8 @@ export default async function handler(
                   name: name.trim(),
                   handle: finalHandle,
                   avatarInitials,
+                  country: country || null,
+                  preferredCurrency: preferredCurrency || 'INR',
                   // Skip email verification fields if migration hasn't run
                 },
               });
@@ -255,6 +261,8 @@ export default async function handler(
                     emailVerified: false,
                     emailVerificationToken: otp,
                     emailVerificationTokenExpires: expiresAt,
+                    country: country || null,
+                    preferredCurrency: preferredCurrency || 'INR',
                   },
                 });
               } catch (retryError: any) {

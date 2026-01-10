@@ -11,164 +11,223 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  password      String   // Hashed with bcrypt
-  name          String?
-  handle        String?  @unique
+  id             String   @id @default(cuid())
+  email          String   @unique
+  password       String // Hashed with bcrypt
+  name           String?
+  handle         String?  @unique
   avatarInitials String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
   // Email verification
-  emailVerified Boolean  @default(false)
-  emailVerificationToken String?  @unique
+  emailVerified                 Boolean   @default(false)
+  emailVerificationToken        String?   @unique
   emailVerificationTokenExpires DateTime?
-  
+
+  // Currency & Location
+  country           String? // User's country for regional currency detection
+  preferredCurrency String    @default("INR") // INR, PHP, IDR, USD
+  currencyChangedAt DateTime?
+
+  // Fiat Balance (what user sees in main UI)
+  fiatBalance Decimal @default(0) @db.Decimal(20, 2)
+
+  // Crypto Balance (visible only in Wallet section)
+  cryptoBalance Decimal @default(0) @db.Decimal(20, 8) // USDC amount
+  walletAddress String? @unique // On-chain wallet address (USDC/USDT)
+
+  // Settings
+  autoOfframpEnabled Boolean @default(false) // Auto-offramp received funds
+
   // KYC/OnMeta verification
-  kycVerified          Boolean  @default(false)
+  kycVerified          Boolean   @default(false)
   kycVerifiedAt        DateTime?
-  kycStatus            String?  // "VERIFIED", "PENDING", "REJECTED", "NOT_VERIFIED"
-  onmetaKycRefNumber   String?  // Reference number from OnMeta KYC
-  onmetaAccessToken    String?  // Encrypted OnMeta access token
-  onmetaRefreshToken   String?  // Encrypted OnMeta refresh token
+  kycStatus            String? // "VERIFIED", "PENDING", "REJECTED", "NOT_VERIFIED"
+  onmetaKycRefNumber   String? // Reference number from OnMeta KYC
+  onmetaAccessToken    String?   @db.Text // Encrypted OnMeta access token
+  onmetaRefreshToken   String?   @db.Text // Encrypted OnMeta refresh token
   onmetaTokenExpiresAt DateTime? // When access token expires
-  
+
   // Solana wallet address (non-custodial - private key stored client-side only)
-  solanaAddress String?  @unique
-  
+  solanaAddress String? @unique
+
   // Admin access
-  isAdmin        Boolean  @default(false)
-  
-  transactions  Transaction[]
-  merchants     Merchant[]
-  onmetaOrders  OnMetaOrder[]
+  isAdmin Boolean @default(false)
+
+  transactions         Transaction[]
+  sentTransactions     Transaction[] @relation("SentTransactions")
+  receivedTransactions Transaction[] @relation("ReceivedTransactions")
+  merchants            Merchant[]
+  onmetaOrders         OnMetaOrder[]
 }
 
 model Merchant {
-  id                String   @id @default(cuid())
-  userId            String
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  merchantId        String   @unique // TigerPayX merchant ID
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  merchantId        String  @unique // TigerPayX merchant ID
   name              String
   logoUrl           String?
-  settlementAddress String   // Solana address for receiving payments
-  preferredToken    String   @default("USDC") // SOL, USDC, USDT, TT
-  payramMerchantId  String?  // PayRam merchant ID
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
-  payLinks          PayLink[]
-  
+  settlementAddress String // Solana address for receiving payments
+  preferredToken    String  @default("USDC") // SOL, USDC, USDT, TT
+  payramMerchantId  String? // PayRam merchant ID
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payLinks PayLink[]
+
   @@index([userId])
   @@index([merchantId])
 }
 
 model PayLink {
-  id            String   @id @default(cuid())
-  merchantId    String
-  merchant      Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
-  
-  payLinkId     String   @unique
-  amount        String   // Amount as string for precision
-  token         String   // SOL, USDC, USDT, TT
-  description   String?
-  status        String   @default("pending") // "pending", "paid", "expired", "cancelled"
-  solanaTxHash  String?  // Transaction hash when paid
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  expiresAt     DateTime?
-  
+  id         String   @id @default(cuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  payLinkId    String  @unique
+  amount       String // Amount as string for precision
+  token        String // SOL, USDC, USDT, TT
+  description  String?
+  status       String  @default("pending") // "pending", "paid", "expired", "cancelled"
+  solanaTxHash String? // Transaction hash when paid
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime?
+
   @@index([merchantId])
   @@index([payLinkId])
   @@index([status])
 }
 
 model Transaction {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  type        String   // "send", "swap", "pay" (merchant payment)
-  fromAddress String   // Solana address
-  toAddress   String   // Solana address
-  amount      String   // Stored as string for precision
-  token       String   // SOL, USDC, USDT, TT
-  txHash      String   // Solana transaction hash
-  status      String   @default("pending") // "pending", "confirmed", "failed"
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // User-facing (fiat) - what user sees in main UI
+  fiatAmount   Decimal @db.Decimal(20, 2)
+  fiatCurrency String // "INR", "PHP", "IDR", "USD"
+  type         String // "send", "receive", "deposit", "withdraw", "p2p_send", "p2p_receive", "swap", "pay"
+
+  // Backend (crypto) - visible only in Wallet section
+  cryptoAmount   Decimal? @db.Decimal(20, 8) // USDC amount
+  cryptoCurrency String?  @default("USDC")
+
+  // Fees (shown in fiat)
+  fees         Decimal @default(0) @db.Decimal(20, 2)
+  feeBreakdown Json? // { transferFee: 5, networkFee: 2, onrampFee: 20, offrampFee: 15 }
+
+  // P2P Transfer details
+  senderUserId    String?
+  sender          User?   @relation("SentTransactions", fields: [senderUserId], references: [id])
+  recipientUserId String?
+  recipient       User?   @relation("ReceivedTransactions", fields: [recipientUserId], references: [id])
+  recipientEmail  String?
+
+  // Legacy fields (for backward compatibility)
+  fromAddress String? // Solana/blockchain address
+  toAddress   String? // Solana/blockchain address
+  amount      String? // Legacy: Stored as string for precision
+  token       String? // Legacy: SOL, USDC, USDT, TT
+  txHash      String? // Solana/blockchain transaction hash
+
+  // OnMeta tracking
+  onrampOrderId   String?
+  offrampOrderId  String?
+  onMetaRefNumber String?
+
+  status      String  @default("pending") // "pending", "processing", "completed", "failed"
   description String?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([userId])
+  @@index([senderUserId])
+  @@index([recipientUserId])
   @@index([txHash])
   @@index([createdAt])
   @@index([type])
+  @@index([status])
 }
 
 model WaitingList {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  name          String?
-  company       String?
-  role          String?  // "merchant", "individual", "both"
-  useCase       String?  // What they plan to use TigerPayX for
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  company   String?
+  role      String? // "merchant", "individual", "both"
+  useCase   String? // What they plan to use TigerPayX for
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([email])
   @@index([createdAt])
 }
 
 model OnMetaOrder {
-  id                    String   @id @default(cuid())
-  userId                String
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // OnMeta order details
-  onmetaOrderId         String   @unique // Order ID from OnMeta
-  orderType             String   // "onramp", "offramp", "kyc"
-  status                String   @default("pending") // "pending", "fiatPending", "orderReceived", "fiatReceived", "InProgress", "transferred", "completed", "expired", "failed"
-  eventType             String?  // Latest event type from webhook
-  
+  onmetaOrderId String  @unique // Order ID from OnMeta
+  orderType     String // "onramp", "offramp", "kyc"
+  status        String  @default("pending") // "pending", "fiatPending", "orderReceived", "fiatReceived", "InProgress", "transferred", "completed", "expired", "failed"
+  eventType     String? // Latest event type from webhook
+
   // Order details
-  buyTokenSymbol        String?
-  buyTokenAddress       String?
-  buyTokenAmount        String?  // Amount of tokens to receive
-  fiatCurrency          String?  // "INR", "PHP", "IDR"
-  fiatAmount            String?  // Amount in fiat
-  chainId               Int?
-  
+  buyTokenSymbol  String?
+  buyTokenAddress String?
+  buyTokenAmount  String? // Amount of tokens to receive
+  fiatCurrency    String? // "INR", "PHP", "IDR"
+  fiatAmount      String? // Amount in fiat
+  chainId         Int?
+
   // Payment details
-  paymentMode           String?  // "INR_UPI", "INR_IMPS", "INR_NEFT"
-  upiId                 String?
-  bankDetails           Json?    // Bank account details (if applicable)
-  
+  paymentMode String? // "INR_UPI", "INR_IMPS", "INR_NEFT"
+  upiId       String?
+  bankDetails Json? // Bank account details (if applicable)
+
   // Transaction details
-  receiverWalletAddress String?  // Wallet address to receive tokens
-  transactionHash      String?  // Blockchain transaction hash
-  transferredAmount    String?  // Amount transferred
-  transferredAmountWei String?  // Amount in wei (for EVM chains)
-  
+  receiverWalletAddress String? // Wallet address to receive tokens
+  transactionHash       String? // Blockchain transaction hash
+  transferredAmount     String? // Amount transferred
+  transferredAmountWei  String? // Amount in wei (for EVM chains)
+
   // Metadata
-  conversionRate        String?  // Conversion rate from fiat to crypto
-  commission           String?  // Commission charged
-  metadata              Json?    // Additional metadata from OnMeta
-  utr                   String?  // UTR (Unique Transaction Reference) for payment tracking
-  
+  conversionRate String? // Conversion rate from fiat to crypto
+  commission     String? // Commission charged
+  metadata       Json? // Additional metadata from OnMeta
+  utr            String? // UTR (Unique Transaction Reference) for payment tracking
+
   // Timestamps
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  completedAt           DateTime?
-  expiredAt             DateTime?
-  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+  expiredAt   DateTime?
+
   @@index([userId])
   @@index([onmetaOrderId])
   @@index([status])
   @@index([orderType])
   @@index([createdAt])
+}
+
+model ExchangeRate {
+  id           String   @id @default(cuid())
+  fromCurrency String // "INR", "PHP", "IDR", "USD"
+  toCurrency   String   @default("USDC")
+  rate         Decimal  @db.Decimal(20, 8) // Exchange rate
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  @@unique([fromCurrency, toCurrency])
+  @@index([fromCurrency])
+  @@index([toCurrency])
 }

@@ -1509,6 +1509,20 @@ export default function DashboardPage() {
           </button>
           
           <button
+            onClick={() => setActiveView('wallet')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              activeView === 'wallet'
+                ? 'bg-[#ff6b00]/10 text-[#ff6b00] font-semibold'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span>Wallet</span>
+          </button>
+          
+          <button
             onClick={() => setActiveView('earn')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
               activeView === 'earn'
@@ -1666,19 +1680,24 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Overall Balance</p>
-                  {balanceLoading ? (
+                  {profileLoading ? (
                     <div className="flex items-center gap-3">
                       <LoadingSpinner size="sm" />
                       <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
                     </div>
                   ) : (
                     <h2 className="text-4xl font-bold text-gray-900">
-                      ${walletBalance !== null ? (walletBalance * solPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                      {(() => {
+                        const balance = userProfile?.fiatBalance ? Number(userProfile.fiatBalance) : 0;
+                        const currency = userProfile?.preferredCurrency || 'INR';
+                        const symbol = currency === 'INR' ? '₹' : 
+                                      currency === 'PHP' ? '₱' : 
+                                      currency === 'IDR' ? 'Rp' : '$';
+                        return `${symbol}${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                      })()}
                     </h2>
                   )}
-                  {walletBalance !== null && (
-                    <p className="text-sm text-gray-500 mt-1">Balance on Solana</p>
-                  )}
+                  <p className="text-sm text-gray-500 mt-1">Balance on TigerPayX</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">
@@ -1796,29 +1815,44 @@ export default function DashboardPage() {
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">
-                          {order.fiatCurrency === 'INR' ? '₹' : order.fiatCurrency === 'PHP' ? '₱' : order.fiatCurrency === 'IDR' ? 'Rp' : '$'}
-                          {order.fiatAmount?.toLocaleString()} {order.fiatCurrency}
+                          {order.orderType === 'onramp' ? 'Deposit' : 
+                           order.orderType === 'offramp' ? 'Withdrawal' : 
+                           order.type === 'p2p_send' || order.type === 'send' ? `Sent to ${order.recipientEmail || 'User'}` :
+                           order.type === 'p2p_receive' || order.type === 'receive' ? `Received from ${order.senderUserId ? 'User' : 'Payment'}` :
+                           order.orderType || order.type || 'Transaction'}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {order.status === 'completed' || order.status === 'SUCCESS' ? 'Completed' :
-                           order.status === 'transferred' ? 'Transferred' :
-                           order.status === 'pending' || order.status === 'PENDING' ? 'Pending' :
-                           order.status === 'fiatPending' ? 'Payment Pending' :
-                           order.status === 'orderReceived' ? 'Payment Received' :
-                           order.status === 'fiatReceived' ? 'Fiat Received' :
-                           order.status === 'InProgress' ? 'In Progress' :
-                           order.status === 'failed' || order.status === 'FAILED' ? 'Failed' :
-                           order.status === 'expired' ? 'Expired' :
-                           order.status || 'Unknown'}
+                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Date unknown'}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">
-                        {order.cryptoAmount ? `${order.cryptoAmount} ${order.buyTokenSymbol || order.cryptoCurrency || 'USDC'}` : order.buyTokenSymbol || '-'}
+                      <p className={`font-semibold ${
+                        order.orderType === 'onramp' || order.type === 'p2p_receive' || order.type === 'receive' ? 'text-green-600' : 'text-gray-900'
+                      }`}>
+                        {order.orderType === 'onramp' || order.type === 'p2p_receive' || order.type === 'receive' ? '+' : '-'}
+                        {order.fiatAmount ? (
+                          (() => {
+                            const currency = order.fiatCurrency || userProfile?.preferredCurrency || 'INR';
+                            const symbol = currency === 'INR' ? '₹' : 
+                                          currency === 'PHP' ? '₱' : 
+                                          currency === 'IDR' ? 'Rp' : '$';
+                            return `${symbol}${Number(order.fiatAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                          })()
+                        ) : order.amount ? (
+                          (() => {
+                            const currency = userProfile?.preferredCurrency || 'INR';
+                            const symbol = currency === 'INR' ? '₹' : 
+                                          currency === 'PHP' ? '₱' : 
+                                          currency === 'IDR' ? 'Rp' : '$';
+                            return `${symbol}${Number(order.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                          })()
+                        ) : (
+                          'N/A'
+                        )}
                       </p>
-                      <p className="text-xs text-gray-500">
-                        {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '-'}
+                      <p className="text-xs text-gray-400 capitalize">
+                        {order.status || 'unknown'}
                       </p>
                     </div>
                   </div>
@@ -2201,7 +2235,90 @@ export default function DashboardPage() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                        <input type="email" className="w-full px-4 py-2 border border-gray-300 rounded-lg" defaultValue={userProfile?.email || getAuthEmail() || ''} />
+                        <input type="email" className="w-full px-4 py-2 border border-gray-300 rounded-lg" defaultValue={userProfile?.email || getAuthEmail() || ''} disabled />
+                        <p className="mt-1 text-xs text-gray-500">Email cannot be changed</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Currency Settings */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Currency Preferences</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Preferred Currency
+                        </label>
+                        <select
+                          value={userProfile?.preferredCurrency || 'INR'}
+                          onChange={async (e) => {
+                            const newCurrency = e.target.value;
+                            if (newCurrency === userProfile?.preferredCurrency) return;
+
+                            try {
+                              const response = await fetch('/api/user/update-currency', {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Authorization': `Bearer ${localStorage.getItem('tigerpayx_token')}`,
+                                },
+                                body: JSON.stringify({ preferredCurrency: newCurrency }),
+                              });
+
+                              const data = await response.json();
+
+                              if (!response.ok) {
+                                throw new Error(data.error || 'Failed to update currency');
+                              }
+
+                              // Update user profile with new currency and converted balance
+                              setUserProfile({
+                                ...userProfile,
+                                preferredCurrency: newCurrency,
+                                fiatBalance: data.user.fiatBalance,
+                                currencyChangedAt: data.user.currencyChangedAt,
+                              });
+
+                              showToast(`Currency changed to ${newCurrency}. Your balance has been converted.`, 'success');
+                            } catch (error: any) {
+                              console.error('Error updating currency:', error);
+                              showToast(error.message || 'Failed to update currency', 'error');
+                              // Revert select to original value
+                              e.target.value = userProfile?.preferredCurrency || 'INR';
+                            }
+                          }}
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all bg-white"
+                        >
+                          <option value="INR">₹ INR - Indian Rupee</option>
+                          <option value="PHP">₱ PHP - Philippine Peso</option>
+                          <option value="IDR">Rp IDR - Indonesian Rupiah</option>
+                          <option value="USD">$ USD - US Dollar</option>
+                        </select>
+                        <p className="mt-2 text-xs text-gray-500">
+                          Changing currency will convert your current balance at the current exchange rate.
+                        </p>
+                        {userProfile?.currencyChangedAt && (
+                          <p className="mt-1 text-xs text-gray-400">
+                            Last changed: {new Date(userProfile.currencyChangedAt).toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric', 
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        )}
+                      </div>
+                      <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                        <div className="flex items-start gap-3">
+                          <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <div className="text-sm text-blue-800">
+                            <p className="font-semibold mb-1">Currency Conversion Notice</p>
+                            <p className="text-blue-700">When you change your preferred currency, your balance will be automatically converted using the current exchange rate. This conversion is irreversible.</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2233,6 +2350,141 @@ export default function DashboardPage() {
           )}
 
           {/* Beneficiary Section */}
+          {activeView === 'wallet' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">Crypto Wallet</h2>
+                  <p className="text-gray-600">View your crypto balance and wallet details</p>
+                </div>
+                
+                {/* Crypto Balance Card */}
+                <div className="bg-gradient-to-br from-[#ff6b00] to-[#ff8c42] rounded-2xl p-6 mb-6 text-white">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-white/80 text-sm mb-1">USDC Balance</p>
+                      <p className="text-3xl font-bold">
+                        {userProfile?.cryptoBalance ? Number(userProfile.cryptoBalance).toFixed(2) : '0.00'} USDC
+                      </p>
+                    </div>
+                    <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  {/* Fiat Equivalent */}
+                  <div className="pt-4 border-t border-white/20">
+                    <p className="text-white/80 text-sm mb-1">Fiat Equivalent</p>
+                    <p className="text-xl font-semibold">
+                      {userProfile?.cryptoBalance && userProfile?.preferredCurrency ? (
+                        <>
+                          {(() => {
+                            const cryptoAmount = Number(userProfile.cryptoBalance);
+                            // Approximate conversion (should use exchange rate API)
+                            const rate = userProfile.preferredCurrency === 'INR' ? 83 : 
+                                        userProfile.preferredCurrency === 'PHP' ? 56 :
+                                        userProfile.preferredCurrency === 'IDR' ? 15600 : 1;
+                            const fiatAmount = cryptoAmount * rate;
+                            const symbol = userProfile.preferredCurrency === 'INR' ? '₹' : 
+                                          userProfile.preferredCurrency === 'PHP' ? '₱' :
+                                          userProfile.preferredCurrency === 'IDR' ? 'Rp' : '$';
+                            return `${symbol}${fiatAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                          })()}
+                        </>
+                      ) : (
+                        '₹0.00'
+                      )}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Wallet Address */}
+                <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">Wallet Address</h3>
+                      <p className="text-sm text-gray-600">Your on-chain wallet address for receiving crypto</p>
+                    </div>
+                  </div>
+                  
+                  {userProfile?.walletAddress ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 bg-white rounded-lg p-4 border border-gray-200">
+                        <code className="flex-1 font-mono text-sm text-gray-800 break-all">
+                          {userProfile.walletAddress}
+                        </code>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(userProfile.walletAddress || '');
+                            showToast('Wallet address copied!', 'success');
+                          }}
+                          className="px-4 py-2 bg-[#ff6b00] text-white rounded-lg hover:bg-[#e55a00] transition-colors text-sm font-medium"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <a
+                          href={`https://solscan.io/account/${userProfile.walletAddress}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium text-center"
+                        >
+                          View on Solscan
+                        </a>
+                        <a
+                          href={`https://explorer.solana.com/address/${userProfile.walletAddress}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium text-center"
+                        >
+                          View on Explorer
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 bg-white rounded-lg border border-gray-200">
+                      <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                      <p className="text-gray-500 mb-2">No wallet address yet</p>
+                      <p className="text-sm text-gray-400">Your wallet address will be generated when you make your first transaction</p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Network Info */}
+                <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                  <div className="flex items-center gap-3">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-semibold text-blue-900">Network: Solana</p>
+                      <p className="text-xs text-blue-700">All transactions are processed on the Solana blockchain</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Recent Crypto Transactions */}
+              <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Crypto Transactions</h3>
+                
+                <div className="text-center py-12">
+                  <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <p className="text-gray-500 mb-2">No crypto transactions yet</p>
+                  <p className="text-sm text-gray-400">Your crypto transactions will appear here</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeView === 'beneficiary' && (
             <div className="space-y-6">
               <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
@@ -3258,8 +3510,8 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  {/* Payment Summary */}
-                  {selectedPaymentMethod && ['INR', 'PHP', 'IDR'].includes(selectedPaymentMethod) && (
+                  {/* Payment Summary with Fees */}
+                  {selectedPaymentMethod && ['INR', 'PHP', 'IDR'].includes(selectedPaymentMethod) && depositAmount && parseFloat(depositAmount) > 0 && (
                     <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0">
@@ -3268,28 +3520,88 @@ export default function DashboardPage() {
                           </svg>
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-semibold text-gray-900 mb-1">Payment Summary</p>
-                          {selectedPaymentMethod === 'INR' && (
-                            <div className="text-sm text-gray-700 space-y-1">
-                              <p><span className="font-medium">Currency:</span> Indian Rupees (INR)</p>
-                              <p><span className="font-medium">Payment Method:</span> {onMetaUPIStatus === 'SUCCESS' ? `UPI (${linkedUPIId})` : onMetaBankStatus === 'SUCCESS' ? 'Bank Transfer (IMPS/NEFT)' : 'UPI or Bank Transfer'}</p>
-                              <p className="text-xs text-gray-500 mt-2">You will be redirected to OnMeta to complete the payment</p>
-                            </div>
-                          )}
-                          {selectedPaymentMethod === 'PHP' && (
-                            <div className="text-sm text-gray-700 space-y-1">
-                              <p><span className="font-medium">Currency:</span> Philippine Pesos (PHP)</p>
-                              <p><span className="font-medium">E-Wallet:</span> {selectedPHPEWallet} ({selectedPHPEWallet === 'GCASH' ? 'PHP_EWALLET_GCASH' : selectedPHPEWallet === 'PAYMAYA' ? 'PHP_EWALLET_PAYMAYA' : 'PHP_EWALLET_GRABPAY'})</p>
-                              <p className="text-xs text-gray-500 mt-2">You will be redirected to OnMeta to complete the payment</p>
-                            </div>
-                          )}
-                          {selectedPaymentMethod === 'IDR' && (
-                            <div className="text-sm text-gray-700 space-y-1">
-                              <p><span className="font-medium">Currency:</span> Indonesian Rupiah (IDR)</p>
-                              <p><span className="font-medium">Payment Method:</span> Bank Transfer</p>
-                              <p className="text-xs text-gray-500 mt-2">You will be redirected to OnMeta to complete the payment</p>
-                            </div>
-                          )}
+                          <p className="text-sm font-semibold text-gray-900 mb-3">Payment Summary</p>
+                          
+                          {(() => {
+                            const amount = parseFloat(depositAmount) || 0;
+                            const currency = selectedPaymentMethod;
+                            const symbol = currency === 'INR' ? '₹' : currency === 'PHP' ? '₱' : currency === 'IDR' ? 'Rp' : '$';
+                            
+                            // Fee calculations (in fiat)
+                            const onrampFeeRate = 0.02; // 2% onramp fee
+                            const transferFeeRate = 0.005; // 0.5% transfer fee
+                            const networkFee = 2; // Fixed network fee (in fiat equivalent, approximate)
+                            
+                            const onrampFee = amount * onrampFeeRate;
+                            const transferFee = amount * transferFeeRate;
+                            const totalFees = onrampFee + transferFee + networkFee;
+                            const totalAmount = amount + totalFees;
+                            const recipientReceives = amount; // Recipient receives the original amount
+                            
+                            return (
+                              <div className="space-y-3">
+                                {/* Payment Details */}
+                                <div className="bg-white rounded-lg p-3 border border-blue-100">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <span className="text-sm text-gray-600">Amount:</span>
+                                    <span className="text-sm font-semibold text-gray-900">{symbol}{amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  </div>
+                                  
+                                  {selectedPaymentMethod === 'INR' && (
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      Payment Method: {onMetaUPIStatus === 'SUCCESS' ? `UPI (${linkedUPIId})` : onMetaBankStatus === 'SUCCESS' ? 'Bank Transfer (IMPS/NEFT)' : 'UPI or Bank Transfer'}
+                                    </div>
+                                  )}
+                                  {selectedPaymentMethod === 'PHP' && (
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      E-Wallet: {selectedPHPEWallet} ({selectedPHPEWallet === 'GCASH' ? 'PHP_EWALLET_GCASH' : selectedPHPEWallet === 'PAYMAYA' ? 'PHP_EWALLET_PAYMAYA' : 'PHP_EWALLET_GRABPAY'})
+                                    </div>
+                                  )}
+                                  {selectedPaymentMethod === 'IDR' && (
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      Payment Method: Bank Transfer
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {/* Fees Breakdown */}
+                                <div className="bg-white rounded-lg p-3 border border-blue-100">
+                                  <p className="text-xs font-semibold text-gray-700 mb-2">Fees:</p>
+                                  <div className="space-y-1.5">
+                                    <div className="flex justify-between items-center text-xs">
+                                      <span className="text-gray-600">Onramp Fee (2%):</span>
+                                      <span className="text-gray-900 font-medium">{symbol}{onrampFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs">
+                                      <span className="text-gray-600">Transfer Fee (0.5%):</span>
+                                      <span className="text-gray-900 font-medium">{symbol}{transferFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs">
+                                      <span className="text-gray-600">Network Fee:</span>
+                                      <span className="text-gray-900 font-medium">{symbol}{networkFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                    <div className="pt-1.5 mt-1.5 border-t border-gray-200 flex justify-between items-center">
+                                      <span className="text-xs font-semibold text-gray-700">Total Fees:</span>
+                                      <span className="text-xs font-bold text-gray-900">{symbol}{totalFees.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Total Amount */}
+                                <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-3 text-white">
+                                  <div className="flex justify-between items-center mb-1">
+                                    <span className="text-sm font-semibold">Total to Pay:</span>
+                                    <span className="text-lg font-bold">{symbol}{totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                  </div>
+                                  <div className="text-xs text-blue-100 mt-1">
+                                    Recipient receives: {symbol}{recipientReceives.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </div>
+                                </div>
+                                
+                                <p className="text-xs text-gray-500 mt-2">You will be redirected to OnMeta to complete the payment</p>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
