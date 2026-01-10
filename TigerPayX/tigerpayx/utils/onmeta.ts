@@ -658,9 +658,9 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
 
     for (const apiUrl of possibleEndpoints) {
       console.log("OnMeta login request (trying endpoint):", {
-        url: apiUrl,
-        email: request.email,
-      });
+      url: apiUrl,
+      email: request.email,
+    });
 
       try {
         // Match OnMeta API requirements exactly:
@@ -669,14 +669,14 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
         // - Content-Type: application/json (for POST with body)
         // - Body: JSON string with email
         response = await fetch(apiUrl, {
-          method: "POST",
-          headers: {
-            "Accept": "application/json",
-            "x-api-key": ONMETA_CLIENT_ID,
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "x-api-key": ONMETA_CLIENT_ID,
             "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        });
+      },
+      body: JSON.stringify(requestBody),
+    });
 
         // If 404 or 405, try next endpoint
         if (response.status === 404 || response.status === 405) {
@@ -685,38 +685,38 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
           continue; // Try next endpoint
         }
 
-        // Check if response is JSON before parsing
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const text = await response.text();
-          console.error("OnMeta login response is not JSON:", {
-            status: response.status,
-            contentType,
-            textPreview: text.substring(0, 200),
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error("OnMeta login response is not JSON:", {
+        status: response.status,
+        contentType,
+        textPreview: text.substring(0, 200),
             endpoint: apiUrl,
-          });
+      });
           
           // If not 404/405, this is a real error
           if (response.status !== 404 && response.status !== 405) {
-            return {
-              success: false,
-              error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
-            };
+      return {
+        success: false,
+        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+      };
           }
           continue; // Try next endpoint for 404/405
-        }
+    }
 
         data = await response.json();
-        console.log("OnMeta login response:", {
-          status: response.status,
+    console.log("OnMeta login response:", {
+      status: response.status,
           statusText: response.statusText,
-          hasAccessToken: !!data.accessToken,
-          hasRefreshToken: !!data.refreshToken,
+      hasAccessToken: !!data.accessToken,
+      hasRefreshToken: !!data.refreshToken,
           endpoint: apiUrl,
           fullResponse: data,
-        });
+    });
 
-        if (!response.ok) {
+    if (!response.ok) {
           // Log the full error for debugging
           console.error("OnMeta login error response:", {
             status: response.status,
@@ -740,8 +740,8 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
                           (data.errors && Array.isArray(data.errors) ? data.errors.join(', ') : null) ||
                           `Login failed: ${response.status} ${response.statusText}`;
           
-          return {
-            success: false,
+      return {
+        success: false,
             error: errorMsg,
           };
         }
@@ -859,7 +859,7 @@ export async function onMetaUserLogin(request: OnMetaLoginRequest): Promise<OnMe
         tokenLength: accessToken.length,
       });
     }
-    
+
     return {
       success: true,
       accessToken: accessToken,
@@ -1058,33 +1058,33 @@ export async function onMetaLinkBankAccount(request: OnMetaLinkBankRequest): Pro
 
     for (const apiUrl of endpoints) {
       console.log("OnMeta link bank request (trying endpoint):", {
-        url: apiUrl,
-        email: request.email,
-        hasAccessToken: !!request.accessToken,
+      url: apiUrl,
+      email: request.email,
+      hasAccessToken: !!request.accessToken,
         requestBody: JSON.stringify(requestBody, null, 2),
-      });
+    });
 
       try {
         response = await fetch(apiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${request.accessToken}`,
-            "x-api-key": ONMETA_CLIENT_ID,
-          },
-          body: JSON.stringify(requestBody),
-        });
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${request.accessToken}`,
+        "x-api-key": ONMETA_CLIENT_ID,
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-        // Check if response is JSON before parsing
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const text = await response.text();
-          console.error("OnMeta link bank response is not JSON:", {
-            status: response.status,
-            contentType,
-            textPreview: text.substring(0, 200),
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error("OnMeta link bank response is not JSON:", {
+        status: response.status,
+        contentType,
+        textPreview: text.substring(0, 200),
             endpoint: apiUrl,
-          });
+      });
           
           // If 404, try next endpoint
           if (response.status === 404 && endpoints.indexOf(apiUrl) < endpoints.length - 1) {
@@ -1092,15 +1092,15 @@ export async function onMetaLinkBankAccount(request: OnMetaLinkBankRequest): Pro
             continue;
           }
           
-          return {
-            success: false,
-            error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
-          };
-        }
+      return {
+        success: false,
+        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+      };
+    }
 
         data = await response.json();
-        console.log("OnMeta link bank response:", {
-          status: response.status,
+    console.log("OnMeta link bank response:", {
+      status: response.status,
           statusText: response.statusText,
           accountStatus: data.data?.status || data.status,
           referenceNumber: data.data?.referenceNumber || data.referenceNumber || data.refNumber,
@@ -1115,7 +1115,7 @@ export async function onMetaLinkBankAccount(request: OnMetaLinkBankRequest): Pro
         }
 
         // If not OK, return error (but don't try next endpoint for non-404 errors)
-        if (!response.ok) {
+    if (!response.ok) {
           console.error("OnMeta link bank error details:", {
             status: response.status,
             statusText: response.statusText,
@@ -1124,11 +1124,11 @@ export async function onMetaLinkBankAccount(request: OnMetaLinkBankRequest): Pro
             fullResponse: data,
             endpoint: apiUrl,
           });
-          return {
-            success: false,
-            error: data.message || data.error || `Failed to link bank account: ${response.status} ${response.statusText}`,
-          };
-        }
+      return {
+        success: false,
+        error: data.message || data.error || `Failed to link bank account: ${response.status} ${response.statusText}`,
+      };
+    }
 
         // Success! Break out of loop
         break;
@@ -1312,37 +1312,37 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
 
     try {
       response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
+      method: "POST",
+      headers: {
           "Accept": "application/json",
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${request.accessToken}`,
-          "x-api-key": ONMETA_CLIENT_ID,
-        },
-        body: JSON.stringify(requestBody),
-      });
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${request.accessToken}`,
+        "x-api-key": ONMETA_CLIENT_ID,
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-      // Check if response is JSON before parsing
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text();
-        console.error("OnMeta link UPI response is not JSON:", {
-          status: response.status,
-          contentType,
-          textPreview: text.substring(0, 200),
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const text = await response.text();
+      console.error("OnMeta link UPI response is not JSON:", {
+        status: response.status,
+        contentType,
+        textPreview: text.substring(0, 200),
           endpoint: apiUrl,
-        });
+      });
         
-        return {
-          success: false,
-          error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
-        };
-      }
+      return {
+        success: false,
+        error: `Invalid response from OnMeta API: ${response.status} ${response.statusText}`,
+      };
+    }
 
       // Parse JSON response
       data = await response.json();
-      console.log("OnMeta link UPI response:", {
-        status: response.status,
+    console.log("OnMeta link UPI response:", {
+      status: response.status,
         statusText: response.statusText,
         upiStatus: data.data?.status || data.status,
         referenceId: data.data?.referenceId || data.referenceId || data.refNumber,
@@ -1351,7 +1351,7 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
       });
 
       // If not OK, return error with detailed information
-      if (!response.ok) {
+    if (!response.ok) {
         // Extract error message from various possible locations
         // OnMeta can return error as: {error: {code: 400, message: "KYC not verified"}} or {error: "KYC not verified"}
         let errorMessage = `Failed to link UPI: ${response.status} ${response.statusText}`;
@@ -1385,8 +1385,8 @@ export async function onMetaLinkUPI(request: OnMetaLinkUPIRequest): Promise<OnMe
           requestBody: requestBody,
         });
         
-        return {
-          success: false,
+      return {
+        success: false,
           error: errorMessage,
           statusCode: response.status,
           onMetaError: typeof data.error === 'object' ? data.error.message : (data.error || data.message),
@@ -1910,28 +1910,28 @@ export async function createOnrampOrder(request: OnMetaCreateOnrampOrderRequest)
     // Use the correct OnMeta endpoint: POST /v1/orders/create
     const apiUrl = `${ONMETA_API_BASE_URL}/v1/orders/create`;
 
-    console.log("OnMeta create onramp order request:", {
-      url: apiUrl,
-      buyTokenSymbol: request.buyTokenSymbol,
-      chainId: request.chainId,
-      fiatCurrency: request.fiatCurrency,
-      fiatAmount: request.fiatAmount,
-      paymentMode: request.paymentMode,
-      hasUPI: !!request.upiId,
-      hasBankDetails: !!request.bankDetails,
+        console.log("OnMeta create onramp order request:", {
+          url: apiUrl,
+          buyTokenSymbol: request.buyTokenSymbol,
+          chainId: request.chainId,
+          fiatCurrency: request.fiatCurrency,
+          fiatAmount: request.fiatAmount,
+          paymentMode: request.paymentMode,
+          hasUPI: !!request.upiId,
+          hasBankDetails: !!request.bankDetails,
       requestBody: JSON.stringify(requestBody, null, 2),
-    });
+        });
 
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
         "Accept": "application/json",
-        "Content-Type": "application/json",
-        "x-api-key": ONMETA_CLIENT_ID,
-        "Authorization": `Bearer ${request.accessToken}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
+            "Content-Type": "application/json",
+            "x-api-key": ONMETA_CLIENT_ID,
+            "Authorization": `Bearer ${request.accessToken}`,
+          },
+          body: JSON.stringify(requestBody),
+        });
 
     // Check if response is JSON before parsing
     const contentType = response.headers.get("content-type");
@@ -1948,25 +1948,25 @@ export async function createOnrampOrder(request: OnMetaCreateOnrampOrderRequest)
       };
     }
 
-    const data = await response.json();
-    console.log("OnMeta create onramp order response:", {
-      status: response.status,
+        const data = await response.json();
+        console.log("OnMeta create onramp order response:", {
+          status: response.status,
       success: data.success,
       orderId: data.orderId || data.id,
-      hasOrderUrl: !!data.orderUrl || !!data.depositUrl,
+          hasOrderUrl: !!data.orderUrl || !!data.depositUrl,
       error: data.error,
       fullResponse: JSON.stringify(data, null, 2),
-    });
+        });
 
     if (response.ok && (data.orderId || data.id)) {
-      return {
-        success: true,
-        orderId: data.orderId || data.id,
-        orderUrl: data.orderUrl || data.depositUrl || data.url,
-        depositUrl: data.depositUrl || data.orderUrl || data.url,
-        message: data.message,
-      };
-    }
+          return {
+            success: true,
+            orderId: data.orderId || data.id,
+            orderUrl: data.orderUrl || data.depositUrl || data.url,
+            depositUrl: data.depositUrl || data.orderUrl || data.url,
+            message: data.message,
+          };
+        }
 
     // Extract error message
     let errorMessage = "Failed to create onramp order";
@@ -2413,7 +2413,7 @@ export async function fetchOrderHistory(request: OnMetaOrderHistoryRequest): Pro
         message: "Order history endpoint not available",
       };
     }
-    
+
     return {
       success: false,
       error: lastError?.message || lastError?.error || "Failed to fetch order history. Please check the API endpoint.",
@@ -2507,7 +2507,7 @@ export async function fetchSupportedCurrencies(): Promise<SupportedCurrenciesRes
           
           // If not 404, this is a real error
           if (response.status !== 404) {
-            lastError = { message: `Invalid response format: ${response.status} ${response.statusText}` };
+          lastError = { message: `Invalid response format: ${response.status} ${response.statusText}` };
             break; // Don't try other endpoints
           }
           continue; // Try next endpoint for 404
@@ -2574,7 +2574,7 @@ export async function fetchSupportedCurrencies(): Promise<SupportedCurrenciesRes
     } else if (lastError?.error) {
       errorMessage = lastError.error;
     }
-    
+
     return {
       success: false,
       error: errorMessage,

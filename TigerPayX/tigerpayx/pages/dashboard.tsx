@@ -99,6 +99,16 @@ export default function DashboardPage() {
   const [showOrderStatusModal, setShowOrderStatusModal] = useState(false);
   const [orderStatusLoading, setOrderStatusLoading] = useState(false);
   
+  // New Send Money flow state
+  const [recipientEmail, setRecipientEmail] = useState<string>("");
+  const [recipientUser, setRecipientUser] = useState<any>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [sendStep, setSendStep] = useState<number>(1); // 1: recipient, 2: amount, 3: method, 4: review
+  const [sendAmount, setSendAmount] = useState<string>("");
+  const [sendPaymentMethod, setSendPaymentMethod] = useState<'FROM_WALLET' | 'UPI' | 'BANK' | null>(null);
+  const [sendLoading, setSendLoading] = useState(false);
+  const [sendMessage, setSendMessage] = useState<string>("");
+  
   // New feature modals
   const [activeView, setActiveView] = useState<string>('dashboard');
   const [showInvoicingModal, setShowInvoicingModal] = useState(false);
@@ -1189,13 +1199,12 @@ export default function DashboardPage() {
     }
   };
 
-  // Load user profile
-  useEffect(() => {
+  // Load user profile - moved outside useEffect to be reusable
     const loadUserProfile = async () => {
       setProfileLoading(true);
       try {
         // For development: use mock data
-        const isDevelopment = process.env.NODE_ENV === "development" || window.location.hostname === "localhost";
+      const isDevelopment = process.env.NODE_ENV === "development" || (typeof window !== "undefined" && window.location.hostname === "localhost");
         if (isDevelopment) {
           // Mock user profile for local testing
           setUserProfile({
@@ -1226,6 +1235,8 @@ export default function DashboardPage() {
       }
     };
 
+  // Load user profile on mount
+  useEffect(() => {
     if (authChecked) {
       loadUserProfile();
     }
@@ -1325,6 +1336,147 @@ export default function DashboardPage() {
       setWalletBalance(null);
       localStorage.removeItem("tigerpayx_wallet_address");
       localStorage.removeItem("tigerpayx_wallet_name");
+    }
+  };
+
+  // New Send Money flow handlers
+  const handleLookupRecipient = async () => {
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+      showToast('Please enter a valid email address', 'error');
+      return;
+    }
+
+    setLookupLoading(true);
+    try {
+      const response = await fetch('/api/send/lookup-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: recipientEmail }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.user) {
+        setRecipientUser(data.user);
+        if (data.isNew) {
+          showToast(`New user account created. Invite will be sent to ${recipientEmail}`, 'info');
+        } else {
+          showToast(`User found: ${data.user.name || data.user.email}`, 'success');
+        }
+      } else {
+        showToast(data.error || 'Failed to lookup user', 'error');
+        setRecipientUser(null);
+      }
+    } catch (error: any) {
+      console.error('Lookup recipient error:', error);
+      showToast(`Error: ${error.message || 'Failed to lookup user'}`, 'error');
+      setRecipientUser(null);
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
+  const handleSendFromWallet = async () => {
+    if (!recipientUser || !sendAmount) {
+      showToast('Please complete all fields', 'error');
+      return;
+    }
+
+    const amount = parseFloat(sendAmount);
+    if (isNaN(amount) || amount <= 0) {
+      showToast('Please enter a valid amount', 'error');
+      return;
+    }
+
+    setSendLoading(true);
+    try {
+      const response = await fetch('/api/send/from-wallet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipientEmail: recipientEmail,
+          amount: amount,
+          message: sendMessage || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const currency = userProfile?.preferredCurrency || 'INR';
+        const symbol = currency === 'INR' ? '₹' : currency === 'PHP' ? '₱' : currency === 'IDR' ? 'Rp' : '$';
+        showToast(`Successfully sent ${symbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} to ${recipientEmail}`, 'success');
+        // Refresh user profile to update balance
+        loadUserProfile();
+        // Close modal and reset
+        setShowSendPaymentModal(false);
+        setSendStep(1);
+        setRecipientEmail("");
+        setRecipientUser(null);
+        setSendAmount("");
+        setSendPaymentMethod(null);
+        setSendMessage("");
+      } else {
+        showToast(data.error || 'Failed to send money', 'error');
+      }
+    } catch (error: any) {
+      console.error('Send from wallet error:', error);
+      showToast(`Error: ${error.message || 'Failed to send money'}`, 'error');
+    } finally {
+      setSendLoading(false);
+    }
+  };
+
+  const handleSendViaOnramp = async (paymentMode: string) => {
+    if (!recipientUser || !sendAmount) {
+      showToast('Please complete all fields', 'error');
+      return;
+    }
+
+    const amount = parseFloat(sendAmount);
+    if (isNaN(amount) || amount <= 0) {
+      showToast('Please enter a valid amount', 'error');
+      return;
+    }
+
+    if (!onMetaAccessToken) {
+      showToast('OnMeta authentication required. Please complete KYC first.', 'warning');
+      return;
+    }
+
+    setSendLoading(true);
+    try {
+      const response = await fetch('/api/send/via-onramp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipientEmail: recipientEmail,
+          amount: amount,
+          paymentMethod: paymentMode,
+          message: sendMessage || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.onrampOrder?.orderUrl) {
+        showToast('Redirecting to OnMeta payment page...', 'info');
+        // Redirect to OnMeta payment page
+        window.location.href = data.onrampOrder.orderUrl;
+      } else {
+        showToast(data.error || 'Failed to initiate payment', 'error');
+        setSendLoading(false);
+      }
+    } catch (error: any) {
+      console.error('Send via onramp error:', error);
+      showToast(`Error: ${error.message || 'Failed to initiate payment'}`, 'error');
+      setSendLoading(false);
     }
   };
 
@@ -1642,7 +1794,7 @@ export default function DashboardPage() {
             </svg>
             <span>Help</span>
           </button>
-        </div>
+          </div>
       </aside>
       
       {/* Main Content */}
@@ -1650,13 +1802,13 @@ export default function DashboardPage() {
         {/* Top Header */}
         <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
           <div className="flex items-center justify-between px-6 py-4">
-            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4">
               {onMetaKYCStatus !== 'VERIFIED' && (
                 <div className="bg-[#ff6b00] text-white px-4 py-2 rounded-lg text-sm font-medium">
                   Complete your KYC/KYB verification to start using TigerPayX
-                </div>
+        </div>
               )}
-            </div>
+                </div>
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
                 <span className="text-sm font-semibold text-gray-600">0</span>
@@ -1665,27 +1817,27 @@ export default function DashboardPage() {
                 <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
-              </div>
             </div>
+                  </div>
           </div>
         </header>
-        
+
         <div className="p-6">
           {/* Conditional Content Based on Active View */}
           {activeView === 'dashboard' && (
             <div>
-          {/* Balance Section */}
+        {/* Balance Section */}
           <div className="mb-6">
             <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <div>
+                  <div>
                   <p className="text-sm text-gray-600 mb-1">Overall Balance</p>
                   {profileLoading ? (
-                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3">
                       <LoadingSpinner size="sm" />
                       <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
-                    </div>
-                  ) : (
+                      </div>
+                    ) : (
                     <h2 className="text-4xl font-bold text-gray-900">
                       {(() => {
                         const balance = userProfile?.fiatBalance ? Number(userProfile.fiatBalance) : 0;
@@ -1695,29 +1847,29 @@ export default function DashboardPage() {
                                       currency === 'IDR' ? 'Rp' : '$';
                         return `${symbol}${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                       })()}
-                    </h2>
-                  )}
+                      </h2>
+                    )}
                   <p className="text-sm text-gray-500 mt-1">Balance on TigerPayX</p>
-                </div>
+              </div>
                 <div className="flex items-center gap-2">
                   <button className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">
                     <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
+                      </svg>
                   </button>
                   <button className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center">
                     <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
-                </div>
-              </div>
+            </div>
+                  </div>
               
               {/* Action Buttons */}
               <div className="grid grid-cols-3 gap-4 mt-6">
-                <button
-                  onClick={() => setShowSendPaymentModal(true)}
+                  <button
+                    onClick={() => setShowSendPaymentModal(true)}
                   className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors group"
                 >
                   <div className="w-12 h-12 bg-[#ff6b00] rounded-xl flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
@@ -1726,10 +1878,10 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <span className="text-sm font-medium text-gray-700">Send</span>
-                </button>
+                  </button>
                 
-                <button
-                  onClick={() => setShowReceivePaymentModal(true)}
+                  <button
+                    onClick={() => setShowReceivePaymentModal(true)}
                   className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors group"
                 >
                   <div className="w-12 h-12 bg-[#ff6b00] rounded-xl flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
@@ -1738,9 +1890,9 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <span className="text-sm font-medium text-gray-700">Deposit</span>
-                </button>
+                  </button>
                 
-                <button
+                  <button
                   onClick={() => setShowReceivePaymentModal(true)}
                   className="flex flex-col items-center justify-center p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors group"
                 >
@@ -1750,10 +1902,10 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <span className="text-sm font-medium text-gray-700">Get Paid</span>
-                </button>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
           {/* Transactions Section */}
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
@@ -1965,17 +2117,17 @@ export default function DashboardPage() {
                     <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mb-4">
                       <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                      </svg>
-                    </div>
+                </svg>
+            </div>
                     <h3 className="text-lg font-bold text-gray-900 mb-2">Link UPI ID</h3>
                     <p className="text-sm text-gray-600 mb-4">Connect UPI for instant payments</p>
-                    <button 
+                  <button
                       onClick={() => setShowLinkUPIModal(true)}
                       className="w-full bg-green-500 text-white py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors text-sm"
-                    >
+                  >
                       {onMetaUPIStatus === 'SUCCESS' ? '✓ Linked' : 'Link UPI'}
-                    </button>
-                  </div>
+                  </button>
+                </div>
                 </div>
               </div>
             </div>
@@ -2313,11 +2465,11 @@ export default function DashboardPage() {
                         <div className="flex items-start gap-3">
                           <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                    </svg>
                           <div className="text-sm text-blue-800">
                             <p className="font-semibold mb-1">Currency Conversion Notice</p>
                             <p className="text-blue-700">When you change your preferred currency, your balance will be automatically converted using the current exchange rate. This conversion is irreversible.</p>
-                          </div>
+              </div>
                         </div>
                       </div>
                     </div>
@@ -2415,7 +2567,7 @@ export default function DashboardPage() {
                         <code className="flex-1 font-mono text-sm text-gray-800 break-all">
                           {userProfile.walletAddress}
                         </code>
-                        <button
+              <button 
                           onClick={() => {
                             navigator.clipboard.writeText(userProfile.walletAddress || '');
                             showToast('Wallet address copied!', 'success');
@@ -2423,8 +2575,8 @@ export default function DashboardPage() {
                           className="px-4 py-2 bg-[#ff6b00] text-white rounded-lg hover:bg-[#e55a00] transition-colors text-sm font-medium"
                         >
                           Copy
-                        </button>
-                      </div>
+                  </button>
+                </div>
                       
                       <div className="flex gap-2">
                         <a
@@ -2452,8 +2604,8 @@ export default function DashboardPage() {
                       </svg>
                       <p className="text-gray-500 mb-2">No wallet address yet</p>
                       <p className="text-sm text-gray-400">Your wallet address will be generated when you make your first transaction</p>
-                    </div>
-                  )}
+          </div>
+        )}
                 </div>
                 
                 {/* Network Info */}
@@ -3197,18 +3349,26 @@ export default function DashboardPage() {
         </motion.div>
         )}
 
-        {/* Send Payment Modal */}
+        {/* Send Payment Modal - New Multi-Step Flow */}
         {showSendPaymentModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-3xl p-8 max-w-4xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-3xl p-8 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">Choose Payment Method</h3>
+                <h3 className="text-2xl font-bold text-gray-900">Send Money</h3>
                     <button
-                  onClick={() => setShowSendPaymentModal(false)}
+                  onClick={() => {
+                    setShowSendPaymentModal(false);
+                    setSendStep(1);
+                    setRecipientEmail("");
+                    setRecipientUser(null);
+                    setSendAmount("");
+                    setSendPaymentMethod(null);
+                    setSendMessage("");
+                  }}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -3217,579 +3377,495 @@ export default function DashboardPage() {
                     </button>
                   </div>
 
-              <div className="space-y-6">
-                {/* Fiat Payments Section */}
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-700 mb-4">Fiat Payments via OnMeta</h4>
-                  <div className="grid md:grid-cols-3 gap-4">
-                    {/* INR - UPI */}
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setSelectedPaymentMethod('INR')}
-                      className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border-2 border-blue-200 hover:border-blue-400 transition-all text-left"
-                    >
-                      <div className="w-14 h-14 bg-blue-500 rounded-xl flex items-center justify-center mb-3">
-                        <span className="text-2xl">🇮🇳</span>
-                </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">INR (UPI)</h3>
-                      <p className="text-gray-600 text-xs">Indian Rupees via UPI</p>
-                      <div className="mt-2 text-xs text-blue-600 font-medium">Powered by OnMeta</div>
-                    </motion.button>
-
-                    {/* PHP - GCash */}
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setSelectedPaymentMethod('PHP')}
-                      className="bg-gradient-to-br from-cyan-50 to-teal-50 rounded-2xl p-6 border-2 border-cyan-200 hover:border-cyan-400 transition-all text-left"
-                    >
-                      <div className="w-14 h-14 bg-cyan-500 rounded-xl flex items-center justify-center mb-3">
-                        <span className="text-2xl">🇵🇭</span>
-              </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">PHP (E-Wallet)</h3>
-                      <p className="text-gray-600 text-xs">Philippine Pesos via GCash, PayMaya, or GrabPay</p>
-                      <div className="mt-2 text-xs text-cyan-600 font-medium">Powered by OnMeta</div>
-                    </motion.button>
-
-                    {/* IDR */}
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setSelectedPaymentMethod('IDR')}
-                      className="bg-gradient-to-br from-red-50 to-rose-50 rounded-2xl p-6 border-2 border-red-200 hover:border-red-400 transition-all text-left"
-                    >
-                      <div className="w-14 h-14 bg-red-500 rounded-xl flex items-center justify-center mb-3">
-                        <span className="text-2xl">🇮🇩</span>
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">IDR</h3>
-                      <p className="text-gray-600 text-xs">Indonesian Rupiah</p>
-                      <div className="mt-2 text-xs text-red-600 font-medium">Powered by OnMeta</div>
-                    </motion.button>
+              {/* Progress Steps */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-2">
+                  <div className={`flex items-center ${sendStep >= 1 ? 'text-[#ff6b00]' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${sendStep >= 1 ? 'bg-[#ff6b00] text-white' : 'bg-gray-200 text-gray-500'}`}>
+                      {sendStep > 1 ? '✓' : '1'}
+                    </div>
+                    <span className="ml-2 text-sm font-medium">Recipient</span>
                   </div>
-                </div>
-
-                {/* Crypto Payments Section */}
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-700 mb-4">Crypto Payments</h4>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {/* Stables - Conditional Locked/Unlocked */}
-                    {walletConnected ? (
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setSelectedPaymentMethod('STABLES')}
-                        className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-6 border-2 border-orange-200 hover:border-orange-400 transition-all text-left"
-                      >
-                        <div className="w-14 h-14 bg-orange-500 rounded-xl flex items-center justify-center mb-3">
-                          <span className="text-2xl">💎</span>
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">Stablecoins</h3>
-                        <p className="text-gray-600 text-xs">Pay with USDC, USDT</p>
-                      </motion.button>
-                    ) : (
-                      <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl p-6 border-2 border-gray-300 border-dashed text-left relative opacity-60 cursor-not-allowed">
-                        <div className="absolute top-4 right-4">
-                          <svg className="w-6 h-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                          </svg>
-                        </div>
-                        <div className="w-14 h-14 bg-gray-400 rounded-xl flex items-center justify-center mb-3">
-                          <span className="text-2xl">💎</span>
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-600 mb-1">Stablecoins</h3>
-                        <p className="text-gray-500 text-xs mb-2">Pay with USDC, USDT</p>
-                        <p className="text-xs text-gray-600 font-medium mt-3 pt-3 border-t border-gray-300">
-                          🔒 Connect your wallet to TigerPayX to unlock this
-                    </p>
+                  <div className={`flex-1 h-1 mx-2 ${sendStep >= 2 ? 'bg-[#ff6b00]' : 'bg-gray-200'}`} />
+                  <div className={`flex items-center ${sendStep >= 2 ? 'text-[#ff6b00]' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${sendStep >= 2 ? 'bg-[#ff6b00] text-white' : 'bg-gray-200 text-gray-500'}`}>
+                      {sendStep > 2 ? '✓' : '2'}
+                    </div>
+                    <span className="ml-2 text-sm font-medium">Amount</span>
                   </div>
-            )}
-
-                    {/* Bank Account Transfer */}
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setSelectedPaymentMethod('BANK')}
-                      className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-6 border-2 border-gray-200 hover:border-gray-400 transition-all text-left"
-                    >
-                      <div className="w-14 h-14 bg-gray-600 rounded-xl flex items-center justify-center mb-3">
-                        <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">Bank Transfer</h3>
-                      <p className="text-gray-600 text-xs">Direct bank transfer</p>
-                    </motion.button>
+                  <div className={`flex-1 h-1 mx-2 ${sendStep >= 3 ? 'bg-[#ff6b00]' : 'bg-gray-200'}`} />
+                  <div className={`flex items-center ${sendStep >= 3 ? 'text-[#ff6b00]' : 'text-gray-400'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${sendStep >= 3 ? 'bg-[#ff6b00] text-white' : 'bg-gray-200 text-gray-500'}`}>
+                      {sendStep > 3 ? '✓' : '3'}
+                    </div>
+                    <span className="ml-2 text-sm font-medium">Method</span>
                   </div>
                 </div>
               </div>
 
-              {/* Payment Method Selected - Show Details */}
-              {selectedPaymentMethod && (
+              {/* Step 1: Recipient Email */}
+              {sendStep === 1 && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-6 p-6 bg-gray-50 rounded-2xl border border-gray-200"
+                  className="space-y-6"
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-gray-900">Selected: {selectedPaymentMethod}</h4>
-                    <button
-                      onClick={() => {
-                        setSelectedPaymentMethod(null);
-                        setSelectedPHPEWallet('GCASH');
-                        setDepositAmount('');
-                        setDepositWalletAddress('');
-                      }}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Recipient Email Address
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="email"
+                        placeholder="user@example.com"
+                        value={recipientEmail}
+                        onChange={(e) => setRecipientEmail(e.target.value)}
+                        className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && recipientEmail) {
+                            handleLookupRecipient();
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={handleLookupRecipient}
+                        disabled={!recipientEmail || lookupLoading}
+                        className="px-6 py-3 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {lookupLoading ? <LoadingSpinner size="sm" /> : 'Find User'}
+                      </button>
+                    </div>
+                    {recipientUser && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl"
+                      >
+                        <div className="flex items-center gap-3">
+                          <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          <div className="flex-1">
+                            <div className="font-semibold text-gray-900">
+                              {recipientUser.name || recipientUser.email}
+                              {recipientUser.isNew && <span className="ml-2 text-xs text-gray-500">(New user - invite will be sent)</span>}
+                            </div>
+                            <div className="text-sm text-gray-600">Wallet: {recipientUser.walletAddress ? `${recipientUser.walletAddress.slice(0, 6)}...${recipientUser.walletAddress.slice(-4)}` : 'Not set'}</div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
                   </div>
                   
-                  {/* Payment Method Specific Fields */}
-                  {['INR', 'PHP', 'IDR'].includes(selectedPaymentMethod) && (
-                    <div className="mb-4 space-y-4">
-                      {/* PHP E-Wallet Selection - Show FIRST */}
-                      {selectedPaymentMethod === 'PHP' && (
-                        <div className="mb-4 p-4 bg-cyan-50 rounded-xl border border-cyan-200">
-                          <label className="block text-sm font-medium text-gray-700 mb-3">
-                            Select E-Wallet
-                          </label>
-                          <div className="grid grid-cols-3 gap-3">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedPHPEWallet('GCASH')}
-                              className={`p-4 rounded-xl border-2 transition-all text-center ${
-                                selectedPHPEWallet === 'GCASH'
-                                  ? 'border-cyan-500 bg-cyan-100 shadow-md'
-                                  : 'border-gray-200 bg-white hover:border-cyan-300'
-                              }`}
-                            >
-                              <div className="text-lg font-semibold text-gray-900 mb-1">GCash</div>
-                              <div className="text-xs text-gray-500">PHP_EWALLET_GCASH</div>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedPHPEWallet('PAYMAYA')}
-                              className={`p-4 rounded-xl border-2 transition-all text-center ${
-                                selectedPHPEWallet === 'PAYMAYA'
-                                  ? 'border-cyan-500 bg-cyan-100 shadow-md'
-                                  : 'border-gray-200 bg-white hover:border-cyan-300'
-                              }`}
-                            >
-                              <div className="text-lg font-semibold text-gray-900 mb-1">PayMaya</div>
-                              <div className="text-xs text-gray-500">PHP_EWALLET_PAYMAYA</div>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedPHPEWallet('GRABPAY')}
-                              className={`p-4 rounded-xl border-2 transition-all text-center ${
-                                selectedPHPEWallet === 'GRABPAY'
-                                  ? 'border-cyan-500 bg-cyan-100 shadow-md'
-                                  : 'border-gray-200 bg-white hover:border-cyan-300'
-                              }`}
-                            >
-                              <div className="text-lg font-semibold text-gray-900 mb-1">GrabPay</div>
-                              <div className="text-xs text-gray-500">PHP_EWALLET_GRABPAY</div>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* INR UPI/Bank Status - Show payment method status */}
-                      {selectedPaymentMethod === 'INR' && (
-                        <div className="mb-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Payment Method Status
-                          </label>
-                          <div className="space-y-2">
-                            {onMetaUPIStatus === 'SUCCESS' && linkedUPIId && (
-                              <div className="flex items-center gap-2 text-sm text-green-700">
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                </svg>
-                                <span>UPI Linked: {linkedUPIId}</span>
-                              </div>
-                            )}
-                            {onMetaBankStatus === 'SUCCESS' && !onMetaUPIStatus && (
-                              <div className="flex items-center gap-2 text-sm text-green-700">
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                </svg>
-                                <span>Bank Account Linked</span>
-                              </div>
-                            )}
-                            {onMetaUPIStatus !== 'SUCCESS' && onMetaBankStatus !== 'SUCCESS' && (
-                              <div className="flex items-center gap-2 text-sm text-amber-700">
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                                <span>Please link your UPI ID or Bank Account first</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Amount Input */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Amount to Deposit ({selectedPaymentMethod})
-                        </label>
-                        <div className="relative">
-                          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
-                            {selectedPaymentMethod === 'INR' && '₹'}
-                            {selectedPaymentMethod === 'PHP' && '₱'}
-                            {selectedPaymentMethod === 'IDR' && 'Rp'}
-                          </div>
-                          <input
-                            type="number"
-                            placeholder="0.00"
-                            value={depositAmount}
-                            onChange={(e) => {
-                              setDepositAmount(e.target.value);
-                              if (depositErrors.amount) {
-                                setDepositErrors({ ...depositErrors, amount: undefined });
-                              }
-                            }}
-                            className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl focus:ring-2 outline-none transition-all bg-white ${
-                              depositErrors.amount 
-                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' 
-                                : 'border-gray-200 focus:border-[#ff6b00] focus:ring-[#ff6b00]/20'
-                            }`}
-                          />
-                          {depositErrors.amount && (
-                            <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                              </svg>
-                              {depositErrors.amount}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Wallet Address Input (Optional - can use connected wallet or enter manually) */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Crypto Wallet Address {walletAddress && <span className="text-gray-400 text-xs">(pre-filled from connected wallet)</span>}
-                        </label>
-                  <input
-                    type="text"
-                          placeholder="Enter your crypto wallet address (USDC/USDT)"
-                          value={depositWalletAddress || walletAddress || ''}
-                          onChange={(e) => {
-                            setDepositWalletAddress(e.target.value);
-                            if (depositErrors.address) {
-                              setDepositErrors({ ...depositErrors, address: undefined });
-                            }
-                          }}
-                          className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 outline-none transition-all bg-white font-mono text-sm ${
-                            depositErrors.address 
-                              ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' 
-                              : 'border-gray-200 focus:border-[#ff6b00] focus:ring-[#ff6b00]/20'
-                          }`}
-                        />
-                        {depositErrors.address && (
-                          <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                            {depositErrors.address}
-                          </p>
-                        )}
-                        {walletAddress && !depositWalletAddress && (
-                          <p className="mt-1 text-xs text-green-600">Using your connected wallet address</p>
-                        )}
-                        <p className="mt-2 text-xs text-gray-500">
-                          The crypto will be sent to this address after deposit
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Payment Summary with Fees */}
-                  {selectedPaymentMethod && ['INR', 'PHP', 'IDR'].includes(selectedPaymentMethod) && depositAmount && parseFloat(depositAmount) > 0 && (
-                    <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0">
-                          <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-gray-900 mb-3">Payment Summary</p>
-                          
-                          {(() => {
-                            const amount = parseFloat(depositAmount) || 0;
-                            const currency = selectedPaymentMethod;
-                            const symbol = currency === 'INR' ? '₹' : currency === 'PHP' ? '₱' : currency === 'IDR' ? 'Rp' : '$';
-                            
-                            // Fee calculations (in fiat)
-                            const onrampFeeRate = 0.02; // 2% onramp fee
-                            const transferFeeRate = 0.005; // 0.5% transfer fee
-                            const networkFee = 2; // Fixed network fee (in fiat equivalent, approximate)
-                            
-                            const onrampFee = amount * onrampFeeRate;
-                            const transferFee = amount * transferFeeRate;
-                            const totalFees = onrampFee + transferFee + networkFee;
-                            const totalAmount = amount + totalFees;
-                            const recipientReceives = amount; // Recipient receives the original amount
-                            
-                            return (
-                              <div className="space-y-3">
-                                {/* Payment Details */}
-                                <div className="bg-white rounded-lg p-3 border border-blue-100">
-                                  <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm text-gray-600">Amount:</span>
-                                    <span className="text-sm font-semibold text-gray-900">{symbol}{amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                  </div>
-                                  
-                                  {selectedPaymentMethod === 'INR' && (
-                                    <div className="text-xs text-gray-500 mt-1">
-                                      Payment Method: {onMetaUPIStatus === 'SUCCESS' ? `UPI (${linkedUPIId})` : onMetaBankStatus === 'SUCCESS' ? 'Bank Transfer (IMPS/NEFT)' : 'UPI or Bank Transfer'}
-                                    </div>
-                                  )}
-                                  {selectedPaymentMethod === 'PHP' && (
-                                    <div className="text-xs text-gray-500 mt-1">
-                                      E-Wallet: {selectedPHPEWallet} ({selectedPHPEWallet === 'GCASH' ? 'PHP_EWALLET_GCASH' : selectedPHPEWallet === 'PAYMAYA' ? 'PHP_EWALLET_PAYMAYA' : 'PHP_EWALLET_GRABPAY'})
-                                    </div>
-                                  )}
-                                  {selectedPaymentMethod === 'IDR' && (
-                                    <div className="text-xs text-gray-500 mt-1">
-                                      Payment Method: Bank Transfer
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                {/* Fees Breakdown */}
-                                <div className="bg-white rounded-lg p-3 border border-blue-100">
-                                  <p className="text-xs font-semibold text-gray-700 mb-2">Fees:</p>
-                                  <div className="space-y-1.5">
-                                    <div className="flex justify-between items-center text-xs">
-                                      <span className="text-gray-600">Onramp Fee (2%):</span>
-                                      <span className="text-gray-900 font-medium">{symbol}{onrampFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-xs">
-                                      <span className="text-gray-600">Transfer Fee (0.5%):</span>
-                                      <span className="text-gray-900 font-medium">{symbol}{transferFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-xs">
-                                      <span className="text-gray-600">Network Fee:</span>
-                                      <span className="text-gray-900 font-medium">{symbol}{networkFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                    <div className="pt-1.5 mt-1.5 border-t border-gray-200 flex justify-between items-center">
-                                      <span className="text-xs font-semibold text-gray-700">Total Fees:</span>
-                                      <span className="text-xs font-bold text-gray-900">{symbol}{totalFees.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                {/* Total Amount */}
-                                <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-3 text-white">
-                                  <div className="flex justify-between items-center mb-1">
-                                    <span className="text-sm font-semibold">Total to Pay:</span>
-                                    <span className="text-lg font-bold">{symbol}{totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                  </div>
-                                  <div className="text-xs text-blue-100 mt-1">
-                                    Recipient receives: {symbol}{recipientReceives.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                  </div>
-                                </div>
-                                
-                                <p className="text-xs text-gray-500 mt-2">You will be redirected to OnMeta to complete the payment</p>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedPaymentMethod && ['STABLES', 'BANK'].includes(selectedPaymentMethod) && (
-                    <p className="text-sm text-gray-600 mb-4">
-                      {selectedPaymentMethod === 'STABLES' && 'Continue with stablecoin payment'}
-                      {selectedPaymentMethod === 'BANK' && 'Continue with bank transfer'}
-                    </p>
-                  )}
-                  
                   <div className="flex gap-3">
-                  <button
+                    <button
                       onClick={() => {
-                        setSelectedPaymentMethod(null);
-                        setDepositAmount('');
-                        setDepositWalletAddress('');
                         setShowSendPaymentModal(false);
+                        setSendStep(1);
+                        setRecipientEmail("");
+                        setRecipientUser(null);
                       }}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-100 transition-colors"
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-100 transition-colors"
                     >
                       Cancel
                     </button>
                     <button
-                      onClick={async () => {
-                        // Handle deposit/payment initiation via OnMeta API
-                        if (['INR', 'PHP', 'IDR'].includes(selectedPaymentMethod || '')) {
-                          const errors: { amount?: string; address?: string } = {};
-                          const amount = parseFloat(depositAmount);
-                          if (isNaN(amount) || amount <= 0) {
-                            errors.amount = 'Please enter a valid amount';
-                          }
-
-                          // Use manually entered address if provided, otherwise use connected wallet address
-                          const targetWalletAddress = depositWalletAddress || walletAddress;
-                          if (!targetWalletAddress || targetWalletAddress.trim() === '') {
-                            errors.address = 'Please enter a wallet address or connect your wallet';
-                          } else {
-                          // Basic wallet address validation (Solana addresses are base58 encoded, 32-44 chars)
-                          const trimmedAddress = targetWalletAddress.trim();
-                          if (trimmedAddress.length < 32 || trimmedAddress.length > 44) {
-                              errors.address = 'Wallet address must be 32-44 characters';
-                            }
-                          }
-
-                          if (Object.keys(errors).length > 0) {
-                            setDepositErrors(errors);
-                            showToast('Please fix the errors in the form', 'error');
-                            return;
-                          }
-                          
-                          setDepositErrors({});
-                          
-                          // Get trimmed address after validation
-                          const trimmedAddress = (depositWalletAddress || walletAddress || '').trim();
-
-                          // Check if OnMeta access token is available
-                          if (!onMetaAccessToken) {
-                            showToast('OnMeta authentication required. Please wait for authentication to complete or refresh the page.', 'warning');
-                            setDepositLoading(false);
-                            return;
-                          }
-
-                          // Determine payment mode based on currency
-                          let paymentMode = '';
-                          if (selectedPaymentMethod === 'INR') {
-                            // Check if UPI is linked, default to UPI if available
-                            if (onMetaUPIStatus === 'SUCCESS') {
-                              paymentMode = 'INR_UPI';
-                            } else if (onMetaBankStatus === 'SUCCESS') {
-                              paymentMode = 'INR_IMPS'; // Default to IMPS for bank
-                            } else {
-                              showToast('Please link your UPI ID or Bank Account first before creating an order.', 'warning');
-                              setDepositLoading(false);
-                              return;
-                            }
-                          } else if (selectedPaymentMethod === 'PHP') {
-                            // Use selected PHP e-wallet: GCASH, PAYMAYA, or GRABPAY
-                            const phpEwalletMap: Record<string, string> = {
-                              'GCASH': 'PHP_EWALLET_GCASH',
-                              'PAYMAYA': 'PHP_EWALLET_PAYMAYA',
-                              'GRABPAY': 'PHP_EWALLET_GRABPAY',
-                            };
-                            paymentMode = phpEwalletMap[selectedPHPEWallet] || 'PHP_EWALLET_GCASH';
-                          } else if (selectedPaymentMethod === 'IDR') {
-                            // IDR payment modes - you may need to check what's available
-                            paymentMode = 'IDR_BANK_TRANSFER'; // Adjust based on available modes
-                          }
-
-                          // Get token address - you may want to fetch this from supported tokens
-                          // For now, using a default USDC address for Polygon testnet
-                          const buyTokenAddress = '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889'; // USDC on Polygon testnet
-                          const chainId = 80001; // Polygon testnet
-
-                          // Build request body
-                          const requestBody: any = {
-                            buyTokenSymbol: 'USDC',
-                            chainId: chainId,
-                            fiatCurrency: selectedPaymentMethod.toLowerCase(),
-                            fiatAmount: amount,
-                            buyTokenAddress: buyTokenAddress,
-                            receiverAddress: trimmedAddress,
-                            paymentMode: paymentMode,
-                            redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/dashboard?onmeta_callback=true`,
-                            metaData: {
-                              userId: getAuthEmail() || '',
-                              userName: userProfile?.name || '',
-                            },
-                          };
-
-                          // Add UPI ID if payment mode is UPI
-                          if (paymentMode.includes('UPI')) {
-                            if (onMetaUPIStatus === 'SUCCESS' && linkedUPIId) {
-                              requestBody.upiId = { upiId: linkedUPIId };
-                            } else {
-                              // Prompt for UPI ID if not stored
-                              const upiId = prompt('Enter your UPI ID (e.g., yourname@paytm):');
-                              if (!upiId) {
-                                setDepositLoading(false);
-                                return;
-                              }
-                              requestBody.upiId = { upiId: upiId };
-                            }
-                          }
-
-                          // Add bank details if payment mode is IMPS/NEFT
-                          if (paymentMode.includes('IMPS') || paymentMode.includes('NEFT')) {
-                            if (onMetaBankStatus === 'SUCCESS' && linkedBankDetails) {
-                              requestBody.bankDetails = linkedBankDetails;
-                            } else if (linkBankAccountNumber && linkBankIFSC && linkBankAccountHolder) {
-                              // Use form data if available
-                              requestBody.bankDetails = {
-                                accountNumber: linkBankAccountNumber,
-                                ifscCode: linkBankIFSC,
-                                accountHolderName: linkBankAccountHolder,
-                              };
-                            } else {
-                              showToast('Bank account details are required. Please link your bank account with complete details.', 'warning');
-                              setDepositLoading(false);
-                              return;
-                            }
-                          }
-
-                          // Create onramp order via OnMeta API
-                          setDepositLoading(true);
-                          try {
-                            const response = await fetch('/api/onmeta/orders/create-onramp', {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${onMetaAccessToken}`,
-                              },
-                              body: JSON.stringify(requestBody),
-                            });
-
-                            const data = await response.json();
-                            
-                            if (data.success && (data.orderUrl || data.depositUrl)) {
-                              // Redirect to OnMeta's order page
-                              window.location.href = data.orderUrl || data.depositUrl;
-                            } else {
-                              showToast(data.error || 'Failed to create onramp order. Please try again.', 'error');
-                              setDepositLoading(false);
-                            }
-                          } catch (error: any) {
-                            console.error('Create onramp order error:', error);
-                            showToast(`Error: ${error.message || 'Failed to create onramp order. Please try again.'}`, 'error');
-                            setDepositLoading(false);
-                          }
+                      onClick={() => {
+                        if (recipientUser) {
+                          setSendStep(2);
                         } else {
-                          // Handle other payment methods (Stables, Bank Transfer)
-                          console.log('Initiate payment for:', selectedPaymentMethod);
-                          showToast('This payment method will be implemented soon.', 'info');
-                          setSelectedPaymentMethod(null);
-                          setDepositAmount('');
-                          setDepositWalletAddress('');
-                          setShowSendPaymentModal(false);
+                          showToast('Please find the recipient first', 'warning');
                         }
                       }}
-                      disabled={
-                        (['INR', 'PHP', 'IDR'].includes(selectedPaymentMethod || '') && (!depositAmount || parseFloat(depositAmount) <= 0 || (!walletAddress && !depositWalletAddress)))
-                      }
-                      className="flex-1 px-4 py-3 sm:py-2 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[44px]"
+                      disabled={!recipientUser}
+                      className="flex-1 px-4 py-3 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {depositLoading && <LoadingSpinner size="sm" />}
-                      {depositLoading ? 'Processing...' : 'Continue'}
-                  </button>
+                      Next: Enter Amount
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Step 2: Amount */}
+              {sendStep === 2 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Amount to Send
+                    </label>
+                    <div className="relative">
+                      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">
+                        {(() => {
+                          const currency = userProfile?.preferredCurrency || 'INR';
+                          return currency === 'INR' ? '₹' : currency === 'PHP' ? '₱' : currency === 'IDR' ? 'Rp' : '$';
+                        })()}
+                      </div>
+                      <input
+                        type="number"
+                        placeholder="0.00"
+                        value={sendAmount}
+                        onChange={(e) => setSendAmount(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                    </div>
+                    {userProfile?.fiatBalance !== undefined && (
+                      <p className="mt-2 text-sm text-gray-500">
+                        Available Balance: {(() => {
+                          const currency = userProfile?.preferredCurrency || 'INR';
+                          const symbol = currency === 'INR' ? '₹' : currency === 'PHP' ? '₱' : currency === 'IDR' ? 'Rp' : '$';
+                          return `${symbol}${Number(userProfile.fiatBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                        })()}
+                      </p>
+                    )}
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Message (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Add a note for the recipient"
+                        value={sendMessage}
+                        onChange={(e) => setSendMessage(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#ff6b00] focus:ring-2 focus:ring-[#ff6b00]/20 outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setSendStep(1)}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-100 transition-colors"
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      onClick={() => {
+                        const amount = parseFloat(sendAmount);
+                        if (!sendAmount || isNaN(amount) || amount <= 0) {
+                          showToast('Please enter a valid amount', 'error');
+                          return;
+                        }
+                        setSendStep(3);
+                      }}
+                      disabled={!sendAmount || parseFloat(sendAmount) <= 0}
+                      className="flex-1 px-4 py-3 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next: Choose Payment Method
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Step 3: Payment Method Selection */}
+              {sendStep === 3 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Choose Payment Method</h4>
+                    <div className="grid gap-4">
+                      {/* From Wallet Balance Option */}
+                      <motion.button
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        onClick={() => setSendPaymentMethod('FROM_WALLET')}
+                        className={`p-6 rounded-2xl border-2 transition-all text-left ${
+                          sendPaymentMethod === 'FROM_WALLET'
+                            ? 'border-[#ff6b00] bg-orange-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                            sendPaymentMethod === 'FROM_WALLET' ? 'bg-[#ff6b00]' : 'bg-gray-100'
+                          }`}>
+                            <span className="text-2xl">💰</span>
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">From Wallet Balance</h3>
+                            <p className="text-sm text-gray-600">Instant transfer using your existing balance</p>
+                            <div className="mt-2 text-xs text-green-600 font-medium">✓ No external fees • Instant • Low cost</div>
+                          </div>
+                          {sendPaymentMethod === 'FROM_WALLET' && (
+                            <svg className="w-6 h-6 text-[#ff6b00]" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                      </motion.button>
+
+                      {/* Via UPI/Bank Option */}
+                      <motion.button
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.99 }}
+                        onClick={() => {
+                          // Check if user has UPI or Bank linked
+                          if (onMetaUPIStatus !== 'SUCCESS' && onMetaBankStatus !== 'SUCCESS') {
+                            showToast('Please link your UPI ID or Bank Account first', 'warning');
+                            return;
+                          }
+                          setSendPaymentMethod('UPI');
+                        }}
+                        className={`p-6 rounded-2xl border-2 transition-all text-left ${
+                          sendPaymentMethod === 'UPI' || sendPaymentMethod === 'BANK'
+                            ? 'border-[#ff6b00] bg-orange-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                            sendPaymentMethod === 'UPI' || sendPaymentMethod === 'BANK' ? 'bg-[#ff6b00]' : 'bg-gray-100'
+                          }`}>
+                            <span className="text-2xl">💳</span>
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">Pay via UPI/Bank</h3>
+                            <p className="text-sm text-gray-600">Onramp directly to recipient's wallet</p>
+                            <div className="mt-2 text-xs text-blue-600 font-medium">
+                              {onMetaUPIStatus === 'SUCCESS' && linkedUPIId && `UPI: ${linkedUPIId}`}
+                              {onMetaBankStatus === 'SUCCESS' && !onMetaUPIStatus && 'Bank Account Linked'}
+                              {onMetaUPIStatus !== 'SUCCESS' && onMetaBankStatus !== 'SUCCESS' && '⚠ Link UPI/Bank first'}
+                            </div>
+                          </div>
+                          {(sendPaymentMethod === 'UPI' || sendPaymentMethod === 'BANK') && (
+                            <svg className="w-6 h-6 text-[#ff6b00]" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                      </motion.button>
+                    </div>
+                  </div>
+
+                  {/* Fee Breakdown Preview */}
+                  {sendAmount && parseFloat(sendAmount) > 0 && sendPaymentMethod && (
+                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <p className="text-sm font-semibold text-gray-900 mb-2">Fee Breakdown</p>
+                      {(() => {
+                        const amount = parseFloat(sendAmount) || 0;
+                        const currency = userProfile?.preferredCurrency || 'INR';
+                        const symbol = currency === 'INR' ? '₹' : currency === 'PHP' ? '₱' : currency === 'IDR' ? 'Rp' : '$';
+                        
+                        if (sendPaymentMethod === 'FROM_WALLET') {
+                          const transferFee = amount * 0.005; // 0.5%
+                          const total = amount + transferFee;
+                          return (
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Transfer Fee (0.5%):</span>
+                                <span className="text-gray-900 font-medium">{symbol}{transferFee.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between font-semibold pt-2 border-t border-gray-200">
+                                <span>Total to Send:</span>
+                                <span>{symbol}{total.toFixed(2)}</span>
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                Recipient receives: {symbol}{amount.toFixed(2)}
+                              </div>
+                            </div>
+                          );
+                        } else {
+                          const onrampFee = amount * 0.02; // 2%
+                          const transferFee = amount * 0.005; // 0.5%
+                          const networkFee = 2;
+                          const totalFees = onrampFee + transferFee + networkFee;
+                          const total = amount + totalFees;
+                          return (
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Onramp Fee (2%):</span>
+                                <span className="text-gray-900 font-medium">{symbol}{onrampFee.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Transfer Fee (0.5%):</span>
+                                <span className="text-gray-900 font-medium">{symbol}{transferFee.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Network Fee:</span>
+                                <span className="text-gray-900 font-medium">{symbol}{networkFee.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between font-semibold pt-2 border-t border-gray-200">
+                                <span>Total to Pay:</span>
+                                <span>{symbol}{total.toFixed(2)}</span>
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                Recipient receives: {symbol}{amount.toFixed(2)}
+                              </div>
+                            </div>
+                          );
+                        }
+                      })()}
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setSendStep(2)}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-100 transition-colors"
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!sendPaymentMethod) {
+                          showToast('Please select a payment method', 'warning');
+                          return;
+                        }
+                        setSendStep(4);
+                      }}
+                      disabled={!sendPaymentMethod}
+                      className="flex-1 px-4 py-3 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next: Review & Confirm
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Step 4: Review & Confirm */}
+              {sendStep === 4 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
+                  <div className="p-6 bg-gray-50 rounded-2xl border border-gray-200">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Review & Confirm</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Sending to:</span>
+                        <span className="font-semibold text-gray-900">{recipientUser?.email || recipientEmail}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Amount:</span>
+                        <span className="font-semibold text-gray-900">
+                          {(() => {
+                            const currency = userProfile?.preferredCurrency || 'INR';
+                            const symbol = currency === 'INR' ? '₹' : currency === 'PHP' ? '₱' : currency === 'IDR' ? 'Rp' : '$';
+                            return `${symbol}${parseFloat(sendAmount || '0').toFixed(2)}`;
+                          })()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Payment Method:</span>
+                        <span className="font-semibold text-gray-900">
+                          {sendPaymentMethod === 'FROM_WALLET' ? 'From Wallet Balance' : 'Via UPI/Bank'}
+                        </span>
+                      </div>
+                      {sendMessage && (
+                        <div className="pt-3 border-t border-gray-200">
+                          <span className="text-gray-600 text-sm">Message: </span>
+                          <span className="text-gray-900 text-sm">{sendMessage}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Final Fee Breakdown */}
+                    <div className="mt-4 p-4 bg-white rounded-xl border border-gray-200">
+                      <p className="text-sm font-semibold text-gray-900 mb-3">Final Breakdown</p>
+                      {(() => {
+                        const amount = parseFloat(sendAmount || '0');
+                        const currency = userProfile?.preferredCurrency || 'INR';
+                        const symbol = currency === 'INR' ? '₹' : currency === 'PHP' ? '₱' : currency === 'IDR' ? 'Rp' : '$';
+                        
+                        if (sendPaymentMethod === 'FROM_WALLET') {
+                          const transferFee = amount * 0.005;
+                          const total = amount + transferFee;
+                          return (
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Amount:</span>
+                                <span className="text-gray-900">{symbol}{amount.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Transfer Fee (0.5%):</span>
+                                <span className="text-gray-900">{symbol}{transferFee.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between font-bold pt-2 border-t border-gray-200 text-lg">
+                                <span>Total:</span>
+                                <span className="text-[#ff6b00]">{symbol}{total.toFixed(2)}</span>
+                              </div>
+                              <div className="text-xs text-green-600 mt-2">
+                                Recipient will receive: {symbol}{amount.toFixed(2)}
+                              </div>
+                            </div>
+                          );
+                        } else {
+                          const onrampFee = amount * 0.02;
+                          const transferFee = amount * 0.005;
+                          const networkFee = 2;
+                          const totalFees = onrampFee + transferFee + networkFee;
+                          const total = amount + totalFees;
+                          return (
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Amount:</span>
+                                <span className="text-gray-900">{symbol}{amount.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Onramp Fee (2%):</span>
+                                <span className="text-gray-900">{symbol}{onrampFee.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Transfer Fee (0.5%):</span>
+                                <span className="text-gray-900">{symbol}{transferFee.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Network Fee:</span>
+                                <span className="text-gray-900">{symbol}{networkFee.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between font-bold pt-2 border-t border-gray-200 text-lg">
+                                <span>Total to Pay:</span>
+                                <span className="text-[#ff6b00]">{symbol}{total.toFixed(2)}</span>
+                              </div>
+                              <div className="text-xs text-green-600 mt-2">
+                                Recipient will receive: {symbol}{amount.toFixed(2)}
+                              </div>
+                            </div>
+                          );
+                        }
+                      })()}
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setSendStep(3)}
+                      disabled={sendLoading}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-100 transition-colors disabled:opacity-50"
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (sendPaymentMethod === 'FROM_WALLET') {
+                          await handleSendFromWallet();
+                        } else {
+                          // Determine payment mode for onramp
+                          const currency = userProfile?.preferredCurrency || 'INR';
+                          let paymentMode = '';
+                          if (currency === 'INR') {
+                            paymentMode = onMetaUPIStatus === 'SUCCESS' ? 'INR_UPI' : 'INR_IMPS';
+                          } else if (currency === 'PHP') {
+                            paymentMode = `PHP_EWALLET_${selectedPHPEWallet}`;
+                          } else {
+                            paymentMode = 'IDR_BANK_TRANSFER';
+                          }
+                          await handleSendViaOnramp(paymentMode);
+                        }
+                      }}
+                      disabled={sendLoading}
+                      className="flex-1 px-4 py-3 bg-[#ff6b00] text-white rounded-xl font-semibold hover:bg-[#e55a00] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {sendLoading && <LoadingSpinner size="sm" />}
+                      {sendLoading ? 'Processing...' : sendPaymentMethod === 'FROM_WALLET' ? 'Confirm & Send' : 'Continue to Payment'}
+                    </button>
                   </div>
                 </motion.div>
               )}
