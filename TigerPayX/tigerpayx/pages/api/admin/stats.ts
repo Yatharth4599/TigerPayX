@@ -84,7 +84,9 @@ async function handler(req: AdminRequest, res: NextApiResponse<StatsResponse | {
 
     const byToken: Record<string, number> = {};
     allTransactions.forEach(t => {
-      byToken[t.token] = (byToken[t.token] || 0) + 1;
+      if (t.token) {
+        byToken[t.token] = (byToken[t.token] || 0) + 1;
+      }
     });
 
     // Calculate total volume (sum of all transaction amounts)
